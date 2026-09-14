@@ -119,7 +119,7 @@ class RechercheViewModelTest {
         viewModel.onAddGame(sampleResult(title = "Hades"))
         dispatcher.scheduler.advanceUntilIdle()
 
-        assertTrue(isAlreadyAdded("hades", viewModel.uiState.value.backlogTitles))
+        assertTrue(isAlreadyAdded("hades", viewModel.uiState.value.backlogGameIdsByTitle))
         collectorJob.cancel()
     }
 }

@@ -63,6 +63,7 @@
     <string name="detail_hours_decrement">Diminuer le temps de jeu</string>
     <string name="detail_notes_label">Notes libres</string>
     <string name="detail_notes_placeholder">Impressions, astuces, où tu t\'es arrêté…</string>
+    <string name="detail_add_action">Ajouter au backlog</string>
     <string name="detail_remove_action">Retirer du backlog</string>
     <string name="detail_remove_confirm_title">Retirer ce jeu du backlog ?</string>
     <string name="detail_remove_confirm_message">Cette action est définitive : le jeu et toutes ses informations (note, temps de jeu, notes) seront supprimés.</string>

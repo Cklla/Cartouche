@@ -5,10 +5,14 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import fr.cklla.cartouche.domain.model.Game
+import fr.cklla.cartouche.domain.model.GameSearchResult
 import fr.cklla.cartouche.domain.model.GameStatus
+import fr.cklla.cartouche.domain.model.Resource
+import fr.cklla.cartouche.domain.model.toGame
 import fr.cklla.cartouche.domain.repository.GameRepository
 import fr.cklla.cartouche.domain.repository.IgdbPlaytimeRepository
 import fr.cklla.cartouche.ui.navigation.CartoucheDestinations
+import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -16,7 +20,6 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import javax.inject.Inject
 
 /**
  * Le jeu affiché est chargé une fois depuis le repository, puis conservé dans
@@ -30,6 +33,13 @@ import javax.inject.Inject
  * seconde à l'aller-retour suivant. Le repository reste la seule source de
  * vérité pour la *persistance* ; [workingGame] n'est qu'un cache d'édition
  * pour cet écran.
+ *
+ * Deux façons d'arriver sur cette fiche : depuis la Bibliothèque, avec l'id d'un jeu déjà dans le
+ * backlog ([gameId] renseigné) ; ou directement depuis un résultat de Recherche pas encore ajouté,
+ * auquel cas la fiche RAWG transite par les autres arguments de route ([previewResult]) et
+ * [workingGame] démarre avec un id vide. Tant que l'id est vide, la fiche est en aperçu
+ * (`DetailUiState.isInBacklog` vaut `false`) et aucune action d'édition n'est persistée — voir
+ * [applyEdit] — jusqu'à ce que [onAddGame] l'ajoute réellement au backlog.
  */
 @HiltViewModel
 class DetailViewModel @Inject constructor(
@@ -38,26 +48,35 @@ class DetailViewModel @Inject constructor(
     private val igdbPlaytimeRepository: IgdbPlaytimeRepository,
 ) : ViewModel() {
 
-    private val gameId: String = checkNotNull(savedStateHandle[CartoucheDestinations.DETAIL_ARG_GAME_ID])
+    private val gameId: String? = savedStateHandle[CartoucheDestinations.DETAIL_ARG_GAME_ID]
+    private val previewResult: GameSearchResult? =
+        if (gameId != null) null else savedStateHandle.toPreviewResult()
 
-    private val workingGame = MutableStateFlow<Game?>(null)
-    private val isLoading = MutableStateFlow(true)
+    private val workingGame = MutableStateFlow(previewResult?.toGame())
+    private val isLoading = MutableStateFlow(gameId != null)
 
     init {
-        viewModelScope.launch {
-            val game = gameRepository.observeGame(gameId).first()
-            workingGame.value = game
-            isLoading.value = false
-
-            // Lookup IGDB déclenché une seule fois, seulement à l'ouverture de la fiche et
-            // seulement si aucun des trois temps de jeu estimés n'est déjà en cache (voir
-            // `Game.estimatedPlaytime*Hours`) — jamais pendant la recherche RAWG ni sur la liste
-            // du backlog, pour éviter des appels inutiles.
-            if (game != null && game.estimatedPlaytimeHastilyHours == null &&
-                game.estimatedPlaytimeNormallyHours == null && game.estimatedPlaytimeCompletelyHours == null
-            ) {
-                fetchEstimatedPlaytime(game)
+        val id = gameId
+        if (id != null) {
+            viewModelScope.launch {
+                val game = gameRepository.observeGame(id).first()
+                workingGame.value = game
+                isLoading.value = false
+                game?.let(::fetchEstimatedPlaytimeIfMissing)
             }
+        } else {
+            workingGame.value?.let(::fetchEstimatedPlaytimeIfMissing)
+        }
+    }
+
+    // Lookup IGDB déclenché une seule fois, seulement si aucun des trois temps de jeu estimés
+    // n'est déjà en cache (voir `Game.estimatedPlaytime*Hours`) — que la fiche soit déjà dans le
+    // backlog ou encore en aperçu, jamais pendant la recherche RAWG elle-même.
+    private fun fetchEstimatedPlaytimeIfMissing(game: Game) {
+        if (game.estimatedPlaytimeHastilyHours == null &&
+            game.estimatedPlaytimeNormallyHours == null && game.estimatedPlaytimeCompletelyHours == null
+        ) {
+            fetchEstimatedPlaytime(game)
         }
     }
 
@@ -85,7 +104,7 @@ class DetailViewModel @Inject constructor(
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5_000),
-        initialValue = DetailUiState(),
+        initialValue = DetailUiState(isLoading = isLoading.value, game = workingGame.value),
     )
 
     fun onStatusSelected(status: GameStatus) = applyEdit { it.copy(status = status) }
@@ -99,17 +118,49 @@ class DetailViewModel @Inject constructor(
 
     fun onNotesChanged(notes: String) = applyEdit { it.copy(notes = notes) }
 
+    /**
+     * Ajoute la fiche en aperçu au backlog. La fiche ne navigue nulle part : `workingGame` reçoit
+     * l'id fraîchement généré, ce qui fait basculer `isInBacklog` à `true` et affiche directement
+     * statut/note perso/temps de jeu/notes libres sur le même écran.
+     */
+    fun onAddGame() {
+        val current = workingGame.value ?: return
+        if (current.id.isNotEmpty()) return
+        viewModelScope.launch {
+            val result = gameRepository.addGame(current)
+            if (result is Resource.Success) {
+                workingGame.value = current.copy(id = result.data)
+            }
+        }
+    }
+
     fun onRemoveGame() {
+        val id = gameId ?: return
         // Retrait optimiste : l'écran n'attend pas l'aller-retour Room pour
         // considérer le jeu comme supprimé (voir `DetailScreen`, qui revient en
         // arrière dès que `game` devient `null`).
         workingGame.value = null
-        viewModelScope.launch { gameRepository.deleteGame(gameId) }
+        viewModelScope.launch { gameRepository.deleteGame(id) }
     }
 
     private fun applyEdit(transform: (Game) -> Game) {
         val updated = workingGame.value?.let(transform) ?: return
         workingGame.value = updated
+        // Pas encore ajouté au backlog : rien à persister, seule la copie de travail locale
+        // change (voir `onAddGame`, qui écrit pour la première fois).
+        if (updated.id.isEmpty()) return
         viewModelScope.launch { gameRepository.updateGame(updated) }
+    }
+
+    private fun SavedStateHandle.toPreviewResult(): GameSearchResult? {
+        val rawgId = get<Long>(CartoucheDestinations.DETAIL_APERCU_ARG_RAWG_ID)?.takeIf { it > 0 } ?: return null
+        return GameSearchResult(
+            rawgId = rawgId,
+            title = get<String>(CartoucheDestinations.DETAIL_APERCU_ARG_TITLE).orEmpty(),
+            platform = get<String>(CartoucheDestinations.DETAIL_APERCU_ARG_PLATFORM).orEmpty(),
+            genre = get<String>(CartoucheDestinations.DETAIL_APERCU_ARG_GENRE).orEmpty(),
+            year = get<String>(CartoucheDestinations.DETAIL_APERCU_ARG_YEAR).orEmpty(),
+            coverUrl = get<String>(CartoucheDestinations.DETAIL_APERCU_ARG_COVER_URL)?.takeIf { it.isNotEmpty() },
+        )
     }
 }

@@ -104,7 +104,13 @@ fun CartoucheApp(authGateViewModel: AuthGateViewModel = hiltViewModel()) {
                 )
             }
             composable(CartoucheDestinations.RECHERCHE) {
-                RechercheScreen()
+                RechercheScreen(
+                    onResultClick = { result, backlogGameId ->
+                        val route = backlogGameId?.let { CartoucheDestinations.detailRoute(it) }
+                            ?: CartoucheDestinations.detailApercuRoute(result)
+                        navController.navigate(route)
+                    },
+                )
             }
             composable(CartoucheDestinations.STATS) {
                 StatsScreen()
@@ -112,6 +118,37 @@ fun CartoucheApp(authGateViewModel: AuthGateViewModel = hiltViewModel()) {
             composable(
                 route = CartoucheDestinations.DETAIL,
                 arguments = listOf(navArgument(CartoucheDestinations.DETAIL_ARG_GAME_ID) { type = NavType.StringType }),
+            ) {
+                DetailScreen(onBackClick = { navController.popBackStack() })
+            }
+            composable(
+                route = CartoucheDestinations.DETAIL_APERCU,
+                arguments = listOf(
+                    navArgument(CartoucheDestinations.DETAIL_APERCU_ARG_RAWG_ID) {
+                        type = NavType.LongType
+                        defaultValue = -1L
+                    },
+                    navArgument(CartoucheDestinations.DETAIL_APERCU_ARG_TITLE) {
+                        type = NavType.StringType
+                        defaultValue = ""
+                    },
+                    navArgument(CartoucheDestinations.DETAIL_APERCU_ARG_PLATFORM) {
+                        type = NavType.StringType
+                        defaultValue = ""
+                    },
+                    navArgument(CartoucheDestinations.DETAIL_APERCU_ARG_GENRE) {
+                        type = NavType.StringType
+                        defaultValue = ""
+                    },
+                    navArgument(CartoucheDestinations.DETAIL_APERCU_ARG_YEAR) {
+                        type = NavType.StringType
+                        defaultValue = ""
+                    },
+                    navArgument(CartoucheDestinations.DETAIL_APERCU_ARG_COVER_URL) {
+                        type = NavType.StringType
+                        defaultValue = ""
+                    },
+                ),
             ) {
                 DetailScreen(onBackClick = { navController.popBackStack() })
             }
