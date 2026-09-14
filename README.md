@@ -43,11 +43,6 @@ synchronisé automatiquement entre tous vos appareils grâce à Firebase.
 
 ## Captures d'écran
 
-<!--
-Ajouter les fichiers dans un dossier `screenshots/` à la racine du projet, puis remplacer les
-chemins ci-dessous (ex. screenshots/bibliotheque.png).
--->
-
 | Connexion | Bibliothèque | Recherche |
 |:---:|:---:|:---:|
 | ![Connexion](screenshots/login.png) | ![Bibliothèque](screenshots/bibliotheque.png) | ![Recherche](screenshots/recherche.png) |
