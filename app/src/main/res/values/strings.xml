@@ -26,4 +26,24 @@
     <string name="nav_recherche">Recherche</string>
     <string name="nav_stats">Stats</string>
     <string name="placeholder_bientot_disponible">Bientôt disponible</string>
+
+    <!-- Jaquette placeholder -->
+    <string name="cover_placeholder_label">jaquette</string>
+
+    <!-- Détail d'un jeu -->
+    <string name="detail_back">Retour à la bibliothèque</string>
+    <string name="detail_status_label">Statut</string>
+    <string name="detail_rating_label">Note perso</string>
+    <string name="detail_rating_star_content_description">Donner une note de %1$d sur 5</string>
+    <string name="detail_hours_label">Temps de jeu</string>
+    <string name="detail_hours_value">%1$dh</string>
+    <string name="detail_hours_increment">Augmenter le temps de jeu</string>
+    <string name="detail_hours_decrement">Diminuer le temps de jeu</string>
+    <string name="detail_notes_label">Notes libres</string>
+    <string name="detail_notes_placeholder">Impressions, astuces, où tu t\'es arrêté…</string>
+    <string name="detail_remove_action">Retirer du backlog</string>
+    <string name="detail_remove_confirm_title">Retirer ce jeu du backlog ?</string>
+    <string name="detail_remove_confirm_message">Cette action est définitive : le jeu et toutes ses informations (note, temps de jeu, notes) seront supprimés.</string>
+    <string name="detail_remove_confirm_confirm">Retirer</string>
+    <string name="detail_remove_confirm_cancel">Annuler</string>
 </resources>

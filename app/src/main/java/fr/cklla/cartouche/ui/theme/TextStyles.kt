@@ -1,6 +1,7 @@
 package fr.cklla.cartouche.ui.theme
 
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
@@ -72,5 +73,68 @@ object CartoucheTextStyles {
         fontWeight = FontWeight.SemiBold,
         fontStyle = FontStyle.Italic,
         fontSize = 28.sp,
+    )
+
+    // --- Écran Détail ---
+
+    val coverLetterLarge = TextStyle(
+        fontFamily = FrauncesItalic,
+        fontWeight = FontWeight.SemiBold,
+        fontStyle = FontStyle.Italic,
+        fontSize = 96.sp,
+    )
+
+    // Pas de police monospace dédiée embarquée pour une simple étiquette
+    // décorative : la monospace système suffit (voir maquette, "jaquette").
+    val coverLabel = TextStyle(
+        fontFamily = FontFamily.Monospace,
+        fontSize = 10.sp,
+    )
+
+    val backLabel = TextStyle(
+        fontFamily = InterFamily,
+        fontSize = 15.sp,
+    )
+
+    val detailTitle = TextStyle(
+        fontFamily = FrauncesItalic,
+        fontWeight = FontWeight.SemiBold,
+        fontStyle = FontStyle.Italic,
+        fontSize = 25.sp,
+    )
+
+    val detailSubtitle = TextStyle(
+        fontFamily = InterFamily,
+        fontSize = 13.sp,
+    )
+
+    val sectionLabel = TextStyle(
+        fontFamily = InterFamily,
+        fontWeight = FontWeight.SemiBold,
+        fontSize = 11.sp,
+        letterSpacing = 0.9.sp,
+    )
+
+    val statusPillLabel = TextStyle(
+        fontFamily = InterFamily,
+        fontWeight = FontWeight.Medium,
+        fontSize = 13.sp,
+    )
+
+    val hoursValue = TextStyle(
+        fontFamily = FrauncesItalic,
+        fontWeight = FontWeight.SemiBold,
+        fontStyle = FontStyle.Italic,
+        fontSize = 20.sp,
+    )
+
+    val notesText = TextStyle(
+        fontFamily = InterFamily,
+        fontSize = 14.sp,
+    )
+
+    val linkLabel = TextStyle(
+        fontFamily = InterFamily,
+        fontSize = 13.sp,
     )
 }
