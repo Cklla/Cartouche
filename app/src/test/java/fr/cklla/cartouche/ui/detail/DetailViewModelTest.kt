@@ -129,6 +129,56 @@ class DetailViewModelTest {
     }
 
     @Test
+    fun `saisir manuellement le temps de jeu met a jour le jeu observe`() = runTest {
+        val dao = FakeGameDao()
+        val repository = fakeGameRepository(dao)
+        val gameId = setUpGame(repository)
+        val viewModel = viewModel(repository, gameId)
+        val collectorJob = launch { viewModel.uiState.collect {} }
+        dispatcher.scheduler.advanceUntilIdle()
+
+        viewModel.onHoursSet(380)
+        dispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals(380, viewModel.uiState.value.game?.userPlaytimeHours)
+        collectorJob.cancel()
+    }
+
+    @Test
+    fun `saisir manuellement puis incrementer part bien de la valeur saisie`() = runTest {
+        val dao = FakeGameDao()
+        val repository = fakeGameRepository(dao)
+        val gameId = setUpGame(repository)
+        val viewModel = viewModel(repository, gameId)
+        val collectorJob = launch { viewModel.uiState.collect {} }
+        dispatcher.scheduler.advanceUntilIdle()
+
+        viewModel.onHoursSet(380)
+        dispatcher.scheduler.advanceUntilIdle()
+        viewModel.onHoursIncrement()
+        dispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals(381, viewModel.uiState.value.game?.userPlaytimeHours)
+        collectorJob.cancel()
+    }
+
+    @Test
+    fun `saisir manuellement une valeur negative est ramenee a zero`() = runTest {
+        val dao = FakeGameDao()
+        val repository = fakeGameRepository(dao)
+        val gameId = setUpGame(repository)
+        val viewModel = viewModel(repository, gameId)
+        val collectorJob = launch { viewModel.uiState.collect {} }
+        dispatcher.scheduler.advanceUntilIdle()
+
+        viewModel.onHoursSet(-5)
+        dispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals(0, viewModel.uiState.value.game?.userPlaytimeHours)
+        collectorJob.cancel()
+    }
+
+    @Test
     fun `noter et modifier les notes libres met a jour le jeu`() = runTest {
         val dao = FakeGameDao()
         val repository = fakeGameRepository(dao)

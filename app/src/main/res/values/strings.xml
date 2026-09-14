@@ -61,6 +61,8 @@
     <string name="detail_hours_value">%1$dh</string>
     <string name="detail_hours_increment">Augmenter le temps de jeu</string>
     <string name="detail_hours_decrement">Diminuer le temps de jeu</string>
+    <string name="detail_hours_edit_content_description">Mon temps de jeu, %1$d heures. Touchez pour saisir une valeur.</string>
+    <string name="detail_hours_input_content_description">Temps de jeu en heures</string>
     <string name="detail_notes_label">Notes libres</string>
     <string name="detail_notes_placeholder">Impressions, astuces, où tu t\'es arrêté…</string>
     <string name="detail_add_action">Ajouter au backlog</string>
