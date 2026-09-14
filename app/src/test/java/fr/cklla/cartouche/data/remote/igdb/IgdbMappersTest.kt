@@ -10,7 +10,7 @@ class IgdbMappersTest {
     @Test
     fun `buildSearchQuery construit une requete Apicalypse de recherche par titre`() {
         assertEquals(
-            "search \"Hades\"; fields id,name,first_release_date; limit 10;",
+            "search \"Hades\"; fields id,name,first_release_date; limit 30;",
             buildSearchQuery("Hades"),
         )
     }
@@ -19,7 +19,7 @@ class IgdbMappersTest {
     fun `buildSearchQuery echappe les guillemets du titre pour ne pas casser la requete`() {
         val titleWithQuotes = "Baldur's Gate 3: " + "\"Honour Mode\""
         val expected = "search \"Baldur's Gate 3: " + "\\\"Honour Mode\\\"" +
-            "\"; fields id,name,first_release_date; limit 10;"
+            "\"; fields id,name,first_release_date; limit 30;"
 
         assertEquals(expected, buildSearchQuery(titleWithQuotes))
     }
@@ -87,6 +87,37 @@ class IgdbMappersTest {
             IgdbGameDto(id = 1, name = "Persona 3 Reloaded", firstReleaseDate = 1_009_843_200L), // 2002
         )
         assertEquals(1L, findBestMatch("Persona 3 Reload", 2024, candidates)?.id)
+    }
+
+    @Test
+    fun `findBestMatch retrouve le jeu de base parmi une recherche noyee par ses DLC (cas reel Persona 3 Reload)`() {
+        // Données réelles observées sur IGDB (search "Persona 3 Reload") : le jeu de base
+        // (id 252647) est noyé en position 11/20 par du contenu additionnel au nom proche — c'est
+        // ce qui motive la limite de 30 candidats dans `buildSearchQuery` plutôt qu'un filtre par
+        // catégorie IGDB (le jeu de base n'a lui-même pas de catégorie renseignée, voir ce champ).
+        val candidates = listOf(
+            IgdbGameDto(id = 266009, name = "Persona 3 Reload: Persona 5 Royal Persona Set 1", firstReleaseDate = 1_706_832_000L),
+            IgdbGameDto(id = 301578, name = "Persona 3 Reload: Persona 4 Golden Persona Set", firstReleaseDate = 1_706_832_000L),
+            IgdbGameDto(id = 266008, name = "Persona 3 Reload: Persona 5 Royal Persona Set 2", firstReleaseDate = 1_706_832_000L),
+            IgdbGameDto(id = 301573, name = "Persona 3 Reload: Persona 5 Royal BGM Set", firstReleaseDate = 1_706_832_000L),
+            IgdbGameDto(id = 289702, name = "Persona 3 Reload: Persona 5 Royal EX BGM Set", firstReleaseDate = 1_710_201_600L),
+            IgdbGameDto(id = 289701, name = "Persona 3 Reload: Persona 4 Golden EX BGM Set", firstReleaseDate = 1_710_201_600L),
+            IgdbGameDto(id = 327019, name = "Persona 3 Reload: FeMC Mod"),
+            IgdbGameDto(id = 301572, name = "Persona 3 Reload: Persona 5 Royal Shujin Academy Costume Set", firstReleaseDate = 1_706_832_000L),
+            IgdbGameDto(id = 301577, name = "Persona 3 Reload: Persona 5 Royal Phantom Thieves Costume Set", firstReleaseDate = 1_706_832_000L),
+            IgdbGameDto(id = 301567, name = "Persona 3 Reload: Persona 4 Golden Yasogami High Costume Set", firstReleaseDate = 1_706_832_000L),
+            IgdbGameDto(id = 252647, name = "Persona 3 Reload", firstReleaseDate = 1_706_832_000L),
+            IgdbGameDto(id = 266007, name = "Persona 3 Reload: DLC Pack", firstReleaseDate = 1_706_832_000L),
+            IgdbGameDto(id = 262641, name = "Persona 3 Reload: Limited Box", firstReleaseDate = 1_706_832_000L),
+            IgdbGameDto(id = 289704, name = "Persona 3 Reload: Expansion Pass", firstReleaseDate = 1_710_201_600L),
+            IgdbGameDto(id = 289703, name = "Persona 3 Reload: Episode Aigis", firstReleaseDate = 1_725_926_400L),
+            IgdbGameDto(id = 262640, name = "Persona 3 Reload: Aigis Edition", firstReleaseDate = 1_706_832_000L),
+            IgdbGameDto(id = 328622, name = "Persona 3 Reload: FemC Reloaded Project", firstReleaseDate = 1_707_523_200L),
+            IgdbGameDto(id = 262642, name = "Persona 3 Reload: Digital Deluxe Edition", firstReleaseDate = 1_706_832_000L),
+            IgdbGameDto(id = 289700, name = "Persona 3 Reload: Velvet Costume & BGM Set", firstReleaseDate = 1_714_521_600L),
+            IgdbGameDto(id = 262643, name = "Persona 3 Reload: Digital Premium Edition", firstReleaseDate = 1_706_832_000L),
+        )
+        assertEquals(252647L, findBestMatch("Persona 3 Reload", 2024, candidates)?.id)
     }
 
     @Test

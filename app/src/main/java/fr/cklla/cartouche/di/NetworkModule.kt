@@ -26,10 +26,12 @@ object NetworkModule {
     @Provides
     @Singleton
     fun provideOkHttpClient(): OkHttpClient {
-        // Les logs de requêtes ne sont utiles qu'en développement : BuildConfig.DEBUG
-        // évite de bavarder inutilement (et de fuiter la clé API dans logcat) en release.
+        // Les logs de requêtes ne sont utiles qu'en développement : BuildConfig.DEBUG évite de
+        // bavarder inutilement en release. Niveau BODY (et non BASIC) pour pouvoir diagnostiquer
+        // les correspondances IGDB (voir `IgdbPlaytimeRepositoryImpl`) : les clés/tokens passent
+        // en en-têtes, jamais dans le corps des requêtes, donc pas de fuite malgré ce niveau.
         val logging = HttpLoggingInterceptor().apply {
-            level = if (BuildConfig.DEBUG) HttpLoggingInterceptor.Level.BASIC else HttpLoggingInterceptor.Level.NONE
+            level = if (BuildConfig.DEBUG) HttpLoggingInterceptor.Level.BODY else HttpLoggingInterceptor.Level.NONE
         }
         return OkHttpClient.Builder().addInterceptor(logging).build()
     }

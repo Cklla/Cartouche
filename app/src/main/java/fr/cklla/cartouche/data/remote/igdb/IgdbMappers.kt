@@ -20,12 +20,21 @@ import java.util.Locale
  */
 
 /**
- * Requête de recherche par titre, jusqu'à 10 candidats. `first_release_date` est demandé en plus
+ * Requête de recherche par titre, jusqu'à 30 candidats. `first_release_date` est demandé en plus
  * de l'id/nom : c'est le signal utilisé par [findBestMatch] pour départager des candidats au nom
  * proche (ex. plusieurs éditions/remakes d'un même jeu).
+ *
+ * Pas de filtre sur le champ `category` d'IGDB (DLC/bundle/mod...) : essayé, mais rejeté — de
+ * nombreux jeux de base n'ont tout simplement pas ce champ renseigné côté IGDB (ex. *Persona 3
+ * Reload* lui-même), et une comparaison IGDB sur un champ absent ne matche jamais, filtre par
+ * inclusion ou par exclusion. La limite est donc simplement plus généreuse (30 plutôt que 10) pour
+ * que le jeu de base ne soit pas noyé hors de la fenêtre par du contenu additionnel au nom proche
+ * (ex. les nombreux packs de costumes/musique de *Persona 3 Reload*, qui partagent le même
+ * préfixe) : [findBestMatch] élimine ensuite ces candidats sur la seule similarité de nom, sans
+ * avoir besoin de connaître leur catégorie.
  */
 fun buildSearchQuery(title: String): String =
-    "search \"${escapeQueryText(title)}\"; fields id,name,first_release_date; limit 10;"
+    "search \"${escapeQueryText(title)}\"; fields id,name,first_release_date; limit 30;"
 
 /** Requête de durée de vie pour un jeu IGDB déjà identifié. */
 fun buildTimeToBeatQuery(igdbGameId: Long): String =
