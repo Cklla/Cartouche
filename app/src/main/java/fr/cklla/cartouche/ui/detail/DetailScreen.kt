@@ -62,7 +62,6 @@ import fr.cklla.cartouche.domain.model.Game
 import fr.cklla.cartouche.domain.model.GameStatus
 import fr.cklla.cartouche.ui.components.GameCoverPlaceholder
 import fr.cklla.cartouche.ui.theme.AccentPurple
-import fr.cklla.cartouche.ui.theme.AccentPurpleLight
 import fr.cklla.cartouche.ui.theme.AccentPurpleMuted
 import fr.cklla.cartouche.ui.theme.BackgroundDark
 import fr.cklla.cartouche.ui.theme.BorderHairline
@@ -73,6 +72,7 @@ import fr.cklla.cartouche.ui.theme.SurfaceCard
 import fr.cklla.cartouche.ui.theme.SurfaceCardPressed
 import fr.cklla.cartouche.ui.theme.TextMuted
 import fr.cklla.cartouche.ui.theme.TextPrimary
+import fr.cklla.cartouche.ui.theme.TextSecondary
 import fr.cklla.cartouche.ui.theme.TextTertiary
 import fr.cklla.cartouche.ui.theme.labelRes
 import fr.cklla.cartouche.ui.theme.palette
@@ -180,12 +180,12 @@ private fun BackHeader(onBackClick: () -> Unit) {
             Icon(
                 imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
                 contentDescription = null,
-                tint = AccentPurpleLight,
+                tint = TextPrimary,
             )
             Text(
                 text = stringResource(R.string.detail_back),
                 style = CartoucheTextStyles.backLabel,
-                color = AccentPurpleLight,
+                color = TextTertiary,
             )
         }
         HorizontalDivider(color = BorderHairline.copy(alpha = 0.6f), thickness = 0.5.dp)
@@ -354,7 +354,7 @@ private fun NotesSection(notes: String, onNotesChanged: (String) -> Unit) {
             value = notes,
             onValueChange = onNotesChanged,
             interactionSource = interactionSource,
-            textStyle = CartoucheTextStyles.notesText.copy(color = TextPrimary),
+            textStyle = CartoucheTextStyles.notesText.copy(color = TextSecondary),
             cursorBrush = SolidColor(AccentPurple),
             modifier = Modifier
                 .fillMaxWidth()
@@ -369,7 +369,7 @@ private fun NotesSection(notes: String, onNotesChanged: (String) -> Unit) {
                     Text(
                         text = stringResource(R.string.detail_notes_placeholder),
                         style = CartoucheTextStyles.notesText,
-                        color = TextMuted,
+                        color = AccentPurpleMuted,
                     )
                 }
                 innerTextField()

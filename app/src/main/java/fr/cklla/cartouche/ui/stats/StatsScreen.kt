@@ -146,11 +146,20 @@ private fun HoursCard(hours: Int) {
             .background(SurfaceCard)
             .border(BorderStroke(0.5.dp, BorderHairline.copy(alpha = 0.5f)), RoundedCornerShape(8.dp))
             .padding(16.dp),
-        verticalAlignment = Alignment.Bottom,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        Text(text = hours.toString(), style = CartoucheTextStyles.statValueMedium, color = AccentPurple)
-        Text(text = stringResource(R.string.stats_hours_label), style = CartoucheTextStyles.cardSubtitle, color = TextTertiary)
+        Text(
+            text = hours.toString(),
+            style = CartoucheTextStyles.statValueMedium,
+            color = AccentPurple,
+            modifier = Modifier.alignByBaseline(),
+        )
+        Text(
+            text = stringResource(R.string.stats_hours_label),
+            style = CartoucheTextStyles.cardSubtitle,
+            color = TextTertiary,
+            modifier = Modifier.alignByBaseline(),
+        )
     }
 }
 

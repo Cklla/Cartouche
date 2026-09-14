@@ -65,7 +65,8 @@ object CartoucheTextStyles {
 
     val navLabel = TextStyle(
         fontFamily = InterFamily,
-        fontSize = 11.sp,
+        fontWeight = FontWeight.Medium,
+        fontSize = 10.5.sp,
     )
 
     val coverLetter = TextStyle(
@@ -73,6 +74,15 @@ object CartoucheTextStyles {
         fontWeight = FontWeight.SemiBold,
         fontStyle = FontStyle.Italic,
         fontSize = 28.sp,
+    )
+
+    // Lettre en filigrane des jaquettes en carte liste (Bibliothèque), plus grande
+    // que celle des résultats de recherche (voir maquette : 34px vs 28px).
+    val coverLetterListCard = TextStyle(
+        fontFamily = FrauncesItalic,
+        fontWeight = FontWeight.SemiBold,
+        fontStyle = FontStyle.Italic,
+        fontSize = 34.sp,
     )
 
     // --- Écran Détail ---
@@ -93,7 +103,8 @@ object CartoucheTextStyles {
 
     val backLabel = TextStyle(
         fontFamily = InterFamily,
-        fontSize = 15.sp,
+        fontWeight = FontWeight.Medium,
+        fontSize = 13.sp,
     )
 
     val detailTitle = TextStyle(
@@ -130,12 +141,29 @@ object CartoucheTextStyles {
 
     val notesText = TextStyle(
         fontFamily = InterFamily,
-        fontSize = 14.sp,
+        fontSize = 13.5.sp,
+        lineHeight = 20.sp,
     )
 
     val linkLabel = TextStyle(
         fontFamily = InterFamily,
-        fontSize = 13.sp,
+        fontSize = 12.5.sp,
+    )
+
+    // --- Écran Recherche ---
+
+    // Titre d'un résultat de recherche : 14px dans la maquette, distinct des
+    // 14.5px des cartes de la Bibliothèque (cardTitle).
+    val searchResultTitle = TextStyle(
+        fontFamily = InterFamily,
+        fontWeight = FontWeight.Medium,
+        fontSize = 14.sp,
+    )
+
+    val addedPillLabel = TextStyle(
+        fontFamily = InterFamily,
+        fontWeight = FontWeight.SemiBold,
+        fontSize = 11.5.sp,
     )
 
     // --- Écran Stats ---

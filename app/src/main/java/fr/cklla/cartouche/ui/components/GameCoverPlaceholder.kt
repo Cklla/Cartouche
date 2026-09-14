@@ -12,7 +12,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
@@ -23,6 +22,7 @@ import fr.cklla.cartouche.R
 import fr.cklla.cartouche.ui.theme.CartoucheTextStyles
 import fr.cklla.cartouche.ui.theme.CoverGradients
 import fr.cklla.cartouche.ui.theme.TextMuted
+import fr.cklla.cartouche.ui.theme.TextPrimary
 
 /**
  * Jaquette d'un jeu : la vraie image RAWG ([coverUrl]) si elle est connue,
@@ -42,7 +42,7 @@ fun GameCoverPlaceholder(
     height: Dp? = null,
     coverUrl: String? = null,
     letterStyle: TextStyle = CartoucheTextStyles.coverLetter,
-    letterAlpha: Float = 0.35f,
+    letterAlpha: Float = 0.16f,
     showLabel: Boolean = false,
 ) {
     val shapedModifier = modifier
@@ -69,7 +69,7 @@ fun GameCoverPlaceholder(
         Text(
             text = title.firstOrNull()?.uppercase() ?: "?",
             style = letterStyle,
-            color = Color.White.copy(alpha = letterAlpha),
+            color = TextPrimary.copy(alpha = letterAlpha),
         )
         if (showLabel) {
             Text(

@@ -28,6 +28,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
@@ -128,7 +129,7 @@ private fun FilterChipsRow(
     onFilterSelected: (BacklogFilter) -> Unit,
 ) {
     LazyRow(
-        contentPadding = PaddingValues(horizontal = 20.dp, vertical = 12.dp),
+        contentPadding = PaddingValues(horizontal = 20.dp, vertical = 14.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         items(items = BacklogFilter.entries, key = { it.name }) { filter ->
@@ -157,7 +158,9 @@ private fun FilterChip(filter: BacklogFilter, count: Int, selected: Boolean, onC
     ) {
         Text(
             text = stringResource(R.string.filter_chip_label, stringResource(filter.labelRes), count),
-            style = CartoucheTextStyles.chipLabel,
+            style = CartoucheTextStyles.chipLabel.copy(
+                fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
+            ),
             color = if (selected) TextPrimary else TextTertiary,
             modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
         )
@@ -176,7 +179,13 @@ private fun GameCard(game: Game, onClick: () -> Unit) {
             .padding(10.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        GameCoverPlaceholder(title = game.title, width = 56.dp, height = 76.dp, coverUrl = game.coverUrl)
+        GameCoverPlaceholder(
+            title = game.title,
+            width = 56.dp,
+            height = 76.dp,
+            coverUrl = game.coverUrl,
+            letterStyle = CartoucheTextStyles.coverLetterListCard,
+        )
         Column {
             Text(
                 text = game.title,
@@ -214,16 +223,16 @@ private fun EmptyState(filter: BacklogFilter, modifier: Modifier = Modifier) {
     ) {
         Box(
             modifier = Modifier
-                .size(64.dp)
-                .clip(RoundedCornerShape(12.dp))
-                .border(BorderStroke(1.dp, AccentPurpleMuted), RoundedCornerShape(12.dp)),
+                .size(52.dp)
+                .clip(RoundedCornerShape(10.dp))
+                .border(BorderStroke(1.5.dp, AccentPurpleMuted), RoundedCornerShape(10.dp)),
             contentAlignment = Alignment.Center,
         ) {
             Box(
                 modifier = Modifier
-                    .size(14.dp)
+                    .size(16.dp)
                     .rotate(45f)
-                    .border(BorderStroke(1.dp, AccentPurpleMuted)),
+                    .border(BorderStroke(1.5.dp, AccentPurpleMuted)),
             )
         }
         Spacer(modifier = Modifier.height(16.dp))

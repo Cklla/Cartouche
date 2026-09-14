@@ -56,7 +56,6 @@ import fr.cklla.cartouche.ui.theme.SurfaceCard
 import fr.cklla.cartouche.ui.theme.TextMuted
 import fr.cklla.cartouche.ui.theme.TextPrimary
 import fr.cklla.cartouche.ui.theme.TextSecondary
-import fr.cklla.cartouche.ui.theme.TextTertiary
 
 @Composable
 fun RechercheScreen(modifier: Modifier = Modifier, viewModel: RechercheViewModel = hiltViewModel()) {
@@ -125,7 +124,7 @@ private fun SearchBar(query: String, onQueryChanged: (String) -> Unit, modifier:
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        Icon(imageVector = Icons.Outlined.Search, contentDescription = null, tint = AccentPurpleLight)
+        Icon(imageVector = Icons.Outlined.Search, contentDescription = null, tint = TextMuted)
         Box(modifier = Modifier.fillMaxWidth()) {
             BasicTextField(
                 value = query,
@@ -136,7 +135,7 @@ private fun SearchBar(query: String, onQueryChanged: (String) -> Unit, modifier:
                 modifier = Modifier.fillMaxWidth(),
                 decorationBox = { innerTextField ->
                     if (query.isEmpty()) {
-                        Text(text = stringResource(R.string.recherche_search_placeholder), style = CartoucheTextStyles.chipLabel, color = TextMuted)
+                        Text(text = stringResource(R.string.recherche_search_placeholder), style = CartoucheTextStyles.chipLabel, color = AccentPurpleMuted)
                     }
                     innerTextField()
                 },
@@ -168,12 +167,12 @@ private fun SuggestionChip(label: String, onClick: () -> Unit) {
     Box(
         modifier = Modifier
             .heightIn(min = 48.dp)
-            .clip(RoundedCornerShape(20.dp))
-            .border(BorderStroke(0.5.dp, BorderHairline.copy(alpha = 0.6f)), RoundedCornerShape(20.dp))
+            .clip(RoundedCornerShape(6.dp))
+            .border(BorderStroke(0.5.dp, BorderHairline.copy(alpha = 0.7f)), RoundedCornerShape(6.dp))
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
-        Text(text = label, style = CartoucheTextStyles.chipLabel, color = TextTertiary, modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp))
+        Text(text = label, style = CartoucheTextStyles.chipLabel, color = TextSecondary, modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp))
     }
 }
 
@@ -202,9 +201,9 @@ private fun NoResultsState(query: String) {
     ) {
         Box(
             modifier = Modifier
-                .size(64.dp)
+                .size(52.dp)
                 .clip(CircleShape)
-                .border(BorderStroke(1.dp, AccentPurpleMuted), CircleShape),
+                .border(BorderStroke(1.5.dp, AccentPurpleMuted), CircleShape),
         )
         Spacer(modifier = Modifier.height(16.dp))
         Text(text = stringResource(R.string.recherche_empty_title), style = CartoucheTextStyles.emptyTitle, color = TextSecondary)
@@ -248,7 +247,7 @@ private fun ResultRow(result: GameSearchResult, alreadyAdded: Boolean, onAddGame
     ) {
         GameCoverPlaceholder(title = result.title, width = 48.dp, height = 64.dp, coverUrl = result.coverUrl)
         Column(modifier = Modifier.weight(1f)) {
-            Text(text = result.title, style = CartoucheTextStyles.cardTitle, color = TextPrimary, maxLines = 2)
+            Text(text = result.title, style = CartoucheTextStyles.searchResultTitle, color = TextPrimary, maxLines = 2)
             Text(
                 text = stringResource(R.string.recherche_result_platform_year, result.platform, result.year),
                 style = CartoucheTextStyles.cardSubtitle,
@@ -269,15 +268,15 @@ private fun AddedPill() {
         modifier = Modifier
             .heightIn(min = 30.dp)
             .clip(RoundedCornerShape(20.dp))
-            .background(SuccessGreen.copy(alpha = 0.14f))
+            .background(SuccessGreen.copy(alpha = 0.12f))
             .border(BorderStroke(0.5.dp, SuccessGreen.copy(alpha = 0.4f)), RoundedCornerShape(20.dp)),
         contentAlignment = Alignment.Center,
     ) {
         Text(
             text = stringResource(R.string.recherche_added_label),
-            style = CartoucheTextStyles.chipLabel,
+            style = CartoucheTextStyles.addedPillLabel,
             color = SuccessGreen,
-            modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp),
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
         )
     }
 }
