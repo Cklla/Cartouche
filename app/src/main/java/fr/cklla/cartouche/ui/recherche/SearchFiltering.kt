@@ -11,5 +11,9 @@ import java.util.Locale
 
 fun normalizeTitle(title: String): String = title.trim().lowercase(Locale.ROOT)
 
-fun isAlreadyAdded(title: String, backlogTitles: Set<String>): Boolean =
-    normalizeTitle(title) in backlogTitles
+fun isAlreadyAdded(title: String, backlogGameIdsByTitle: Map<String, String>): Boolean =
+    normalizeTitle(title) in backlogGameIdsByTitle
+
+/** Id du jeu déjà dans le backlog pour ce titre, ou `null` s'il n'y est pas. */
+fun backlogGameId(title: String, backlogGameIdsByTitle: Map<String, String>): String? =
+    backlogGameIdsByTitle[normalizeTitle(title)]

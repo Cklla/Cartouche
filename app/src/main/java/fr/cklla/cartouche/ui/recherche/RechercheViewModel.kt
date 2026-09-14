@@ -67,7 +67,7 @@ class RechercheViewModel @Inject constructor(
             isSearching = searching,
             results = (result as? Resource.Success)?.data.orEmpty(),
             errorMessage = (result as? Resource.Error)?.message,
-            backlogTitles = backlog.map { normalizeTitle(it.title) }.toSet(),
+            backlogGameIdsByTitle = backlog.associate { normalizeTitle(it.title) to it.id },
         )
     }.stateIn(
         scope = viewModelScope,

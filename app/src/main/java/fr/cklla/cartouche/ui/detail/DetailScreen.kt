@@ -97,6 +97,7 @@ fun DetailScreen(
 
     DetailContent(
         game = game,
+        isInBacklog = uiState.isInBacklog,
         onBackClick = onBackClick,
         onStatusSelected = viewModel::onStatusSelected,
         onRatingSelected = viewModel::onRatingSelected,
@@ -104,6 +105,7 @@ fun DetailScreen(
         onHoursDecrement = viewModel::onHoursDecrement,
         onNotesChanged = viewModel::onNotesChanged,
         onRemoveGame = viewModel::onRemoveGame,
+        onAddGame = viewModel::onAddGame,
         modifier = modifier,
     )
 }
@@ -111,6 +113,7 @@ fun DetailScreen(
 @Composable
 private fun DetailContent(
     game: Game,
+    isInBacklog: Boolean,
     onBackClick: () -> Unit,
     onStatusSelected: (GameStatus) -> Unit,
     onRatingSelected: (Int) -> Unit,
@@ -118,6 +121,7 @@ private fun DetailContent(
     onHoursDecrement: () -> Unit,
     onNotesChanged: (String) -> Unit,
     onRemoveGame: () -> Unit,
+    onAddGame: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var showRemoveConfirm by rememberSaveable { mutableStateOf(false) }
@@ -146,20 +150,29 @@ private fun DetailContent(
                 showLabel = true,
             )
             TitleSection(game = game)
-            StatusSection(selected = game.status, onStatusSelected = onStatusSelected)
-            RatingSection(rating = game.rating, onRatingSelected = onRatingSelected)
+            // Statut, note perso, temps de jeu perso et notes libres n'ont de sens que pour un
+            // jeu réellement possédé : masqués tant que la fiche n'est qu'un aperçu ouvert depuis
+            // la Recherche (voir `DetailUiState.isInBacklog`).
+            if (isInBacklog) {
+                StatusSection(selected = game.status, onStatusSelected = onStatusSelected)
+                RatingSection(rating = game.rating, onRatingSelected = onRatingSelected)
+            }
             EstimatedPlaytimeSection(
                 hastily = game.estimatedPlaytimeHastilyHours,
                 normally = game.estimatedPlaytimeNormallyHours,
                 completely = game.estimatedPlaytimeCompletelyHours,
             )
-            HoursSection(
-                hours = game.userPlaytimeHours,
-                onIncrement = onHoursIncrement,
-                onDecrement = onHoursDecrement,
-            )
-            NotesSection(notes = game.notes, onNotesChanged = onNotesChanged)
-            RemoveLink(onClick = { showRemoveConfirm = true })
+            if (isInBacklog) {
+                HoursSection(
+                    hours = game.userPlaytimeHours,
+                    onIncrement = onHoursIncrement,
+                    onDecrement = onHoursDecrement,
+                )
+                NotesSection(notes = game.notes, onNotesChanged = onNotesChanged)
+                RemoveLink(onClick = { showRemoveConfirm = true })
+            } else {
+                AddToBacklogButton(onClick = onAddGame)
+            }
         }
     }
 
@@ -452,6 +465,25 @@ private fun RemoveLink(onClick: () -> Unit) {
 }
 
 @Composable
+private fun AddToBacklogButton(onClick: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = 48.dp)
+            .clip(RoundedCornerShape(8.dp))
+            .background(AccentPurple)
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text = stringResource(R.string.detail_add_action),
+            style = CartoucheTextStyles.statusPillLabel,
+            color = TextPrimary,
+        )
+    }
+}
+
+@Composable
 private fun RemoveConfirmDialog(onConfirm: () -> Unit, onDismiss: () -> Unit) {
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -492,6 +524,7 @@ private fun DetailContentPreview() {
     CartoucheTheme {
         DetailContent(
             game = game,
+            isInBacklog = true,
             onBackClick = {},
             onStatusSelected = {},
             onRatingSelected = {},
@@ -499,6 +532,33 @@ private fun DetailContentPreview() {
             onHoursDecrement = {},
             onNotesChanged = {},
             onRemoveGame = {},
+            onAddGame = {},
+        )
+    }
+}
+
+@Preview(showBackground = true, backgroundColor = 0xFF0A0812)
+@Composable
+private fun DetailContentApercuPreview() {
+    val game = Game(
+        title = "Hollow Knight",
+        platform = "PC",
+        genre = "Metroidvania",
+        status = GameStatus.A_FAIRE,
+        estimatedPlaytimeNormallyHours = 27,
+    )
+    CartoucheTheme {
+        DetailContent(
+            game = game,
+            isInBacklog = false,
+            onBackClick = {},
+            onStatusSelected = {},
+            onRatingSelected = {},
+            onHoursIncrement = {},
+            onHoursDecrement = {},
+            onNotesChanged = {},
+            onRemoveGame = {},
+            onAddGame = {},
         )
     }
 }

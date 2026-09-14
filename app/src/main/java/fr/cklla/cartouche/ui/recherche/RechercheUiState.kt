@@ -7,6 +7,10 @@ data class RechercheUiState(
     val isSearching: Boolean = false,
     val results: List<GameSearchResult> = emptyList(),
     val errorMessage: String? = null,
-    /** Titres du backlog (normalisés, voir [normalizeTitle]), pour griser les résultats déjà ajoutés. */
-    val backlogTitles: Set<String> = emptySet(),
+    /**
+     * Id du backlog par titre normalisé (voir [normalizeTitle]) : sert à la fois à griser les
+     * résultats déjà ajoutés et à retrouver l'id du jeu quand on ouvre sa fiche depuis un résultat
+     * déjà présent dans le backlog (voir [backlogGameId]).
+     */
+    val backlogGameIdsByTitle: Map<String, String> = emptyMap(),
 )

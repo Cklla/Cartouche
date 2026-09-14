@@ -58,13 +58,18 @@ import fr.cklla.cartouche.ui.theme.TextPrimary
 import fr.cklla.cartouche.ui.theme.TextSecondary
 
 @Composable
-fun RechercheScreen(modifier: Modifier = Modifier, viewModel: RechercheViewModel = hiltViewModel()) {
+fun RechercheScreen(
+    modifier: Modifier = Modifier,
+    viewModel: RechercheViewModel = hiltViewModel(),
+    onResultClick: (GameSearchResult, backlogGameId: String?) -> Unit = { _, _ -> },
+) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     RechercheContent(
         uiState = uiState,
         onQueryChanged = viewModel::onQueryChanged,
         onSuggestionSelected = viewModel::onSuggestionSelected,
         onAddGame = viewModel::onAddGame,
+        onResultClick = onResultClick,
         modifier = modifier,
     )
 }
@@ -75,6 +80,7 @@ private fun RechercheContent(
     onQueryChanged: (String) -> Unit,
     onSuggestionSelected: (String) -> Unit,
     onAddGame: (GameSearchResult) -> Unit,
+    onResultClick: (GameSearchResult, backlogGameId: String?) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -92,8 +98,9 @@ private fun RechercheContent(
             uiState.results.isEmpty() -> NoResultsState(query = uiState.query)
             else -> ResultsList(
                 results = uiState.results,
-                backlogTitles = uiState.backlogTitles,
+                backlogGameIdsByTitle = uiState.backlogGameIdsByTitle,
                 onAddGame = onAddGame,
+                onResultClick = onResultClick,
             )
         }
     }
@@ -220,27 +227,40 @@ private fun NoResultsState(query: String) {
 @Composable
 private fun ResultsList(
     results: List<GameSearchResult>,
-    backlogTitles: Set<String>,
+    backlogGameIdsByTitle: Map<String, String>,
     onAddGame: (GameSearchResult) -> Unit,
+    onResultClick: (GameSearchResult, backlogGameId: String?) -> Unit,
 ) {
     LazyColumn(
         contentPadding = PaddingValues(horizontal = 20.dp, vertical = 12.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         items(items = results, key = { it.rawgId }) { result ->
-            ResultRow(result = result, alreadyAdded = isAlreadyAdded(result.title, backlogTitles), onAddGame = onAddGame)
+            val backlogGameId = backlogGameId(result.title, backlogGameIdsByTitle)
+            ResultRow(
+                result = result,
+                backlogGameId = backlogGameId,
+                onAddGame = onAddGame,
+                onClick = { onResultClick(result, backlogGameId) },
+            )
         }
     }
 }
 
 @Composable
-private fun ResultRow(result: GameSearchResult, alreadyAdded: Boolean, onAddGame: (GameSearchResult) -> Unit) {
+private fun ResultRow(
+    result: GameSearchResult,
+    backlogGameId: String?,
+    onAddGame: (GameSearchResult) -> Unit,
+    onClick: () -> Unit,
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(8.dp))
             .background(SurfaceCard)
             .border(BorderStroke(0.5.dp, BorderHairline.copy(alpha = 0.4f)), RoundedCornerShape(8.dp))
+            .clickable(onClick = onClick)
             .padding(10.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -254,7 +274,7 @@ private fun ResultRow(result: GameSearchResult, alreadyAdded: Boolean, onAddGame
                 color = TextMuted,
             )
         }
-        if (alreadyAdded) {
+        if (backlogGameId != null) {
             AddedPill()
         } else {
             AddButton(title = result.title, onClick = { onAddGame(result) })
@@ -316,6 +336,7 @@ private fun RechercheSuggestionsPreview() {
             onQueryChanged = {},
             onSuggestionSelected = {},
             onAddGame = {},
+            onResultClick = { _, _ -> },
         )
     }
 }
@@ -333,6 +354,7 @@ private fun RechercheResultsPreview() {
             onQueryChanged = {},
             onSuggestionSelected = {},
             onAddGame = {},
+            onResultClick = { _, _ -> },
         )
     }
 }
@@ -346,6 +368,7 @@ private fun RechercheEmptyPreview() {
             onQueryChanged = {},
             onSuggestionSelected = {},
             onAddGame = {},
+            onResultClick = { _, _ -> },
         )
     }
 }

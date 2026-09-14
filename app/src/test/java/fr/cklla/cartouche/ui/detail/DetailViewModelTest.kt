@@ -18,7 +18,9 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 
@@ -50,6 +52,26 @@ class DetailViewModelTest {
         igdbPlaytimeRepository: FakeIgdbPlaytimeRepository = FakeIgdbPlaytimeRepository(),
     ) = DetailViewModel(
         savedStateHandle = SavedStateHandle(mapOf(CartoucheDestinations.DETAIL_ARG_GAME_ID to gameId)),
+        gameRepository = repository,
+        igdbPlaytimeRepository = igdbPlaytimeRepository,
+    )
+
+    private fun previewViewModel(
+        repository: GameRepository,
+        title: String = "Hollow Knight",
+        rawgId: Long = 42,
+        igdbPlaytimeRepository: FakeIgdbPlaytimeRepository = FakeIgdbPlaytimeRepository(),
+    ) = DetailViewModel(
+        savedStateHandle = SavedStateHandle(
+            mapOf(
+                CartoucheDestinations.DETAIL_APERCU_ARG_RAWG_ID to rawgId,
+                CartoucheDestinations.DETAIL_APERCU_ARG_TITLE to title,
+                CartoucheDestinations.DETAIL_APERCU_ARG_PLATFORM to "PC",
+                CartoucheDestinations.DETAIL_APERCU_ARG_GENRE to "Metroidvania",
+                CartoucheDestinations.DETAIL_APERCU_ARG_YEAR to "2017",
+                CartoucheDestinations.DETAIL_APERCU_ARG_COVER_URL to "",
+            ),
+        ),
         gameRepository = repository,
         igdbPlaytimeRepository = igdbPlaytimeRepository,
     )
@@ -222,6 +244,73 @@ class DetailViewModelTest {
         assertNull(game?.estimatedPlaytimeHastilyHours)
         assertNull(game?.estimatedPlaytimeNormallyHours)
         assertNull(game?.estimatedPlaytimeCompletelyHours)
+        collectorJob.cancel()
+    }
+
+    @Test
+    fun `une fiche ouverte depuis la recherche demarre en apercu, hors backlog`() = runTest {
+        val dao = FakeGameDao()
+        val repository = fakeGameRepository(dao)
+        val viewModel = previewViewModel(repository, title = "Hollow Knight")
+        val collectorJob = launch { viewModel.uiState.collect {} }
+        dispatcher.scheduler.advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertEquals("Hollow Knight", state.game?.title)
+        assertEquals("", state.game?.id)
+        assertFalse(state.isInBacklog)
+        assertFalse(state.isLoading)
+        collectorJob.cancel()
+    }
+
+    @Test
+    fun `ajouter depuis l'apercu persiste le jeu et bascule la fiche dans le backlog`() = runTest {
+        val dao = FakeGameDao()
+        val repository = fakeGameRepository(dao)
+        val viewModel = previewViewModel(repository, title = "Hollow Knight")
+        val collectorJob = launch { viewModel.uiState.collect {} }
+        dispatcher.scheduler.advanceUntilIdle()
+
+        viewModel.onAddGame()
+        dispatcher.scheduler.advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertTrue(state.isInBacklog)
+        assertTrue(state.game?.id?.isNotEmpty() == true)
+        assertEquals(1, dao.getAllIds().size)
+        collectorJob.cancel()
+    }
+
+    @Test
+    fun `une modification en apercu met a jour la copie locale sans rien persister`() = runTest {
+        val dao = FakeGameDao()
+        val repository = fakeGameRepository(dao)
+        val viewModel = previewViewModel(repository, title = "Hollow Knight")
+        val collectorJob = launch { viewModel.uiState.collect {} }
+        dispatcher.scheduler.advanceUntilIdle()
+
+        viewModel.onNotesChanged("À essayer")
+        dispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals("À essayer", viewModel.uiState.value.game?.notes)
+        assertEquals(0, dao.getAllIds().size)
+        collectorJob.cancel()
+    }
+
+    @Test
+    fun `l'apercu declenche aussi une recherche IGDB`() = runTest {
+        val dao = FakeGameDao()
+        val repository = fakeGameRepository(dao)
+        val igdbRepository = FakeIgdbPlaytimeRepository(
+            result = IgdbPlaytimeEstimate(hastilyHours = 10, normallyHours = 27, completelyHours = 60),
+        )
+        val viewModel = previewViewModel(repository, title = "Hollow Knight", igdbPlaytimeRepository = igdbRepository)
+        val collectorJob = launch { viewModel.uiState.collect {} }
+        dispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals(1, igdbRepository.callCount)
+        assertEquals(27, viewModel.uiState.value.game?.estimatedPlaytimeNormallyHours)
+        assertEquals(0, dao.getAllIds().size)
         collectorJob.cancel()
     }
 }
