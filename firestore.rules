@@ -12,7 +12,17 @@ service cloud.firestore {
     }
 
     function isOwner(userId) {
-      return request.auth != null && request.auth.uid == userId;
+      return request.auth != null && request.auth.uid == userId && isAllowedUser();
+    }
+
+    // Deuxième verrou, indépendant d'App Check : même si quelqu'un parvenait à se créer un compte
+    // sur le projet, son uid n'étant pas listé ici il ne pourrait rien lire ni écrire. À compléter
+    // pour ouvrir l'app à quelqu'un d'autre : l'uid se lit dans console Firebase > Authentication >
+    // onglet Users.
+    function isAllowedUser() {
+      return request.auth.uid in [
+        'K7M5LcpLqDgFB9i2qF8HJZ0s1BF2'
+      ];
     }
 
     // Les règles ne se contentent pas de vérifier "qui écrit" mais aussi "quoi" : sans ça, un
