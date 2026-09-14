@@ -1,3 +1,29 @@
 <resources>
     <string name="app_name">Cartouche</string>
+
+    <!-- Bibliothèque -->
+    <string name="bibliotheque_kicker">carnet de bord</string>
+    <string name="bibliotheque_title">Bibliothèque</string>
+    <string name="filter_chip_label">%1$s (%2$d)</string>
+    <string name="game_card_platform_genre">%1$s · %2$s</string>
+
+    <!-- Statuts (réutilisés pour les chips de filtre et les badges de statut) -->
+    <string name="filter_tous">Tous</string>
+    <string name="filter_a_faire">À faire</string>
+    <string name="filter_en_cours">En cours</string>
+    <string name="filter_termine">Terminé</string>
+    <string name="filter_abandonne">Abandonné</string>
+
+    <!-- État vide de la bibliothèque, message selon le filtre actif -->
+    <string name="empty_title">Rien par ici</string>
+    <string name="empty_message_tous">Ton backlog est vide. Ajoute un premier jeu depuis la recherche.</string>
+    <string name="empty_message_a_faire">Rien à faire pour l\'instant — direction la recherche pour ajouter un jeu.</string>
+    <string name="empty_message_en_cours">Aucun jeu en cours en ce moment.</string>
+    <string name="empty_message_termine">Tu n\'as encore rien terminé.</string>
+    <string name="empty_message_abandonne">Tu n\'as encore rien abandonné — plutôt une bonne nouvelle.</string>
+
+    <!-- Navigation basse -->
+    <string name="nav_recherche">Recherche</string>
+    <string name="nav_stats">Stats</string>
+    <string name="placeholder_bientot_disponible">Bientôt disponible</string>
 </resources>
