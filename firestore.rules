@@ -1,8 +1,55 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+
+    // Un utilisateur ne voit et n'écrit que sa propre collection. Tout le reste de la base est
+    // refusé par défaut : aucune autre règle n'existe, et Firestore refuse ce qu'il n'autorise pas
+    // explicitement.
     match /users/{userId}/games/{gameId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+      allow read: if isOwner(userId);
+      allow delete: if isOwner(userId);
+      allow create, update: if isOwner(userId) && isValidGame(request.resource.data);
+    }
+
+    function isOwner(userId) {
+      return request.auth != null && request.auth.uid == userId;
+    }
+
+    // Les règles ne se contentent pas de vérifier "qui écrit" mais aussi "quoi" : sans ça, un
+    // compte authentifié pourrait remplir la base de documents arbitrairement gros ou mal formés.
+    // La liste de champs est exactement celle produite par FirestoreMappers.toFirestoreMap().
+    function isValidGame(game) {
+      return game.keys().hasOnly([
+               'title', 'platform', 'genre', 'status', 'rawgId', 'releaseYear',
+               'userPlaytimeHours', 'estimatedPlaytimeHastilyHours',
+               'estimatedPlaytimeNormallyHours', 'estimatedPlaytimeCompletelyHours',
+               'rating', 'notes', 'coverUrl'
+             ])
+             && game.keys().hasAll(['title', 'platform', 'genre', 'status'])
+             && game.title is string && game.title.size() <= 300
+             && game.platform is string && game.platform.size() <= 200
+             && game.genre is string && game.genre.size() <= 100
+             && game.status in ['A_FAIRE', 'EN_COURS', 'TERMINE', 'ABANDONNE']
+             && isIntBetween(game, 'userPlaytimeHours', 0, 100000)
+             && isIntBetween(game, 'estimatedPlaytimeHastilyHours', 0, 100000)
+             && isIntBetween(game, 'estimatedPlaytimeNormallyHours', 0, 100000)
+             && isIntBetween(game, 'estimatedPlaytimeCompletelyHours', 0, 100000)
+             && isIntBetween(game, 'rating', 0, 5)
+             && isIntBetween(game, 'rawgId', 0, 9999999999)
+             && isIntBetween(game, 'releaseYear', 1950, 2999)
+             && isStringUpTo(game, 'notes', 5000)
+             && isStringUpTo(game, 'coverUrl', 2000);
+    }
+
+    // Champ optionnel : absent ou null est valide, une valeur présente doit respecter les bornes.
+    function isIntBetween(game, field, min, max) {
+      return !(field in game) || game[field] == null
+             || (game[field] is int && game[field] >= min && game[field] <= max);
+    }
+
+    function isStringUpTo(game, field, maxLength) {
+      return !(field in game) || game[field] == null
+             || (game[field] is string && game[field].size() <= maxLength);
     }
   }
 }
