@@ -4,6 +4,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -57,17 +58,28 @@ fun StatsScreen(
     viewModel: StatsViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    StatsContent(stats = uiState, modifier = modifier)
+    val currentUser by viewModel.currentUser.collectAsStateWithLifecycle()
+    StatsContent(
+        stats = uiState,
+        signedInAs = currentUser?.displayName,
+        onSignOutClick = viewModel::onSignOutClicked,
+        modifier = modifier,
+    )
 }
 
 @Composable
-private fun StatsContent(stats: StatsData, modifier: Modifier = Modifier) {
+private fun StatsContent(
+    stats: StatsData,
+    signedInAs: String?,
+    onSignOutClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     Column(
         modifier = modifier
             .fillMaxSize()
             .background(BackgroundDark),
     ) {
-        Header()
+        Header(signedInAs = signedInAs, onSignOutClick = onSignOutClick)
         Column(
             modifier = Modifier
                 .weight(1f)
@@ -82,7 +94,7 @@ private fun StatsContent(stats: StatsData, modifier: Modifier = Modifier) {
 }
 
 @Composable
-private fun Header() {
+private fun Header(signedInAs: String?, onSignOutClick: () -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -98,6 +110,26 @@ private fun Header() {
             style = CartoucheTextStyles.screenTitle,
             color = TextPrimary,
         )
+        if (signedInAs != null) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 10.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                Text(
+                    text = stringResource(R.string.stats_signed_in_as, signedInAs),
+                    style = CartoucheTextStyles.legendLabel,
+                    color = TextTertiary,
+                )
+                Text(
+                    text = stringResource(R.string.stats_sign_out),
+                    style = CartoucheTextStyles.legendLabel,
+                    color = AccentPurpleLight,
+                    modifier = Modifier.clickable(onClick = onSignOutClick),
+                )
+            }
+        }
     }
 }
 
@@ -293,7 +325,7 @@ private fun StatsContentPreview() {
         )
     }
     CartoucheTheme {
-        StatsContent(stats = computeStats(games))
+        StatsContent(stats = computeStats(games), signedInAs = "Joueur Test", onSignOutClick = {})
     }
 }
 
@@ -301,6 +333,6 @@ private fun StatsContentPreview() {
 @Composable
 private fun StatsContentEmptyPreview() {
     CartoucheTheme {
-        StatsContent(stats = StatsData())
+        StatsContent(stats = StatsData(), signedInAs = null, onSignOutClick = {})
     }
 }

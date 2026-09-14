@@ -4,9 +4,11 @@ import dagger.Binds
 import dagger.Module
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
+import fr.cklla.cartouche.data.repository.AuthRepositoryImpl
 import fr.cklla.cartouche.data.repository.GameRepositoryImpl
 import fr.cklla.cartouche.data.repository.GameSearchRepositoryImpl
 import fr.cklla.cartouche.data.repository.IgdbPlaytimeRepositoryImpl
+import fr.cklla.cartouche.domain.repository.AuthRepository
 import fr.cklla.cartouche.domain.repository.GameRepository
 import fr.cklla.cartouche.domain.repository.GameSearchRepository
 import fr.cklla.cartouche.domain.repository.IgdbPlaytimeRepository
@@ -29,4 +31,8 @@ abstract class RepositoryModule {
     @Binds
     @Singleton
     abstract fun bindIgdbPlaytimeRepository(impl: IgdbPlaytimeRepositoryImpl): IgdbPlaytimeRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindAuthRepository(impl: AuthRepositoryImpl): AuthRepository
 }

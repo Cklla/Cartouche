@@ -97,6 +97,9 @@ dependencies {
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.kotlinx.coroutines.android)
+    // Pont .await() entre les Task Google Play Services (FirebaseAuth.signInWithCredential...)
+    // et les coroutines, pour éviter les callbacks imbriqués dans AuthRepositoryImpl.
+    implementation(libs.kotlinx.coroutines.play.services)
     implementation(libs.androidx.navigation.compose)
 
     // Persistance locale (cache offline)

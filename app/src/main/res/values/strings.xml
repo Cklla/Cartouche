@@ -1,6 +1,12 @@
 <resources>
     <string name="app_name">Cartouche</string>
 
+    <!-- Connexion -->
+    <string name="login_kicker">bienvenue</string>
+    <string name="login_title">Cartouche</string>
+    <string name="login_subtitle">Connecte-toi avec Google pour retrouver ton backlog sur tous tes appareils.</string>
+    <string name="login_google_button">Continuer avec Google</string>
+
     <!-- Bibliothèque -->
     <string name="bibliotheque_kicker">carnet de bord</string>
     <string name="bibliotheque_title">Bibliothèque</string>
@@ -34,6 +40,8 @@
     <string name="stats_hours_label">heures de jeu enregistrées</string>
     <string name="stats_completion_percent">%1$d%%</string>
     <string name="stats_completion_label">complété</string>
+    <string name="stats_signed_in_as">Connecté en tant que %1$s</string>
+    <string name="stats_sign_out">Se déconnecter</string>
 
     <!-- Jaquette placeholder -->
     <string name="cover_placeholder_label">jaquette</string>

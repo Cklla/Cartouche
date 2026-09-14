@@ -1,7 +1,9 @@
 package fr.cklla.cartouche.ui.stats
 
+import fr.cklla.cartouche.data.repository.FakeAuthRepository
 import fr.cklla.cartouche.data.repository.FakeGameDao
 import fr.cklla.cartouche.data.repository.GameRepositoryImpl
+import fr.cklla.cartouche.domain.model.AuthUser
 import fr.cklla.cartouche.domain.model.Game
 import fr.cklla.cartouche.domain.model.GameStatus
 import kotlinx.coroutines.Dispatchers
@@ -38,7 +40,7 @@ class StatsViewModelTest {
         repository.addGame(Game(title = "Hades", platform = "PC", genre = "Roguelike", status = GameStatus.TERMINE, userPlaytimeHours = 28))
         repository.addGame(Game(title = "Elden Ring", platform = "PS5", genre = "Action-RPG", status = GameStatus.A_FAIRE))
 
-        val viewModel = StatsViewModel(repository)
+        val viewModel = StatsViewModel(repository, FakeAuthRepository())
         // uiState est un StateFlow "WhileSubscribed" : il ne collecte le repository
         // qu'une fois observé, comme le ferait la Composable via collectAsStateWithLifecycle.
         val collectorJob = launch { viewModel.uiState.collect {} }
@@ -59,5 +61,25 @@ class StatsViewModelTest {
         assertEquals(37, state.totalHoursPlayed)
 
         collectorJob.cancel()
+    }
+
+    @Test
+    fun `currentUser reflete l'utilisateur connecte`() = runTest {
+        val repository = GameRepositoryImpl(FakeGameDao())
+        val authRepository = FakeAuthRepository(user = AuthUser(uid = "u1", displayName = "Ada"))
+        val viewModel = StatsViewModel(repository, authRepository)
+
+        assertEquals("Ada", viewModel.currentUser.value?.displayName)
+    }
+
+    @Test
+    fun `onSignOutClicked delegue au repository d'auth`() = runTest {
+        val repository = GameRepositoryImpl(FakeGameDao())
+        val authRepository = FakeAuthRepository()
+        val viewModel = StatsViewModel(repository, authRepository)
+
+        viewModel.onSignOutClicked()
+
+        assertEquals(1, authRepository.signOutCallCount)
     }
 }

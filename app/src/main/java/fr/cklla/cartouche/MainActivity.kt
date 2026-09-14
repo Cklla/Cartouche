@@ -9,7 +9,10 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -21,6 +24,8 @@ import fr.cklla.cartouche.ui.AppTab
 import fr.cklla.cartouche.ui.bibliotheque.BibliothequeScreen
 import fr.cklla.cartouche.ui.components.BottomNavBar
 import fr.cklla.cartouche.ui.detail.DetailScreen
+import fr.cklla.cartouche.ui.login.AuthGateViewModel
+import fr.cklla.cartouche.ui.login.LoginScreen
 import fr.cklla.cartouche.ui.navigation.CartoucheDestinations
 import fr.cklla.cartouche.ui.navigation.route
 import fr.cklla.cartouche.ui.recherche.RechercheScreen
@@ -54,8 +59,21 @@ class MainActivity : ComponentActivity() {
 // (une seule instance de chacune, état conservé via saveState/restoreState),
 // Détail est poussé par-dessus depuis la Bibliothèque et n'affiche pas la
 // barre de navigation basse (écran "empilé/push", voir maquette).
+//
+// Connexion Google obligatoire au lancement (décision actée avec le développeur, aucune maquette
+// ne couvre l'authentification) : tant que personne n'est connecté, on affiche `LoginScreen` à la
+// place du `NavHost` — pas une destination de plus dans le graphe de navigation, un vrai "portail"
+// en dehors de la pile. Dès que `AuthRepository.currentUser` devient non-null (connexion réussie),
+// la recomposition bascule automatiquement sur le NavHost normal, qui démarre toujours sur la
+// Bibliothèque.
 @Composable
-fun CartoucheApp() {
+fun CartoucheApp(authGateViewModel: AuthGateViewModel = hiltViewModel()) {
+    val currentUser by authGateViewModel.currentUser.collectAsStateWithLifecycle()
+    if (currentUser == null) {
+        LoginScreen()
+        return
+    }
+
     val navController = rememberNavController()
     val currentRoute = navController.currentBackStackEntryAsState().value?.destination?.route
     val selectedTab = AppTab.entries.find { it.route == currentRoute }
