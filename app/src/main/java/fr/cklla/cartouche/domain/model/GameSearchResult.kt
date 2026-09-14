@@ -21,11 +21,17 @@ data class GameSearchResult(
  * Les champs `estimatedPlaytime*` ne sont jamais renseignés ici : RAWG ne fournit plus cette
  * donnée (trop peu fiable, voir historique du champ). Ils sont recherchés séparément via IGDB,
  * seulement à l'ouverture de la fiche détail (voir `DetailViewModel`).
+ *
+ * `rawgId` et `releaseYear` sont en revanche conservés : ils ne servent à rien pour l'affichage,
+ * mais permettent de fiabiliser la correspondance IGDB au moment de cette recherche (voir
+ * `IgdbPlaytimeRepository`).
  */
 fun GameSearchResult.toGame(): Game = Game(
     title = title,
     platform = platform,
     genre = genre,
     status = GameStatus.A_FAIRE,
+    rawgId = rawgId,
+    releaseYear = year.toIntOrNull(),
     coverUrl = coverUrl,
 )

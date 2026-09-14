@@ -3,6 +3,7 @@ package fr.cklla.cartouche.data.remote
 import fr.cklla.cartouche.data.remote.dto.RawgGameDto
 import fr.cklla.cartouche.data.remote.dto.RawgGenreDto
 import fr.cklla.cartouche.data.remote.dto.RawgPlatformWrapperDto
+import fr.cklla.cartouche.data.remote.dto.RawgStoreLinkDto
 import fr.cklla.cartouche.domain.model.GameSearchResult
 
 /**
@@ -30,3 +31,19 @@ fun formatPlatforms(platforms: List<RawgPlatformWrapperDto>?): String =
 
 /** Un seul genre est affiché dans l'app (voir [GameSearchResult]) : le premier renvoyé par RAWG. */
 fun firstGenre(genres: List<RawgGenreDto>?): String = genres.orEmpty().firstOrNull()?.name ?: ""
+
+/** Identifiant de la boutique Steam dans l'ensemble fixe de boutiques RAWG. */
+private const val RAWG_STEAM_STORE_ID = 1L
+
+private val STEAM_APP_ID_REGEX = Regex("""store\.steampowered\.com/app/(\d+)""", RegexOption.IGNORE_CASE)
+
+/**
+ * Extrait l'App ID Steam numérique du lien boutique Steam d'un jeu RAWG (ex.
+ * `https://store.steampowered.com/app/1145360/Hades/` → `1145360`), ou `null` si le jeu n'a pas
+ * de fiche Steam sur RAWG. C'est le signal de correspondance IGDB le plus fiable (voir
+ * `IgdbPlaytimeRepository`) : contrairement au nom, un App ID Steam ne peut désigner qu'un seul jeu.
+ */
+fun extractSteamAppId(storeLinks: List<RawgStoreLinkDto>): Long? = storeLinks
+    .firstOrNull { it.storeId == RAWG_STEAM_STORE_ID }
+    ?.url
+    ?.let { STEAM_APP_ID_REGEX.find(it)?.groupValues?.get(1)?.toLongOrNull() }

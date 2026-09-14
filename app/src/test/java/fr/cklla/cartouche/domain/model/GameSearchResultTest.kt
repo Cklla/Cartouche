@@ -25,6 +25,22 @@ class GameSearchResultTest {
         assertEquals("https://example.com/hades.jpg", game.coverUrl)
         assertEquals(GameStatus.A_FAIRE, game.status)
         assertEquals(0, game.userPlaytimeHours)
+        assertEquals(1L, game.rawgId)
+        assertEquals(2020, game.releaseYear)
+    }
+
+    @Test
+    fun `toGame laisse releaseYear a null quand l'annee RAWG est inconnue`() {
+        val result = GameSearchResult(
+            rawgId = 1L,
+            title = "Mystère",
+            platform = "",
+            genre = "",
+            year = "",
+            coverUrl = null,
+        )
+
+        assertNull(result.toGame().releaseYear)
     }
 
     @Test

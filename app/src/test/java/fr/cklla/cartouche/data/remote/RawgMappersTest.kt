@@ -4,7 +4,9 @@ import fr.cklla.cartouche.data.remote.dto.RawgGameDto
 import fr.cklla.cartouche.data.remote.dto.RawgGenreDto
 import fr.cklla.cartouche.data.remote.dto.RawgPlatformDto
 import fr.cklla.cartouche.data.remote.dto.RawgPlatformWrapperDto
+import fr.cklla.cartouche.data.remote.dto.RawgStoreLinkDto
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Test
 
 class RawgMappersTest {
@@ -77,5 +79,28 @@ class RawgMappersTest {
         assertEquals("", result.genre)
         assertEquals("", result.year)
         assertEquals(null, result.coverUrl)
+    }
+
+    @Test
+    fun `extractSteamAppId trouve l'App ID dans le lien boutique Steam`() {
+        val storeLinks = listOf(
+            RawgStoreLinkDto(id = 1, storeId = 2, url = "https://www.playstation.com/fr-fr/games/hades/"),
+            RawgStoreLinkDto(id = 2, storeId = 1, url = "https://store.steampowered.com/app/1145360/Hades/"),
+        )
+        assertEquals(1145360L, extractSteamAppId(storeLinks))
+    }
+
+    @Test
+    fun `extractSteamAppId renvoie null sans lien boutique Steam`() {
+        val storeLinks = listOf(
+            RawgStoreLinkDto(id = 1, storeId = 2, url = "https://www.playstation.com/fr-fr/games/hades/"),
+        )
+        assertNull(extractSteamAppId(storeLinks))
+    }
+
+    @Test
+    fun `extractSteamAppId renvoie null si le lien Steam est mal forme`() {
+        val storeLinks = listOf(RawgStoreLinkDto(id = 1, storeId = 1, url = null))
+        assertNull(extractSteamAppId(storeLinks))
     }
 }

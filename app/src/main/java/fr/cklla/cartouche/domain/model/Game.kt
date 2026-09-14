@@ -8,6 +8,11 @@ package fr.cklla.cartouche.domain.model
  * entre ces représentations et ce modèle.
  *
  * @param id identifiant local (0 = jeu pas encore persisté).
+ * @param rawgId identifiant RAWG du jeu, ou `null` pour un jeu ajouté avant l'introduction de ce
+ *   champ. Sert uniquement à retrouver la fiche Steam du jeu (voir `IgdbPlaytimeRepository`,
+ *   étape 1 de la correspondance IGDB par ID Steam) — jamais affiché ni utilisé ailleurs.
+ * @param releaseYear année de sortie RAWG, ou `null` si inconnue. Sert de signal secondaire pour
+ *   départager plusieurs candidats IGDB proches par le nom (voir `IgdbPlaytimeRepository`, étape 2).
  * @param userPlaytimeHours temps de jeu renseigné manuellement par l'utilisateur, en heures.
  * @param estimatedPlaytimeHastilyHours temps pour "rusher" le jeu selon IGDB
  *   (`game_time_to_beats.hastily`), en heures ; `null` si IGDB n'a pas cette donnée pour ce jeu.
@@ -30,6 +35,8 @@ data class Game(
     val platform: String,
     val genre: String,
     val status: GameStatus,
+    val rawgId: Long? = null,
+    val releaseYear: Int? = null,
     val userPlaytimeHours: Int = 0,
     val estimatedPlaytimeHastilyHours: Int? = null,
     val estimatedPlaytimeNormallyHours: Int? = null,

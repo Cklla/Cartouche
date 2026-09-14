@@ -18,6 +18,8 @@ data class GameEntity(
     val platform: String,
     val genre: String,
     val status: String,
+    val rawgId: Long?,
+    val releaseYear: Int?,
     val userPlaytimeHours: Int,
     val estimatedPlaytimeHastilyHours: Int?,
     val estimatedPlaytimeNormallyHours: Int?,

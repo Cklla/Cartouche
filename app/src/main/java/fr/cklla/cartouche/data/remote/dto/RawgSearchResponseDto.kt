@@ -35,3 +35,20 @@ data class RawgGenreDto(
     @Json(name = "id") val id: Long,
     @Json(name = "name") val name: String,
 )
+
+/** Réponse de l'endpoint des liens boutiques RAWG (`GET /api/games/{id}/stores`). */
+@JsonClass(generateAdapter = true)
+data class RawgStoreLinksResponseDto(
+    @Json(name = "results") val results: List<RawgStoreLinkDto> = emptyList(),
+)
+
+/**
+ * Un lien vers la fiche d'un jeu sur une boutique donnée. `storeId` identifie la boutique parmi
+ * l'ensemble fixe de RAWG (1 = Steam) — voir `RawgMappers.extractSteamAppId`.
+ */
+@JsonClass(generateAdapter = true)
+data class RawgStoreLinkDto(
+    @Json(name = "id") val id: Long,
+    @Json(name = "store_id") val storeId: Long,
+    @Json(name = "url") val url: String? = null,
+)

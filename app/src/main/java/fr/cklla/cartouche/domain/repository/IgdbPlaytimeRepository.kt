@@ -13,11 +13,15 @@ import fr.cklla.cartouche.domain.model.IgdbPlaytimeEstimate
 interface IgdbPlaytimeRepository {
 
     /**
-     * Cherche [title] sur IGDB et renvoie les temps de jeu estimés trouvés, ou `null` si aucune
-     * correspondance fiable n'est trouvée, ou en cas d'échec (réseau, authentification,
+     * Cherche le jeu IGDB correspondant et renvoie les temps de jeu estimés trouvés, ou `null` si
+     * aucune correspondance fiable n'est trouvée, ou en cas d'échec (réseau, authentification,
      * quota...) — jamais d'exception qui remonterait jusqu'à l'UI. Un résultat non nul peut
      * malgré tout avoir des champs individuellement `null` si IGDB n'a pas cette donnée précise
      * pour ce jeu (voir [IgdbPlaytimeEstimate]).
+     *
+     * La correspondance se fait en cascade (voir `IgdbMappers`) : [rawgId] permet de tenter une
+     * correspondance fiable par App ID Steam en priorité ; [title] et [releaseYear] servent de
+     * repli par similarité de nom si cette première méthode ne donne rien.
      */
-    suspend fun findEstimatedPlaytime(title: String): IgdbPlaytimeEstimate?
+    suspend fun findEstimatedPlaytime(title: String, releaseYear: Int?, rawgId: Long?): IgdbPlaytimeEstimate?
 }

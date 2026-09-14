@@ -1,48 +1,105 @@
 package fr.cklla.cartouche.data.remote.igdb
 
 import fr.cklla.cartouche.data.remote.igdb.dto.IgdbGameDto
+import java.time.Instant
+import java.time.ZoneOffset
 import java.util.Locale
 
 /**
  * Fonctions pures autour d'IGDB (construction de requêtes "Apicalypse", correspondance de titre) :
  * isolées du repository pour rester testables sans appel réseau, même principe que
  * `RawgMappers`/`SearchFiltering` ailleurs dans le projet.
+ *
+ * La correspondance RAWG → IGDB se fait en cascade, du signal le plus fiable au moins fiable (voir
+ * `IgdbPlaytimeRepositoryImpl`) :
+ * 1. App ID Steam (`external_games`, [buildSteamExternalGameQuery]) — fiable à 100%, saute les
+ *    étapes suivantes si trouvé.
+ * 2. Nom normalisé + année de sortie ([findBestMatch]) — utilisé seulement si l'étape 1 n'a rien
+ *    donné (pas de fiche Steam RAWG, ou pas de correspondance côté IGDB).
+ * 3. Aucun match fiable → "non disponible".
  */
 
-/** Requête de recherche par titre, jusqu'à 10 candidats (id + nom seulement, c'est tout ce qu'il faut pour le matching). */
-fun buildSearchQuery(title: String): String = "search \"${escapeQueryText(title)}\"; fields id,name; limit 10;"
+/**
+ * Requête de recherche par titre, jusqu'à 10 candidats. `first_release_date` est demandé en plus
+ * de l'id/nom : c'est le signal utilisé par [findBestMatch] pour départager des candidats au nom
+ * proche (ex. plusieurs éditions/remakes d'un même jeu).
+ */
+fun buildSearchQuery(title: String): String =
+    "search \"${escapeQueryText(title)}\"; fields id,name,first_release_date; limit 10;"
 
 /** Requête de durée de vie pour un jeu IGDB déjà identifié. */
 fun buildTimeToBeatQuery(igdbGameId: Long): String =
     "fields hastily,normally,completely; where game_id = $igdbGameId; limit 1;"
 
+/**
+ * Requête `external_games` retrouvant le jeu IGDB associé à un App ID Steam. `category = 1` est
+ * le code IGDB pour la boutique Steam (constante documentée par l'API, pas de nom symbolique côté
+ * IGDB v4).
+ */
+fun buildSteamExternalGameQuery(steamAppId: Long): String =
+    "fields game; where uid = \"$steamAppId\" & category = 1; limit 1;"
+
 private fun escapeQueryText(text: String): String = text.replace("\\", "\\\\").replace("\"", "\\\"")
 
 /**
- * Il n'y a pas de correspondance directe entre les ids RAWG et IGDB : on doit retrouver le jeu
- * par similarité de titre parmi les candidats renvoyés par la recherche IGDB. Renvoie `null` si
- * aucun candidat n'est jugé assez proche plutôt que de forcer une correspondance hasardeuse (le
- * temps de jeu resterait alors "non disponible", voir `IgdbPlaytimeRepositoryImpl`).
+ * Étape 2 de la cascade de correspondance (voir en tête de fichier) : à défaut d'App ID Steam
+ * exploitable, on retrouve le jeu par similarité de titre parmi les candidats renvoyés par la
+ * recherche IGDB, en utilisant l'année de sortie RAWG pour départager les candidats dont le nom
+ * est proche. Renvoie `null` si aucun candidat n'est jugé assez proche plutôt que de forcer une
+ * correspondance hasardeuse (le temps de jeu resterait alors "non disponible").
  */
-fun findBestMatch(title: String, candidates: List<IgdbGameDto>): IgdbGameDto? {
+fun findBestMatch(title: String, releaseYear: Int?, candidates: List<IgdbGameDto>): IgdbGameDto? {
     val normalizedTitle = normalizeForMatching(title)
 
-    // Correspondance exacte (à la casse/ponctuation près) : cas de loin le plus fréquent, pas
-    // besoin de calculer une distance pour ça.
-    candidates.firstOrNull { normalizeForMatching(it.name) == normalizedTitle }?.let { return it }
-
-    return candidates
+    val closeCandidates = candidates
         .map { it to titleSimilarity(normalizedTitle, normalizeForMatching(it.name)) }
-        .maxByOrNull { (_, similarity) -> similarity }
-        ?.takeIf { (_, similarity) -> similarity >= MATCH_SIMILARITY_THRESHOLD }
-        ?.first
+        .filter { (_, similarity) -> similarity >= MATCH_SIMILARITY_THRESHOLD }
+    if (closeCandidates.isEmpty()) return null
+
+    // Plusieurs candidats au nom proche (éditions différentes d'un même jeu, par ex.) : on
+    // privilégie celui dont l'année de sortie IGDB correspond à l'année RAWG, quand elle est
+    // connue. Sans correspondance d'année (ou année RAWG inconnue), on retombe sur la meilleure
+    // similarité de nom, comme avant l'introduction de ce signal.
+    if (releaseYear != null) {
+        closeCandidates
+            .filter { (candidate, _) -> igdbReleaseYear(candidate) == releaseYear }
+            .maxByOrNull { (_, similarity) -> similarity }
+            ?.let { return it.first }
+    }
+
+    return closeCandidates.maxByOrNull { (_, similarity) -> similarity }?.first
 }
+
+/** Année de sortie IGDB, convertie depuis le timestamp Unix `first_release_date` (UTC). */
+fun igdbReleaseYear(game: IgdbGameDto): Int? =
+    game.firstReleaseDate?.let { Instant.ofEpochSecond(it).atZone(ZoneOffset.UTC).year }
 
 /** En-dessous de ce seuil (proportion de caractères en commun), le candidat est jugé peu fiable. */
 private const val MATCH_SIMILARITY_THRESHOLD = 0.75
 
-private fun normalizeForMatching(value: String): String =
-    value.lowercase(Locale.ROOT).filter { it.isLetterOrDigit() || it == ' ' }.trim()
+/**
+ * Retire la casse/ponctuation, mais aussi les suffixes entre parenthèses (années, mentions
+ * diverses — ex. IGDB "Persona 3 Reload (2024)" vs RAWG "Persona 3 Reload") et les mentions
+ * d'édition courantes ("Deluxe Edition", "Definitive Edition"...), pour que deux titres qui ne
+ * diffèrent que par ces mentions soient reconnus comme identiques.
+ */
+private fun normalizeForMatching(value: String): String {
+    val withoutParentheticals = value.replace(PARENTHETICAL_REGEX, " ")
+    val withoutEditionSuffix = withoutParentheticals.replace(EDITION_SUFFIX_REGEX, "")
+    return withoutEditionSuffix
+        .lowercase(Locale.ROOT)
+        .filter { it.isLetterOrDigit() || it == ' ' }
+        .replace(Regex(" +"), " ")
+        .trim()
+}
+
+private val PARENTHETICAL_REGEX = Regex("""\([^)]*\)|\[[^]]*\]""")
+
+private val EDITION_SUFFIX_REGEX = Regex(
+    """[:\-–—]\s*(the\s+)?(deluxe|standard|gold|goty|game of the year|definitive|remastered?|""" +
+        """complete|enhanced|ultimate|anniversary|special|extended|director'?s cut)(\s+edition)?\s*$""",
+    RegexOption.IGNORE_CASE,
+)
 
 /** Similarité de deux chaînes déjà normalisées, entre 0 (rien en commun) et 1 (identiques). */
 private fun titleSimilarity(a: String, b: String): Double {

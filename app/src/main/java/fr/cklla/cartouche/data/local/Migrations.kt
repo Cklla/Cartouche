@@ -81,3 +81,44 @@ val MIGRATION_2_3 = object : Migration(2, 3) {
         connection.execSQL("ALTER TABLE `games_new` RENAME TO `games`")
     }
 }
+
+/**
+ * Ajoute `rawgId` et `releaseYear`, utilisés uniquement pour fiabiliser la correspondance IGDB
+ * (ID Steam puis année de sortie, voir `IgdbPlaytimeRepository`) — jamais affichés. Les jeux déjà
+ * en backlog n'ont pas ces informations (elles ne sont connues qu'au moment de la recherche RAWG,
+ * voir `GameSearchResult.toGame`) : les deux colonnes démarrent donc à `NULL` pour eux, ce qui fait
+ * simplement retomber leur prochaine correspondance IGDB sur le seul nom (comportement identique à
+ * avant cette migration), sans effet de bord sur le cache des temps de jeu déjà renseignés.
+ */
+val MIGRATION_3_4 = object : Migration(3, 4) {
+    override fun migrate(connection: SQLiteConnection) {
+        connection.execSQL(
+            "CREATE TABLE IF NOT EXISTS `games_new` (" +
+                "`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+                "`title` TEXT NOT NULL, " +
+                "`platform` TEXT NOT NULL, " +
+                "`genre` TEXT NOT NULL, " +
+                "`status` TEXT NOT NULL, " +
+                "`rawgId` INTEGER, " +
+                "`releaseYear` INTEGER, " +
+                "`userPlaytimeHours` INTEGER NOT NULL, " +
+                "`estimatedPlaytimeHastilyHours` INTEGER, " +
+                "`estimatedPlaytimeNormallyHours` INTEGER, " +
+                "`estimatedPlaytimeCompletelyHours` INTEGER, " +
+                "`rating` INTEGER, " +
+                "`notes` TEXT NOT NULL, " +
+                "`coverUrl` TEXT)",
+        )
+        connection.execSQL(
+            "INSERT INTO `games_new` " +
+                "(`id`, `title`, `platform`, `genre`, `status`, `rawgId`, `releaseYear`, " +
+                "`userPlaytimeHours`, `estimatedPlaytimeHastilyHours`, `estimatedPlaytimeNormallyHours`, " +
+                "`estimatedPlaytimeCompletelyHours`, `rating`, `notes`, `coverUrl`) " +
+                "SELECT `id`, `title`, `platform`, `genre`, `status`, NULL, NULL, " +
+                "`userPlaytimeHours`, `estimatedPlaytimeHastilyHours`, `estimatedPlaytimeNormallyHours`, " +
+                "`estimatedPlaytimeCompletelyHours`, `rating`, `notes`, `coverUrl` FROM `games`",
+        )
+        connection.execSQL("DROP TABLE `games`")
+        connection.execSQL("ALTER TABLE `games_new` RENAME TO `games`")
+    }
+}

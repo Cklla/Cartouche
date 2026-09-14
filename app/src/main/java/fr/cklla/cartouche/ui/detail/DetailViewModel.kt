@@ -63,7 +63,11 @@ class DetailViewModel @Inject constructor(
 
     private fun fetchEstimatedPlaytime(game: Game) {
         viewModelScope.launch {
-            val estimate = igdbPlaytimeRepository.findEstimatedPlaytime(game.title) ?: return@launch
+            val estimate = igdbPlaytimeRepository.findEstimatedPlaytime(
+                title = game.title,
+                releaseYear = game.releaseYear,
+                rawgId = game.rawgId,
+            ) ?: return@launch
             // Le jeu affiché a pu changer entretemps (retiré du backlog) : `applyEdit` gère déjà
             // ce cas (no-op si `workingGame` est `null`), donc pas de vérification supplémentaire ici.
             applyEdit {

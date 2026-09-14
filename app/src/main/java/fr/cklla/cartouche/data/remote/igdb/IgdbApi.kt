@@ -1,5 +1,6 @@
 package fr.cklla.cartouche.data.remote.igdb
 
+import fr.cklla.cartouche.data.remote.igdb.dto.IgdbExternalGameDto
 import fr.cklla.cartouche.data.remote.igdb.dto.IgdbGameDto
 import fr.cklla.cartouche.data.remote.igdb.dto.IgdbTimeToBeatDto
 import okhttp3.RequestBody
@@ -33,6 +34,15 @@ interface IgdbApi {
         @Header("Authorization") authorization: String,
         @Body query: RequestBody,
     ): List<IgdbTimeToBeatDto>
+
+    /** Recherche par identifiant externe (ex. App ID Steam) — voir `IgdbMappers.buildSteamExternalGameQuery`. */
+    @Headers("Content-Type: text/plain")
+    @POST("external_games")
+    suspend fun findExternalGame(
+        @Header("Client-ID") clientId: String,
+        @Header("Authorization") authorization: String,
+        @Body query: RequestBody,
+    ): List<IgdbExternalGameDto>
 
     companion object {
         const val BASE_URL = "https://api.igdb.com/v4/"

@@ -9,7 +9,7 @@ class FakeIgdbPlaytimeRepository(private val result: IgdbPlaytimeEstimate? = nul
     var callCount = 0
         private set
 
-    override suspend fun findEstimatedPlaytime(title: String): IgdbPlaytimeEstimate? {
+    override suspend fun findEstimatedPlaytime(title: String, releaseYear: Int?, rawgId: Long?): IgdbPlaytimeEstimate? {
         callCount++
         return result
     }
