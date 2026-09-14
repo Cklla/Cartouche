@@ -198,6 +198,26 @@ class DetailViewModelTest {
     }
 
     @Test
+    fun `recliquer sur l'etoile de la note actuelle efface la note`() = runTest {
+        val dao = FakeGameDao()
+        val repository = fakeGameRepository(dao)
+        val gameId = setUpGame(repository)
+        val viewModel = viewModel(repository, gameId)
+        val collectorJob = launch { viewModel.uiState.collect {} }
+        dispatcher.scheduler.advanceUntilIdle()
+
+        viewModel.onRatingSelected(1)
+        dispatcher.scheduler.advanceUntilIdle()
+        assertEquals(1, viewModel.uiState.value.game?.rating)
+
+        viewModel.onRatingSelected(null)
+        dispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals(null, viewModel.uiState.value.game?.rating)
+        collectorJob.cancel()
+    }
+
+    @Test
     fun `retirer le jeu du backlog fait disparaitre le jeu observe`() = runTest {
         val dao = FakeGameDao()
         val repository = fakeGameRepository(dao)
