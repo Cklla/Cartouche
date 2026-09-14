@@ -25,7 +25,15 @@
     <!-- Navigation basse -->
     <string name="nav_recherche">Recherche</string>
     <string name="nav_stats">Stats</string>
-    <string name="placeholder_bientot_disponible">Bientôt disponible</string>
+
+    <!-- Stats -->
+    <string name="stats_kicker">vue d\'ensemble</string>
+    <string name="stats_title">Statistiques</string>
+    <string name="stats_completed_label">jeux terminés</string>
+    <string name="stats_backlog_size_label">taille du backlog</string>
+    <string name="stats_hours_label">heures de jeu enregistrées</string>
+    <string name="stats_completion_percent">%1$d%%</string>
+    <string name="stats_completion_label">complété</string>
 
     <!-- Jaquette placeholder -->
     <string name="cover_placeholder_label">jaquette</string>

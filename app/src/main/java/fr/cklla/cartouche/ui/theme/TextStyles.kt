@@ -137,4 +137,44 @@ object CartoucheTextStyles {
         fontFamily = InterFamily,
         fontSize = 13.sp,
     )
+
+    // --- Écran Stats ---
+
+    val statValueLarge = TextStyle(
+        fontFamily = FrauncesItalic,
+        fontWeight = FontWeight.SemiBold,
+        fontStyle = FontStyle.Italic,
+        fontSize = 28.sp,
+    )
+
+    val statValueMedium = TextStyle(
+        fontFamily = FrauncesItalic,
+        fontWeight = FontWeight.SemiBold,
+        fontStyle = FontStyle.Italic,
+        fontSize = 22.sp,
+    )
+
+    val donutPercent = TextStyle(
+        fontFamily = FrauncesItalic,
+        fontWeight = FontWeight.SemiBold,
+        fontStyle = FontStyle.Italic,
+        fontSize = 26.sp,
+    )
+
+    val donutLabel = TextStyle(
+        fontFamily = InterFamily,
+        fontSize = 10.5.sp,
+        letterSpacing = 0.42.sp,
+    )
+
+    val legendLabel = TextStyle(
+        fontFamily = InterFamily,
+        fontSize = 13.sp,
+    )
+
+    val legendCount = TextStyle(
+        fontFamily = InterFamily,
+        fontWeight = FontWeight.SemiBold,
+        fontSize = 13.sp,
+    )
 }

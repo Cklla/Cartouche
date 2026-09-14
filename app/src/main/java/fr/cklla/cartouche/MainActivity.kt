@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.stringResource
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -21,11 +20,11 @@ import dagger.hilt.android.AndroidEntryPoint
 import fr.cklla.cartouche.ui.AppTab
 import fr.cklla.cartouche.ui.bibliotheque.BibliothequeScreen
 import fr.cklla.cartouche.ui.components.BottomNavBar
-import fr.cklla.cartouche.ui.components.PlaceholderScreen
 import fr.cklla.cartouche.ui.detail.DetailScreen
 import fr.cklla.cartouche.ui.navigation.CartoucheDestinations
 import fr.cklla.cartouche.ui.navigation.route
 import fr.cklla.cartouche.ui.recherche.RechercheScreen
+import fr.cklla.cartouche.ui.stats.StatsScreen
 import fr.cklla.cartouche.ui.theme.BackgroundDark
 import fr.cklla.cartouche.ui.theme.CartoucheTheme
 
@@ -93,7 +92,7 @@ fun CartoucheApp() {
                 RechercheScreen()
             }
             composable(CartoucheDestinations.STATS) {
-                PlaceholderScreen(label = stringResource(R.string.placeholder_bientot_disponible))
+                StatsScreen()
             }
             composable(
                 route = CartoucheDestinations.DETAIL,
