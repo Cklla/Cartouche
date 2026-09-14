@@ -148,7 +148,12 @@ private fun DetailContent(
             TitleSection(game = game)
             StatusSection(selected = game.status, onStatusSelected = onStatusSelected)
             RatingSection(rating = game.rating, onRatingSelected = onRatingSelected)
-            HoursSection(hours = game.hoursPlayed, onIncrement = onHoursIncrement, onDecrement = onHoursDecrement)
+            EstimatedPlaytimeSection(hours = game.estimatedPlaytimeHours)
+            HoursSection(
+                hours = game.userPlaytimeHours,
+                onIncrement = onHoursIncrement,
+                onDecrement = onHoursDecrement,
+            )
             NotesSection(notes = game.notes, onNotesChanged = onNotesChanged)
             RemoveLink(onClick = { showRemoveConfirm = true })
         }
@@ -278,6 +283,28 @@ private fun RatingSection(rating: Int?, onRatingSelected: (Int) -> Unit) {
                 }
             }
         }
+    }
+}
+
+/**
+ * Temps de jeu moyen constaté par RAWG (majoritairement Steam), en lecture seule — distinct de
+ * [HoursSection] (temps de jeu personnel, éditable) : jamais dans le même bloc UI, pour ne pas
+ * laisser croire que cette valeur est modifiable ou qu'elle vient du joueur.
+ */
+@Composable
+private fun EstimatedPlaytimeSection(hours: Int?) {
+    Column {
+        SectionLabel(stringResource(R.string.detail_estimated_playtime_label))
+        Spacer(modifier = Modifier.height(10.dp))
+        Text(
+            text = if (hours != null) {
+                stringResource(R.string.detail_estimated_playtime_value, hours)
+            } else {
+                stringResource(R.string.detail_estimated_playtime_unavailable)
+            },
+            style = CartoucheTextStyles.hoursValue,
+            color = if (hours != null) TextSecondary else TextMuted,
+        )
     }
 }
 
@@ -426,7 +453,8 @@ private fun DetailContentPreview() {
         platform = "Switch",
         genre = "Aventure",
         status = GameStatus.EN_COURS,
-        hoursPlayed = 34,
+        userPlaytimeHours = 34,
+        estimatedPlaytimeHours = 48,
         rating = 4,
         notes = "Exploration incroyable, à reprendre le week-end.",
     )

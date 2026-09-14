@@ -8,6 +8,10 @@ package fr.cklla.cartouche.domain.model
  * entre ces représentations et ce modèle.
  *
  * @param id identifiant local (0 = jeu pas encore persisté).
+ * @param userPlaytimeHours temps de jeu renseigné manuellement par l'utilisateur, en heures.
+ * @param estimatedPlaytimeHours temps de jeu moyen constaté par RAWG (majoritairement Steam), en
+ *   heures ; `null` si RAWG n'a pas cette donnée pour ce jeu. Distinct de [userPlaytimeHours],
+ *   jamais modifiable par l'utilisateur.
  * @param rating note personnelle de 1 à 5, ou null si le jeu n'est pas encore noté.
  */
 data class Game(
@@ -16,7 +20,8 @@ data class Game(
     val platform: String,
     val genre: String,
     val status: GameStatus,
-    val hoursPlayed: Int = 0,
+    val userPlaytimeHours: Int = 0,
+    val estimatedPlaytimeHours: Int? = null,
     val rating: Int? = null,
     val notes: String = "",
     val coverUrl: String? = null,

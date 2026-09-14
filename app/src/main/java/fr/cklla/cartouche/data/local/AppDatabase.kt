@@ -4,7 +4,7 @@ import androidx.room.Database
 import androidx.room.RoomDatabase
 import fr.cklla.cartouche.data.local.entity.GameEntity
 
-@Database(entities = [GameEntity::class], version = 1, exportSchema = true)
+@Database(entities = [GameEntity::class], version = 2, exportSchema = true)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun gameDao(): GameDao
 }

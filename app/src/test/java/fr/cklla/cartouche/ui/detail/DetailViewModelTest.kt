@@ -75,7 +75,7 @@ class DetailViewModelTest {
         viewModel.onHoursDecrement()
         dispatcher.scheduler.advanceUntilIdle()
 
-        assertEquals(0, viewModel.uiState.value.game?.hoursPlayed)
+        assertEquals(0, viewModel.uiState.value.game?.userPlaytimeHours)
         collectorJob.cancel()
     }
 
@@ -95,7 +95,7 @@ class DetailViewModelTest {
         viewModel.onHoursDecrement()
         dispatcher.scheduler.advanceUntilIdle()
 
-        assertEquals(1, viewModel.uiState.value.game?.hoursPlayed)
+        assertEquals(1, viewModel.uiState.value.game?.userPlaytimeHours)
         collectorJob.cancel()
     }
 

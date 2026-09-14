@@ -13,6 +13,8 @@ data class GameSearchResult(
     val genre: String,
     val year: String,
     val coverUrl: String?,
+    /** Temps de jeu moyen constaté par RAWG, en heures ; `null` si RAWG n'a pas cette donnée. */
+    val estimatedPlaytimeHours: Int? = null,
 )
 
 /** Convertit un résultat de recherche en jeu du backlog, avec le statut par défaut "À faire". */
@@ -22,4 +24,5 @@ fun GameSearchResult.toGame(): Game = Game(
     genre = genre,
     status = GameStatus.A_FAIRE,
     coverUrl = coverUrl,
+    estimatedPlaytimeHours = estimatedPlaytimeHours,
 )

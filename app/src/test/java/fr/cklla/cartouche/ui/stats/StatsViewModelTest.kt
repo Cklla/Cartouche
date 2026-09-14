@@ -35,7 +35,7 @@ class StatsViewModelTest {
     fun `uiState reflete le backlog courant et se met a jour en direct`() = runTest {
         val dao = FakeGameDao()
         val repository = GameRepositoryImpl(dao)
-        repository.addGame(Game(title = "Hades", platform = "PC", genre = "Roguelike", status = GameStatus.TERMINE, hoursPlayed = 28))
+        repository.addGame(Game(title = "Hades", platform = "PC", genre = "Roguelike", status = GameStatus.TERMINE, userPlaytimeHours = 28))
         repository.addGame(Game(title = "Elden Ring", platform = "PS5", genre = "Action-RPG", status = GameStatus.A_FAIRE))
 
         val viewModel = StatsViewModel(repository)
@@ -50,7 +50,7 @@ class StatsViewModelTest {
         assertEquals(28, state.totalHoursPlayed)
         assertEquals(50, state.completionPercent)
 
-        repository.addGame(Game(title = "Celeste", platform = "PC", genre = "Plateforme", status = GameStatus.TERMINE, hoursPlayed = 9))
+        repository.addGame(Game(title = "Celeste", platform = "PC", genre = "Plateforme", status = GameStatus.TERMINE, userPlaytimeHours = 9))
         dispatcher.scheduler.advanceUntilIdle()
 
         state = viewModel.uiState.value

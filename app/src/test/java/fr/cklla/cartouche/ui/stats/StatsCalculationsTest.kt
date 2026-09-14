@@ -21,10 +21,10 @@ class StatsCalculationsTest {
     @Test
     fun `compte les jeux termines, la taille du backlog et les heures cumulees`() {
         val games = listOf(
-            Game(title = "Hades", platform = "PC", genre = "Roguelike", status = GameStatus.TERMINE, hoursPlayed = 28),
-            Game(title = "Celeste", platform = "PC", genre = "Plateforme", status = GameStatus.TERMINE, hoursPlayed = 9),
-            Game(title = "Elden Ring", platform = "PS5", genre = "Action-RPG", status = GameStatus.A_FAIRE, hoursPlayed = 0),
-            Game(title = "Zelda", platform = "Switch", genre = "Aventure", status = GameStatus.EN_COURS, hoursPlayed = 34),
+            Game(title = "Hades", platform = "PC", genre = "Roguelike", status = GameStatus.TERMINE, userPlaytimeHours = 28),
+            Game(title = "Celeste", platform = "PC", genre = "Plateforme", status = GameStatus.TERMINE, userPlaytimeHours = 9),
+            Game(title = "Elden Ring", platform = "PS5", genre = "Action-RPG", status = GameStatus.A_FAIRE, userPlaytimeHours = 0),
+            Game(title = "Zelda", platform = "Switch", genre = "Aventure", status = GameStatus.EN_COURS, userPlaytimeHours = 34),
         )
 
         val stats = computeStats(games)

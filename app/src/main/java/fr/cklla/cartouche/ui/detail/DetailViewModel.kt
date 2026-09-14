@@ -60,9 +60,10 @@ class DetailViewModel @Inject constructor(
 
     fun onRatingSelected(rating: Int) = applyEdit { it.copy(rating = rating) }
 
-    fun onHoursIncrement() = applyEdit { it.copy(hoursPlayed = it.hoursPlayed + 1) }
+    fun onHoursIncrement() = applyEdit { it.copy(userPlaytimeHours = it.userPlaytimeHours + 1) }
 
-    fun onHoursDecrement() = applyEdit { it.copy(hoursPlayed = (it.hoursPlayed - 1).coerceAtLeast(0)) }
+    fun onHoursDecrement() =
+        applyEdit { it.copy(userPlaytimeHours = (it.userPlaytimeHours - 1).coerceAtLeast(0)) }
 
     fun onNotesChanged(notes: String) = applyEdit { it.copy(notes = notes) }
 

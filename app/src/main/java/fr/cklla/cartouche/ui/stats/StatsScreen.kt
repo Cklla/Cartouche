@@ -289,7 +289,7 @@ private fun StatsContentPreview() {
             platform = "PC",
             genre = "Aventure",
             status = status,
-            hoursPlayed = index * 5,
+            userPlaytimeHours = index * 5,
         )
     }
     CartoucheTheme {

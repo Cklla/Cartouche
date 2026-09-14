@@ -9,6 +9,7 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import fr.cklla.cartouche.data.local.AppDatabase
 import fr.cklla.cartouche.data.local.GameDao
+import fr.cklla.cartouche.data.local.MIGRATION_1_2
 import javax.inject.Singleton
 
 /** Fournit la base Room, unique pour toute la durée de vie de l'application. */
@@ -19,7 +20,9 @@ object DatabaseModule {
     @Provides
     @Singleton
     fun provideAppDatabase(@ApplicationContext context: Context): AppDatabase =
-        Room.databaseBuilder(context, AppDatabase::class.java, "cartouche.db").build()
+        Room.databaseBuilder(context, AppDatabase::class.java, "cartouche.db")
+            .addMigrations(MIGRATION_1_2)
+            .build()
 
     @Provides
     fun provideGameDao(database: AppDatabase): GameDao = database.gameDao()

@@ -17,6 +17,9 @@ data class RawgGameDto(
     @Json(name = "background_image") val backgroundImage: String? = null,
     @Json(name = "platforms") val platforms: List<RawgPlatformWrapperDto>? = null,
     @Json(name = "genres") val genres: List<RawgGenreDto>? = null,
+    // Moyenne communautaire (majoritairement Steam) en heures ; absent ou à 0 quand RAWG n'a pas
+    // la donnée pour ce jeu (voir `normalizePlaytime`, qui traite les deux cas comme "inconnu").
+    @Json(name = "playtime") val playtime: Int? = null,
 )
 
 @JsonClass(generateAdapter = true)

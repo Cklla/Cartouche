@@ -35,7 +35,7 @@ fun computeStats(games: List<Game>): StatsData {
     return StatsData(
         completedCount = completedCount,
         backlogSize = backlogSize,
-        totalHoursPlayed = games.sumOf { it.hoursPlayed },
+        totalHoursPlayed = games.sumOf { it.userPlaytimeHours },
         completionPercent = completionPercent,
         countsByStatus = GameStatus.entries.associateWith { status -> games.count { it.status == status } },
     )
