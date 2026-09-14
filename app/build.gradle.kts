@@ -7,6 +7,9 @@ plugins {
     alias(libs.plugins.ksp)
     alias(libs.plugins.hilt)
     alias(libs.plugins.androidx.room)
+    // Lit google-services.json (non commité, voir .gitignore) et génère les ressources/config
+    // nécessaires aux SDK Firebase (Auth, Firestore) à la compilation.
+    alias(libs.plugins.google.services)
 }
 
 // La clé API RAWG est un secret personnel : elle vit uniquement dans
@@ -115,6 +118,18 @@ dependencies {
 
     // Chargement des jaquettes réelles renvoyées par RAWG
     implementation(libs.coil.compose)
+
+    // Firebase : Firestore (source de vérité distante du backlog) + Auth (identifie
+    // l'utilisateur, nécessaire aux règles de sécurité Firestore). Le BoM aligne les versions
+    // des différents modules Firebase entre eux, pas besoin de préciser de version sur chacun.
+    implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.auth)
+    implementation(libs.firebase.firestore)
+
+    // Connexion Google (Credential Manager, remplace l'ancien GoogleSignInClient déprécié)
+    implementation(libs.androidx.credentials)
+    implementation(libs.androidx.credentials.play.services.auth)
+    implementation(libs.googleid)
 
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)
