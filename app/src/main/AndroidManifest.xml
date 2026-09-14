@@ -4,11 +4,15 @@
 
     <uses-permission android:name="android.permission.INTERNET" />
 
+    <!--
+        allowBackup="false" : rien de ce que l'app stocke sur l'appareil ne part dans la sauvegarde
+        Google Drive ni dans un transfert d'appareil — ni la base Room, ni le jeton d'accès IGDB,
+        ni la session Firebase. Aucune perte pour l'utilisateur : le backlog est déjà répliqué dans
+        Firestore et revient à la reconnexion.
+    -->
     <application
         android:name=".CartoucheApplication"
-        android:allowBackup="true"
-        android:dataExtractionRules="@xml/data_extraction_rules"
-        android:fullBackupContent="@xml/backup_rules"
+        android:allowBackup="false"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
