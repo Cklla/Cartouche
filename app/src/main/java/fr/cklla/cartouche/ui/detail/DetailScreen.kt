@@ -129,7 +129,7 @@ private fun DetailContent(
     isInBacklog: Boolean,
     onBackClick: () -> Unit,
     onStatusSelected: (GameStatus) -> Unit,
-    onRatingSelected: (Int) -> Unit,
+    onRatingSelected: (Int?) -> Unit,
     onHoursIncrement: () -> Unit,
     onHoursDecrement: () -> Unit,
     onHoursSet: (Int) -> Unit,
@@ -293,7 +293,7 @@ private fun StatusPill(status: GameStatus, selected: Boolean, onClick: () -> Uni
 }
 
 @Composable
-private fun RatingSection(rating: Int?, onRatingSelected: (Int) -> Unit) {
+private fun RatingSection(rating: Int?, onRatingSelected: (Int?) -> Unit) {
     Column {
         SectionLabel(stringResource(R.string.detail_rating_label))
         Spacer(modifier = Modifier.height(10.dp))
@@ -303,7 +303,10 @@ private fun RatingSection(rating: Int?, onRatingSelected: (Int) -> Unit) {
                 Box(
                     modifier = Modifier
                         .size(48.dp)
-                        .clickable(onClick = { onRatingSelected(star) }),
+                        // Recliquer sur l'étoile qui correspond déjà à la note actuelle efface la
+                        // note (ex. jeu noté 1 étoile : cliquer à nouveau sur la 1ère étoile revient
+                        // à "aucune note") plutôt que de la reconfirmer sans effet visible.
+                        .clickable(onClick = { onRatingSelected(if (rating == star) null else star) }),
                     contentAlignment = Alignment.Center,
                 ) {
                     Icon(
