@@ -55,7 +55,6 @@ class RawgMappersTest {
             backgroundImage = "https://example.com/hades.jpg",
             platforms = listOf(RawgPlatformWrapperDto(RawgPlatformDto(id = 1, name = "PC"))),
             genres = listOf(RawgGenreDto(id = 1, name = "Roguelike")),
-            playtime = 12,
         )
 
         val result = dto.toDomain()
@@ -66,7 +65,6 @@ class RawgMappersTest {
         assertEquals("Roguelike", result.genre)
         assertEquals("2020", result.year)
         assertEquals("https://example.com/hades.jpg", result.coverUrl)
-        assertEquals(12, result.estimatedPlaytimeHours)
     }
 
     @Test
@@ -79,21 +77,5 @@ class RawgMappersTest {
         assertEquals("", result.genre)
         assertEquals("", result.year)
         assertEquals(null, result.coverUrl)
-        assertEquals(null, result.estimatedPlaytimeHours)
-    }
-
-    @Test
-    fun `normalizePlaytime renvoie la valeur telle quelle quand elle est connue`() {
-        assertEquals(12, normalizePlaytime(12))
-    }
-
-    @Test
-    fun `normalizePlaytime traite l'absence de donnee comme non disponible`() {
-        assertEquals(null, normalizePlaytime(null))
-    }
-
-    @Test
-    fun `normalizePlaytime traite un temps de jeu a zero comme non disponible`() {
-        assertEquals(null, normalizePlaytime(0))
     }
 }

@@ -7,6 +7,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import fr.cklla.cartouche.domain.model.Game
 import fr.cklla.cartouche.domain.model.GameStatus
 import fr.cklla.cartouche.domain.repository.GameRepository
+import fr.cklla.cartouche.domain.repository.IgdbPlaytimeRepository
 import fr.cklla.cartouche.ui.navigation.CartoucheDestinations
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -34,6 +35,7 @@ import javax.inject.Inject
 class DetailViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
     private val gameRepository: GameRepository,
+    private val igdbPlaytimeRepository: IgdbPlaytimeRepository,
 ) : ViewModel() {
 
     private val gameId: Long = checkNotNull(savedStateHandle[CartoucheDestinations.DETAIL_ARG_GAME_ID])
@@ -43,8 +45,26 @@ class DetailViewModel @Inject constructor(
 
     init {
         viewModelScope.launch {
-            workingGame.value = gameRepository.observeGame(gameId).first()
+            val game = gameRepository.observeGame(gameId).first()
+            workingGame.value = game
             isLoading.value = false
+
+            // Lookup IGDB déclenché une seule fois, seulement à l'ouverture de la fiche et
+            // seulement si le temps de jeu estimé n'est pas déjà en cache (voir `Game.
+            // estimatedPlaytimeHours`) — jamais pendant la recherche RAWG ni sur la liste du
+            // backlog, pour éviter des appels inutiles.
+            if (game != null && game.estimatedPlaytimeHours == null) {
+                fetchEstimatedPlaytime(game)
+            }
+        }
+    }
+
+    private fun fetchEstimatedPlaytime(game: Game) {
+        viewModelScope.launch {
+            val hours = igdbPlaytimeRepository.findEstimatedPlaytimeHours(game.title) ?: return@launch
+            // Le jeu affiché a pu changer entretemps (retiré du backlog) : `applyEdit` gère déjà
+            // ce cas (no-op si `workingGame` est `null`), donc pas de vérification supplémentaire ici.
+            applyEdit { it.copy(estimatedPlaytimeHours = hours) }
         }
     }
 

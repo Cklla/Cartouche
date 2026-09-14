@@ -13,16 +13,19 @@ data class GameSearchResult(
     val genre: String,
     val year: String,
     val coverUrl: String?,
-    /** Temps de jeu moyen constaté par RAWG, en heures ; `null` si RAWG n'a pas cette donnée. */
-    val estimatedPlaytimeHours: Int? = null,
 )
 
-/** Convertit un résultat de recherche en jeu du backlog, avec le statut par défaut "À faire". */
+/**
+ * Convertit un résultat de recherche en jeu du backlog, avec le statut par défaut "À faire".
+ *
+ * `estimatedPlaytimeHours` n'est jamais renseigné ici : RAWG ne fournit plus cette donnée (trop
+ * peu fiable, voir historique du champ). Elle est recherchée séparément via IGDB, seulement à
+ * l'ouverture de la fiche détail (voir `DetailViewModel`).
+ */
 fun GameSearchResult.toGame(): Game = Game(
     title = title,
     platform = platform,
     genre = genre,
     status = GameStatus.A_FAIRE,
     coverUrl = coverUrl,
-    estimatedPlaytimeHours = estimatedPlaytimeHours,
 )

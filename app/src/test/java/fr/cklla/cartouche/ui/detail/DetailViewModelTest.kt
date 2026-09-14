@@ -42,9 +42,14 @@ class DetailViewModelTest {
         return (result as Resource.Success).data
     }
 
-    private fun viewModel(repository: GameRepositoryImpl, gameId: Long) = DetailViewModel(
+    private fun viewModel(
+        repository: GameRepositoryImpl,
+        gameId: Long,
+        igdbPlaytimeRepository: FakeIgdbPlaytimeRepository = FakeIgdbPlaytimeRepository(),
+    ) = DetailViewModel(
         savedStateHandle = SavedStateHandle(mapOf(CartoucheDestinations.DETAIL_ARG_GAME_ID to gameId)),
         gameRepository = repository,
+        igdbPlaytimeRepository = igdbPlaytimeRepository,
     )
 
     @Test
@@ -132,6 +137,60 @@ class DetailViewModelTest {
 
         assertNull(viewModel.uiState.value.game)
         assertEquals(false, viewModel.uiState.value.isLoading)
+        collectorJob.cancel()
+    }
+
+    @Test
+    fun `ouvrir la fiche declenche une recherche IGDB quand le temps estime n'est pas en cache`() = runTest {
+        val dao = FakeGameDao()
+        val repository = GameRepositoryImpl(dao)
+        val gameId = setUpGame(repository)
+        val igdbRepository = FakeIgdbPlaytimeRepository(result = 25)
+        val viewModel = viewModel(repository, gameId, igdbRepository)
+        val collectorJob = launch { viewModel.uiState.collect {} }
+        dispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals(1, igdbRepository.callCount)
+        assertEquals(25, viewModel.uiState.value.game?.estimatedPlaytimeHours)
+        collectorJob.cancel()
+    }
+
+    @Test
+    fun `ouvrir la fiche ne redemande pas IGDB si le temps estime est deja en cache`() = runTest {
+        val dao = FakeGameDao()
+        val repository = GameRepositoryImpl(dao)
+        val result = repository.addGame(
+            Game(
+                title = "Hades",
+                platform = "PC",
+                genre = "Roguelike",
+                status = GameStatus.A_FAIRE,
+                estimatedPlaytimeHours = 20,
+            ),
+        )
+        val gameId = (result as Resource.Success).data
+        val igdbRepository = FakeIgdbPlaytimeRepository(result = 999)
+        val viewModel = viewModel(repository, gameId, igdbRepository)
+        val collectorJob = launch { viewModel.uiState.collect {} }
+        dispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals(0, igdbRepository.callCount)
+        assertEquals(20, viewModel.uiState.value.game?.estimatedPlaytimeHours)
+        collectorJob.cancel()
+    }
+
+    @Test
+    fun `un echec IGDB laisse le temps de jeu estime a null`() = runTest {
+        val dao = FakeGameDao()
+        val repository = GameRepositoryImpl(dao)
+        val gameId = setUpGame(repository)
+        val igdbRepository = FakeIgdbPlaytimeRepository(result = null)
+        val viewModel = viewModel(repository, gameId, igdbRepository)
+        val collectorJob = launch { viewModel.uiState.collect {} }
+        dispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals(1, igdbRepository.callCount)
+        assertNull(viewModel.uiState.value.game?.estimatedPlaytimeHours)
         collectorJob.cancel()
     }
 }

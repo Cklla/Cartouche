@@ -40,6 +40,20 @@ android {
             "RAWG_API_KEY",
             "\"${localProperties.getProperty("RAWG_API_KEY", "")}\"",
         )
+        // Identifiants de l'app Twitch (console.twitch.tv/console/apps), utilisés pour le flow
+        // OAuth2 client credentials qui authentifie les appels à l'API IGDB (voir
+        // `data/remote/igdb/TwitchAuthApi.kt`). Mêmes garanties que RAWG_API_KEY : jamais en dur
+        // dans le code, jamais commités.
+        buildConfigField(
+            "String",
+            "IGDB_CLIENT_ID",
+            "\"${localProperties.getProperty("IGDB_CLIENT_ID", "")}\"",
+        )
+        buildConfigField(
+            "String",
+            "IGDB_CLIENT_SECRET",
+            "\"${localProperties.getProperty("IGDB_CLIENT_SECRET", "")}\"",
+        )
     }
 
     buildTypes {

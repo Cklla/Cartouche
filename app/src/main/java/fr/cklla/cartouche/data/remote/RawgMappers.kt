@@ -19,7 +19,6 @@ fun RawgGameDto.toDomain(): GameSearchResult = GameSearchResult(
     genre = firstGenre(genres),
     year = extractYear(released),
     coverUrl = backgroundImage,
-    estimatedPlaytimeHours = normalizePlaytime(playtime),
 )
 
 /** RAWG renvoie une date complète ("2023-05-12") ou `null` pour un jeu sans date connue. */
@@ -31,9 +30,3 @@ fun formatPlatforms(platforms: List<RawgPlatformWrapperDto>?): String =
 
 /** Un seul genre est affiché dans l'app (voir [GameSearchResult]) : le premier renvoyé par RAWG. */
 fun firstGenre(genres: List<RawgGenreDto>?): String = genres.orEmpty().firstOrNull()?.name ?: ""
-
-/**
- * RAWG renvoie `null` ou `0` quand la moyenne communautaire de temps de jeu n'existe pas pour un
- * jeu : les deux cas sont traités comme "non disponible", jamais comme "0h".
- */
-fun normalizePlaytime(playtime: Int?): Int? = playtime?.takeIf { it > 0 }

@@ -6,8 +6,10 @@ import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
 import fr.cklla.cartouche.data.repository.GameRepositoryImpl
 import fr.cklla.cartouche.data.repository.GameSearchRepositoryImpl
+import fr.cklla.cartouche.data.repository.IgdbPlaytimeRepositoryImpl
 import fr.cklla.cartouche.domain.repository.GameRepository
 import fr.cklla.cartouche.domain.repository.GameSearchRepository
+import fr.cklla.cartouche.domain.repository.IgdbPlaytimeRepository
 import javax.inject.Singleton
 
 /** Lie les interfaces de repository à leur implémentation concrète, pour que les
@@ -23,4 +25,8 @@ abstract class RepositoryModule {
     @Binds
     @Singleton
     abstract fun bindGameSearchRepository(impl: GameSearchRepositoryImpl): GameSearchRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindIgdbPlaytimeRepository(impl: IgdbPlaytimeRepositoryImpl): IgdbPlaytimeRepository
 }

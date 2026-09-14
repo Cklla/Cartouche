@@ -7,26 +7,28 @@ import org.junit.Test
 class GameSearchResultTest {
 
     @Test
-    fun `toGame fait remonter le temps de jeu estime vers le jeu du backlog`() {
+    fun `toGame convertit un resultat de recherche en jeu du backlog a faire`() {
         val result = GameSearchResult(
             rawgId = 1L,
             title = "Hades",
             platform = "PC",
             genre = "Roguelike",
             year = "2020",
-            coverUrl = null,
-            estimatedPlaytimeHours = 22,
+            coverUrl = "https://example.com/hades.jpg",
         )
 
         val game = result.toGame()
 
-        assertEquals(22, game.estimatedPlaytimeHours)
-        assertEquals(0, game.userPlaytimeHours)
+        assertEquals("Hades", game.title)
+        assertEquals("PC", game.platform)
+        assertEquals("Roguelike", game.genre)
+        assertEquals("https://example.com/hades.jpg", game.coverUrl)
         assertEquals(GameStatus.A_FAIRE, game.status)
+        assertEquals(0, game.userPlaytimeHours)
     }
 
     @Test
-    fun `toGame garde le temps de jeu estime a null quand RAWG n'a pas la donnee`() {
+    fun `toGame laisse le temps de jeu estime a null, renseigne plus tard via IGDB`() {
         val result = GameSearchResult(
             rawgId = 1L,
             title = "Mystère",
@@ -34,7 +36,6 @@ class GameSearchResultTest {
             genre = "",
             year = "",
             coverUrl = null,
-            estimatedPlaytimeHours = null,
         )
 
         assertNull(result.toGame().estimatedPlaytimeHours)
