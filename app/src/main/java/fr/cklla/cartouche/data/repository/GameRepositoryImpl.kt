@@ -10,11 +10,16 @@ import fr.cklla.cartouche.domain.repository.GameRepository
 import java.util.UUID
 import javax.inject.Inject
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.flow.retryWhen
 import kotlinx.coroutines.launch
 
 /**
@@ -38,14 +43,9 @@ class GameRepositoryImpl @Inject constructor(
         repositoryScope.launch {
             authRepository.currentUser.collectLatest { user ->
                 if (user == null) {
-                    // Vide le cache local : évite qu'un autre compte Google se connectant ensuite
-                    // sur le même appareil voie le backlog du précédent.
-                    gameDao.clearAll()
+                    clearLocalData()
                 } else {
-                    bootstrapIfNeeded(user.uid)
-                    firestoreDataSource.observeGames(user.uid).collect { games ->
-                        mirrorIntoRoom(games)
-                    }
+                    syncWith(user.uid)
                 }
             }
         }
@@ -91,6 +91,39 @@ class GameRepositoryImpl @Inject constructor(
         onFailure = { Resource.Error("Impossible de retirer le jeu du backlog.", it) },
     )
 
+    // Ne laisse rien du compte précédent sur l'appareil : la base Room, mais aussi le cache que
+    // le SDK Firestore tient de son côté. Enveloppé dans un runCatching parce qu'une exception
+    // ici (base verrouillée, purge Firestore refusée) annulerait le collecteur de `currentUser`
+    // et couperait la synchro pour tout le reste de la vie du process.
+    private suspend fun clearLocalData() {
+        runCatching {
+            gameDao.clearAll()
+            firestoreDataSource.clearLocalCache()
+        }
+    }
+
+    // Une erreur Firestore (réseau, règles de sécurité, quota) termine le flux d'écoute. Sans le
+    // retry ci-dessous, la synchro s'arrêtait définitivement au premier incident, sans que rien
+    // ne le signale : l'app continuait à tourner sur le seul contenu de Room, et il fallait la
+    // relancer pour qu'elle se resynchronise.
+    private suspend fun syncWith(uid: String) {
+        bootstrapIfNeeded(uid)
+        firestoreDataSource.observeGames(uid)
+            .onEach { games -> mirrorIntoRoom(games) }
+            .retryWhen { _, attempt ->
+                if (attempt >= MAX_SYNC_ATTEMPTS) {
+                    false
+                } else {
+                    // Délai croissant : inutile de marteler Firestore si l'erreur est durable
+                    // (pas de réseau, règles qui refusent l'accès...).
+                    delay(RETRY_DELAY_MILLIS * (attempt + 1))
+                    true
+                }
+            }
+            .catch { }
+            .collect()
+    }
+
     // Upload automatique du backlog local existant, uniquement si Firestore n'a encore aucune
     // donnée pour cet utilisateur (première connexion). Si Firestore a déjà des jeux (connexion
     // déjà faite sur un autre appareil), on ne touche pas au local : le listener démarré juste
@@ -124,5 +157,10 @@ class GameRepositoryImpl @Inject constructor(
     private suspend fun pushToFirestore(action: suspend (uid: String) -> Unit) {
         val uid = authRepository.currentUser.value?.uid ?: return
         runCatching { action(uid) }
+    }
+
+    private companion object {
+        const val MAX_SYNC_ATTEMPTS = 5
+        const val RETRY_DELAY_MILLIS = 2_000L
     }
 }

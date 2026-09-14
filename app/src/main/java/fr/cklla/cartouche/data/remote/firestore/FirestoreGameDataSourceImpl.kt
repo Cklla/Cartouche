@@ -3,15 +3,26 @@ package fr.cklla.cartouche.data.remote.firestore
 import com.google.firebase.firestore.FirebaseFirestore
 import fr.cklla.cartouche.domain.model.Game
 import javax.inject.Inject
+import javax.inject.Provider
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.tasks.await
 
-/** Implémentation [FirestoreGameDataSource] adossée au SDK `FirebaseFirestore`. */
+/**
+ * Implémentation [FirestoreGameDataSource] adossée au SDK `FirebaseFirestore`.
+ *
+ * L'instance est récupérée via un `Provider` et jamais gardée dans un champ : [clearLocalCache]
+ * termine l'instance courante, qui devient définitivement inutilisable, et c'est le
+ * `FirebaseFirestore.getInstance()` suivant qui en reconstruit une neuve. Un champ mémorisé une
+ * fois pour toutes ferait planter tout ce qui suit une déconnexion.
+ */
 class FirestoreGameDataSourceImpl @Inject constructor(
-    private val firestore: FirebaseFirestore,
+    private val firestoreProvider: Provider<FirebaseFirestore>,
 ) : FirestoreGameDataSource {
+
+    private val firestore: FirebaseFirestore
+        get() = firestoreProvider.get()
 
     private fun gamesCollection(uid: String) =
         firestore.collection("users").document(uid).collection("games")
@@ -54,5 +65,13 @@ class FirestoreGameDataSourceImpl @Inject constructor(
         val batch = firestore.batch()
         games.forEach { game -> batch.set(collection.document(game.id), game.toFirestoreMap()) }
         batch.commit().await()
+    }
+
+    // `clearPersistence()` exige qu'aucune opération ne soit en cours, d'où le `terminate()`
+    // juste avant : il ferme les listeners restants et libère le fichier de cache.
+    override suspend fun clearLocalCache() {
+        val instance = firestore
+        instance.terminate().await()
+        instance.clearPersistence().await()
     }
 }

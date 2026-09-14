@@ -9,7 +9,7 @@ import dagger.hilt.components.SingletonComponent
 import javax.inject.Singleton
 
 /**
- * Fournit les instances Firebase, uniques pour toute la durée de vie de l'application.
+ * Fournit les instances Firebase utilisées par l'app.
  *
  * `FirebaseAuth.getInstance()`/`FirebaseFirestore.getInstance()` lisent leur configuration
  * (projet, clé API...) dans `google-services.json` via le plugin Gradle `google-services` —
@@ -23,7 +23,10 @@ object FirebaseModule {
     @Singleton
     fun provideFirebaseAuth(): FirebaseAuth = FirebaseAuth.getInstance()
 
+    // Volontairement pas @Singleton, contrairement à FirebaseAuth : terminer une instance
+    // Firestore (purge du cache local à la déconnexion) la rend inutilisable pour toujours, il
+    // faut donc pouvoir en redemander une neuve. `getInstance()` s'en charge et met lui-même en
+    // cache l'instance courante, on ne crée donc pas un client par injection.
     @Provides
-    @Singleton
     fun provideFirebaseFirestore(): FirebaseFirestore = FirebaseFirestore.getInstance()
 }

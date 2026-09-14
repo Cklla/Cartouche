@@ -26,4 +26,11 @@ interface FirestoreGameDataSource {
 
     /** Écriture groupée, utilisée pour l'upload initial du backlog local pré-existant. */
     suspend fun uploadAll(uid: String, games: List<Game>)
+
+    /**
+     * Efface la copie que Firestore garde sur le disque de l'appareil. Appelé à la déconnexion :
+     * vider la base Room ne suffit pas, le SDK conserve de son côté son propre cache des documents
+     * du compte qui vient de se déconnecter.
+     */
+    suspend fun clearLocalCache()
 }
