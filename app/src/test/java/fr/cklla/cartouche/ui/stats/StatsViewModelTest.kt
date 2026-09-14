@@ -2,7 +2,7 @@ package fr.cklla.cartouche.ui.stats
 
 import fr.cklla.cartouche.data.repository.FakeAuthRepository
 import fr.cklla.cartouche.data.repository.FakeGameDao
-import fr.cklla.cartouche.data.repository.GameRepositoryImpl
+import fr.cklla.cartouche.data.repository.fakeGameRepository
 import fr.cklla.cartouche.domain.model.AuthUser
 import fr.cklla.cartouche.domain.model.Game
 import fr.cklla.cartouche.domain.model.GameStatus
@@ -36,7 +36,7 @@ class StatsViewModelTest {
     @Test
     fun `uiState reflete le backlog courant et se met a jour en direct`() = runTest {
         val dao = FakeGameDao()
-        val repository = GameRepositoryImpl(dao)
+        val repository = fakeGameRepository(dao)
         repository.addGame(Game(title = "Hades", platform = "PC", genre = "Roguelike", status = GameStatus.TERMINE, userPlaytimeHours = 28))
         repository.addGame(Game(title = "Elden Ring", platform = "PS5", genre = "Action-RPG", status = GameStatus.A_FAIRE))
 
@@ -65,7 +65,7 @@ class StatsViewModelTest {
 
     @Test
     fun `currentUser reflete l'utilisateur connecte`() = runTest {
-        val repository = GameRepositoryImpl(FakeGameDao())
+        val repository = fakeGameRepository(FakeGameDao())
         val authRepository = FakeAuthRepository(user = AuthUser(uid = "u1", displayName = "Ada"))
         val viewModel = StatsViewModel(repository, authRepository)
 
@@ -74,7 +74,7 @@ class StatsViewModelTest {
 
     @Test
     fun `onSignOutClicked delegue au repository d'auth`() = runTest {
-        val repository = GameRepositoryImpl(FakeGameDao())
+        val repository = fakeGameRepository(FakeGameDao())
         val authRepository = FakeAuthRepository()
         val viewModel = StatsViewModel(repository, authRepository)
 

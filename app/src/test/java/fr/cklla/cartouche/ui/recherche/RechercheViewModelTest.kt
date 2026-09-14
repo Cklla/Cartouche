@@ -1,7 +1,7 @@
 package fr.cklla.cartouche.ui.recherche
 
 import fr.cklla.cartouche.data.repository.FakeGameDao
-import fr.cklla.cartouche.data.repository.GameRepositoryImpl
+import fr.cklla.cartouche.data.repository.fakeGameRepository
 import fr.cklla.cartouche.domain.model.GameSearchResult
 import fr.cklla.cartouche.domain.model.Resource
 import kotlinx.coroutines.Dispatchers
@@ -37,7 +37,7 @@ class RechercheViewModelTest {
 
     @Test
     fun `changer la recherche declenche un appel apres le debounce et expose les resultats`() = runTest {
-        val gameRepository = GameRepositoryImpl(FakeGameDao())
+        val gameRepository = fakeGameRepository(FakeGameDao())
         val searchRepository = FakeGameSearchRepository().apply {
             response = Resource.Success(listOf(sampleResult()))
         }
@@ -58,7 +58,7 @@ class RechercheViewModelTest {
 
     @Test
     fun `une recherche vide ne declenche aucun appel reseau`() = runTest {
-        val gameRepository = GameRepositoryImpl(FakeGameDao())
+        val gameRepository = fakeGameRepository(FakeGameDao())
         val searchRepository = FakeGameSearchRepository()
         val viewModel = RechercheViewModel(gameRepository, searchRepository)
         val collectorJob = launch { viewModel.uiState.collect {} }
@@ -71,7 +71,7 @@ class RechercheViewModelTest {
 
     @Test
     fun `plusieurs frappes rapprochees ne declenchent qu'un seul appel reseau`() = runTest {
-        val gameRepository = GameRepositoryImpl(FakeGameDao())
+        val gameRepository = fakeGameRepository(FakeGameDao())
         val searchRepository = FakeGameSearchRepository().apply {
             response = Resource.Success(listOf(sampleResult()))
         }
@@ -91,7 +91,7 @@ class RechercheViewModelTest {
 
     @Test
     fun `une erreur reseau remonte comme message d'erreur sans resultat`() = runTest {
-        val gameRepository = GameRepositoryImpl(FakeGameDao())
+        val gameRepository = fakeGameRepository(FakeGameDao())
         val searchRepository = FakeGameSearchRepository().apply {
             response = Resource.Error("Impossible de contacter RAWG.")
         }
@@ -110,7 +110,7 @@ class RechercheViewModelTest {
 
     @Test
     fun `ajouter un resultat au backlog le fait apparaitre comme deja ajoute`() = runTest {
-        val gameRepository = GameRepositoryImpl(FakeGameDao())
+        val gameRepository = fakeGameRepository(FakeGameDao())
         val searchRepository = FakeGameSearchRepository()
         val viewModel = RechercheViewModel(gameRepository, searchRepository)
         val collectorJob = launch { viewModel.uiState.collect {} }

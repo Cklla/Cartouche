@@ -4,6 +4,8 @@ import dagger.Binds
 import dagger.Module
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
+import fr.cklla.cartouche.data.remote.firestore.FirestoreGameDataSource
+import fr.cklla.cartouche.data.remote.firestore.FirestoreGameDataSourceImpl
 import fr.cklla.cartouche.data.repository.AuthRepositoryImpl
 import fr.cklla.cartouche.data.repository.GameRepositoryImpl
 import fr.cklla.cartouche.data.repository.GameSearchRepositoryImpl
@@ -35,4 +37,8 @@ abstract class RepositoryModule {
     @Binds
     @Singleton
     abstract fun bindAuthRepository(impl: AuthRepositoryImpl): AuthRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindFirestoreGameDataSource(impl: FirestoreGameDataSourceImpl): FirestoreGameDataSource
 }

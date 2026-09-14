@@ -31,4 +31,9 @@ class FakeAuthRepository(
         signOutCallCount++
         _currentUser.value = null
     }
+
+    /** Simule une connexion déjà effective, sans passer par le flow [signIn] (Credential Manager). */
+    fun signInAs(user: AuthUser) {
+        _currentUser.value = user
+    }
 }

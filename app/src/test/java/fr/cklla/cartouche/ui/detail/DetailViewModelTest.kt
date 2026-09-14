@@ -2,11 +2,12 @@ package fr.cklla.cartouche.ui.detail
 
 import androidx.lifecycle.SavedStateHandle
 import fr.cklla.cartouche.data.repository.FakeGameDao
-import fr.cklla.cartouche.data.repository.GameRepositoryImpl
+import fr.cklla.cartouche.data.repository.fakeGameRepository
 import fr.cklla.cartouche.domain.model.Game
 import fr.cklla.cartouche.domain.model.GameStatus
 import fr.cklla.cartouche.domain.model.IgdbPlaytimeEstimate
 import fr.cklla.cartouche.domain.model.Resource
+import fr.cklla.cartouche.domain.repository.GameRepository
 import fr.cklla.cartouche.ui.navigation.CartoucheDestinations
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -36,7 +37,7 @@ class DetailViewModelTest {
         Dispatchers.resetMain()
     }
 
-    private suspend fun setUpGame(repository: GameRepositoryImpl): String {
+    private suspend fun setUpGame(repository: GameRepository): String {
         val result = repository.addGame(
             Game(title = "Hades", platform = "PC", genre = "Roguelike", status = GameStatus.A_FAIRE),
         )
@@ -44,7 +45,7 @@ class DetailViewModelTest {
     }
 
     private fun viewModel(
-        repository: GameRepositoryImpl,
+        repository: GameRepository,
         gameId: String,
         igdbPlaytimeRepository: FakeIgdbPlaytimeRepository = FakeIgdbPlaytimeRepository(),
     ) = DetailViewModel(
@@ -56,7 +57,7 @@ class DetailViewModelTest {
     @Test
     fun `changer le statut met a jour le jeu observe`() = runTest {
         val dao = FakeGameDao()
-        val repository = GameRepositoryImpl(dao)
+        val repository = fakeGameRepository(dao)
         val gameId = setUpGame(repository)
         val viewModel = viewModel(repository, gameId)
         val collectorJob = launch { viewModel.uiState.collect {} }
@@ -72,7 +73,7 @@ class DetailViewModelTest {
     @Test
     fun `le temps de jeu ne descend jamais sous zero`() = runTest {
         val dao = FakeGameDao()
-        val repository = GameRepositoryImpl(dao)
+        val repository = fakeGameRepository(dao)
         val gameId = setUpGame(repository)
         val viewModel = viewModel(repository, gameId)
         val collectorJob = launch { viewModel.uiState.collect {} }
@@ -88,7 +89,7 @@ class DetailViewModelTest {
     @Test
     fun `incrementer puis decrementer le temps de jeu revient a la valeur initiale`() = runTest {
         val dao = FakeGameDao()
-        val repository = GameRepositoryImpl(dao)
+        val repository = fakeGameRepository(dao)
         val gameId = setUpGame(repository)
         val viewModel = viewModel(repository, gameId)
         val collectorJob = launch { viewModel.uiState.collect {} }
@@ -108,7 +109,7 @@ class DetailViewModelTest {
     @Test
     fun `noter et modifier les notes libres met a jour le jeu`() = runTest {
         val dao = FakeGameDao()
-        val repository = GameRepositoryImpl(dao)
+        val repository = fakeGameRepository(dao)
         val gameId = setUpGame(repository)
         val viewModel = viewModel(repository, gameId)
         val collectorJob = launch { viewModel.uiState.collect {} }
@@ -127,7 +128,7 @@ class DetailViewModelTest {
     @Test
     fun `retirer le jeu du backlog fait disparaitre le jeu observe`() = runTest {
         val dao = FakeGameDao()
-        val repository = GameRepositoryImpl(dao)
+        val repository = fakeGameRepository(dao)
         val gameId = setUpGame(repository)
         val viewModel = viewModel(repository, gameId)
         val collectorJob = launch { viewModel.uiState.collect {} }
@@ -144,7 +145,7 @@ class DetailViewModelTest {
     @Test
     fun `ouvrir la fiche declenche une recherche IGDB quand aucun temps estime n'est en cache`() = runTest {
         val dao = FakeGameDao()
-        val repository = GameRepositoryImpl(dao)
+        val repository = fakeGameRepository(dao)
         val gameId = setUpGame(repository)
         val igdbRepository = FakeIgdbPlaytimeRepository(
             result = IgdbPlaytimeEstimate(hastilyHours = 20, normallyHours = 25, completelyHours = 40),
@@ -164,7 +165,7 @@ class DetailViewModelTest {
     @Test
     fun `un temps estime partiel (IGDB) laisse les champs non renseignes a null`() = runTest {
         val dao = FakeGameDao()
-        val repository = GameRepositoryImpl(dao)
+        val repository = fakeGameRepository(dao)
         val gameId = setUpGame(repository)
         val igdbRepository = FakeIgdbPlaytimeRepository(
             result = IgdbPlaytimeEstimate(hastilyHours = null, normallyHours = 12, completelyHours = null),
@@ -183,7 +184,7 @@ class DetailViewModelTest {
     @Test
     fun `ouvrir la fiche ne redemande pas IGDB si un temps estime est deja en cache`() = runTest {
         val dao = FakeGameDao()
-        val repository = GameRepositoryImpl(dao)
+        val repository = fakeGameRepository(dao)
         val result = repository.addGame(
             Game(
                 title = "Hades",
@@ -209,7 +210,7 @@ class DetailViewModelTest {
     @Test
     fun `un echec IGDB laisse les temps de jeu estimes a null`() = runTest {
         val dao = FakeGameDao()
-        val repository = GameRepositoryImpl(dao)
+        val repository = fakeGameRepository(dao)
         val gameId = setUpGame(repository)
         val igdbRepository = FakeIgdbPlaytimeRepository(result = null)
         val viewModel = viewModel(repository, gameId, igdbRepository)

@@ -1,7 +1,7 @@
 package fr.cklla.cartouche.ui.bibliotheque
 
 import fr.cklla.cartouche.data.repository.FakeGameDao
-import fr.cklla.cartouche.data.repository.GameRepositoryImpl
+import fr.cklla.cartouche.data.repository.fakeGameRepository
 import fr.cklla.cartouche.domain.model.Game
 import fr.cklla.cartouche.domain.model.GameStatus
 import kotlinx.coroutines.Dispatchers
@@ -34,7 +34,7 @@ class BibliothequeViewModelTest {
     @Test
     fun `selectionner un filtre restreint la liste visible sans affecter les compteurs`() = runTest {
         val dao = FakeGameDao()
-        val repository = GameRepositoryImpl(dao)
+        val repository = fakeGameRepository(dao)
         repository.addGame(Game(title = "Hades", platform = "PC", genre = "Roguelike", status = GameStatus.TERMINE))
         repository.addGame(Game(title = "Elden Ring", platform = "PS5", genre = "Action-RPG", status = GameStatus.A_FAIRE))
 

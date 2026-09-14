@@ -35,4 +35,10 @@ class FakeGameDao : GameDao {
     override suspend fun deleteById(id: String) {
         games.update { list -> list.filterNot { it.id == id } }
     }
+
+    override suspend fun getAllIds(): List<String> = games.value.map { it.id }
+
+    override suspend fun clearAll() {
+        games.value = emptyList()
+    }
 }
