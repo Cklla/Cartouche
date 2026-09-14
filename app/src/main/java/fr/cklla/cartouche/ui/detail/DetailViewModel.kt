@@ -116,6 +116,10 @@ class DetailViewModel @Inject constructor(
     fun onHoursDecrement() =
         applyEdit { it.copy(userPlaytimeHours = (it.userPlaytimeHours - 1).coerceAtLeast(0)) }
 
+    // Saisie manuelle (voir `HoursValueField`) : permet de renseigner directement un temps de jeu
+    // élevé sans passer par des dizaines de clics sur le bouton "+" (ex. 380h sur un JRPG).
+    fun onHoursSet(hours: Int) = applyEdit { it.copy(userPlaytimeHours = hours.coerceAtLeast(0)) }
+
     fun onNotesChanged(notes: String) = applyEdit { it.copy(notes = notes) }
 
     /**

@@ -19,11 +19,15 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
@@ -46,12 +50,19 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -103,6 +114,7 @@ fun DetailScreen(
         onRatingSelected = viewModel::onRatingSelected,
         onHoursIncrement = viewModel::onHoursIncrement,
         onHoursDecrement = viewModel::onHoursDecrement,
+        onHoursSet = viewModel::onHoursSet,
         onNotesChanged = viewModel::onNotesChanged,
         onRemoveGame = viewModel::onRemoveGame,
         onAddGame = viewModel::onAddGame,
@@ -119,6 +131,7 @@ private fun DetailContent(
     onRatingSelected: (Int) -> Unit,
     onHoursIncrement: () -> Unit,
     onHoursDecrement: () -> Unit,
+    onHoursSet: (Int) -> Unit,
     onNotesChanged: (String) -> Unit,
     onRemoveGame: () -> Unit,
     onAddGame: () -> Unit,
@@ -167,6 +180,7 @@ private fun DetailContent(
                     hours = game.userPlaytimeHours,
                     onIncrement = onHoursIncrement,
                     onDecrement = onHoursDecrement,
+                    onHoursSet = onHoursSet,
                 )
                 NotesSection(notes = game.notes, onNotesChanged = onNotesChanged)
                 RemoveLink(onClick = { showRemoveConfirm = true })
@@ -351,7 +365,12 @@ private fun EstimatedPlaytimeEntry(labelRes: Int, hours: Int) {
 }
 
 @Composable
-private fun HoursSection(hours: Int, onIncrement: () -> Unit, onDecrement: () -> Unit) {
+private fun HoursSection(
+    hours: Int,
+    onIncrement: () -> Unit,
+    onDecrement: () -> Unit,
+    onHoursSet: (Int) -> Unit,
+) {
     Column {
         SectionLabel(stringResource(R.string.detail_hours_label))
         Spacer(modifier = Modifier.height(10.dp))
@@ -362,11 +381,7 @@ private fun HoursSection(hours: Int, onIncrement: () -> Unit, onDecrement: () ->
                 enabled = hours > 0,
                 onClick = onDecrement,
             )
-            Text(
-                text = stringResource(R.string.detail_hours_value, hours),
-                style = CartoucheTextStyles.hoursValue,
-                color = TextPrimary,
-            )
+            HoursValueField(hours = hours, onHoursSet = onHoursSet)
             HoursStepButton(
                 icon = Icons.Filled.Add,
                 contentDescription = stringResource(R.string.detail_hours_increment),
@@ -374,6 +389,75 @@ private fun HoursSection(hours: Int, onIncrement: () -> Unit, onDecrement: () ->
                 onClick = onIncrement,
             )
         }
+    }
+}
+
+// Nombre maximal de chiffres acceptés en saisie manuelle (5 chiffres = jusqu'à 99999h, largement
+// au-delà de n'importe quel jeu réel — juste une garde-fou contre une saisie absurde).
+private const val MAX_HOURS_DIGITS = 5
+
+/**
+ * Affichage du temps de jeu perso, qui devient un champ de saisie numérique au tap — pensé pour
+ * les jeux très longs (ex. 380h) où incrémenter un par un via [HoursStepButton] serait fastidieux.
+ * Les boutons +/- restent utilisables normalement après une saisie manuelle, puisque la valeur
+ * affichée reste la même source de vérité ([hours]) dans les deux cas.
+ */
+@Composable
+private fun HoursValueField(hours: Int, onHoursSet: (Int) -> Unit) {
+    var isEditing by remember { mutableStateOf(false) }
+    // Réinitialisée à chaque entrée en mode édition (clé `isEditing`) : pré-remplie avec la valeur
+    // actuelle, texte entièrement sélectionné pour permettre de la remplacer d'une seule frappe.
+    var fieldValue by remember(isEditing) {
+        mutableStateOf(
+            if (isEditing) {
+                val text = hours.toString()
+                TextFieldValue(text = text, selection = TextRange(0, text.length))
+            } else {
+                TextFieldValue()
+            },
+        )
+    }
+    val focusRequester = remember { FocusRequester() }
+    val editContentDescription = stringResource(R.string.detail_hours_edit_content_description, hours)
+    val inputContentDescription = stringResource(R.string.detail_hours_input_content_description)
+
+    fun commit() {
+        fieldValue.text.toIntOrNull()?.let(onHoursSet)
+        isEditing = false
+    }
+
+    if (isEditing) {
+        BasicTextField(
+            value = fieldValue,
+            onValueChange = { new ->
+                fieldValue = new.copy(text = new.text.filter(Char::isDigit).take(MAX_HOURS_DIGITS))
+            },
+            singleLine = true,
+            textStyle = CartoucheTextStyles.hoursValue.copy(color = TextPrimary),
+            cursorBrush = SolidColor(AccentPurple),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done),
+            keyboardActions = KeyboardActions(onDone = { commit() }),
+            modifier = Modifier
+                .heightIn(min = 48.dp)
+                .widthIn(min = 32.dp)
+                .wrapContentHeight(Alignment.CenterVertically)
+                .focusRequester(focusRequester)
+                .onFocusChanged { state -> if (!state.isFocused) commit() }
+                .semantics { contentDescription = inputContentDescription },
+        )
+        LaunchedEffect(Unit) { focusRequester.requestFocus() }
+    } else {
+        Text(
+            text = stringResource(R.string.detail_hours_value, hours),
+            style = CartoucheTextStyles.hoursValue,
+            color = TextPrimary,
+            modifier = Modifier
+                .heightIn(min = 48.dp)
+                .wrapContentHeight(Alignment.CenterVertically)
+                .clip(RoundedCornerShape(6.dp))
+                .clickable { isEditing = true }
+                .semantics { contentDescription = editContentDescription },
+        )
     }
 }
 
@@ -530,6 +614,7 @@ private fun DetailContentPreview() {
             onRatingSelected = {},
             onHoursIncrement = {},
             onHoursDecrement = {},
+            onHoursSet = {},
             onNotesChanged = {},
             onRemoveGame = {},
             onAddGame = {},
@@ -556,6 +641,7 @@ private fun DetailContentApercuPreview() {
             onRatingSelected = {},
             onHoursIncrement = {},
             onHoursDecrement = {},
+            onHoursSet = {},
             onNotesChanged = {},
             onRemoveGame = {},
             onAddGame = {},
