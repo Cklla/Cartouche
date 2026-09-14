@@ -43,4 +43,4 @@ Les données sont conservées tant que le compte est utilisé. Pour une suppress
 ## Contact
 
 Pour toute question sur cette politique ou pour demander la suppression de vos données :
-freret.stephane@gmail.com
+contact@cklla.fr
