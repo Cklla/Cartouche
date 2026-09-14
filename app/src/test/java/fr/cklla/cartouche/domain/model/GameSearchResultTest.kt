@@ -28,7 +28,7 @@ class GameSearchResultTest {
     }
 
     @Test
-    fun `toGame laisse le temps de jeu estime a null, renseigne plus tard via IGDB`() {
+    fun `toGame laisse les temps de jeu estimes a null, renseignes plus tard via IGDB`() {
         val result = GameSearchResult(
             rawgId = 1L,
             title = "Mystère",
@@ -38,6 +38,10 @@ class GameSearchResultTest {
             coverUrl = null,
         )
 
-        assertNull(result.toGame().estimatedPlaytimeHours)
+        val game = result.toGame()
+
+        assertNull(game.estimatedPlaytimeHastilyHours)
+        assertNull(game.estimatedPlaytimeNormallyHours)
+        assertNull(game.estimatedPlaytimeCompletelyHours)
     }
 }

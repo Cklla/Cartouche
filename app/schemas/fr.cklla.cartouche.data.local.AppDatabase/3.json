@@ -1,0 +1,92 @@
+{
+  "formatVersion": 1,
+  "database": {
+    "version": 3,
+    "identityHash": "12f86605992928740b9c34f8686bc625",
+    "entities": [
+      {
+        "tableName": "games",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `title` TEXT NOT NULL, `platform` TEXT NOT NULL, `genre` TEXT NOT NULL, `status` TEXT NOT NULL, `userPlaytimeHours` INTEGER NOT NULL, `estimatedPlaytimeHastilyHours` INTEGER, `estimatedPlaytimeNormallyHours` INTEGER, `estimatedPlaytimeCompletelyHours` INTEGER, `rating` INTEGER, `notes` TEXT NOT NULL, `coverUrl` TEXT)",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "title",
+            "columnName": "title",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "platform",
+            "columnName": "platform",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "genre",
+            "columnName": "genre",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "status",
+            "columnName": "status",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "userPlaytimeHours",
+            "columnName": "userPlaytimeHours",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "estimatedPlaytimeHastilyHours",
+            "columnName": "estimatedPlaytimeHastilyHours",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "estimatedPlaytimeNormallyHours",
+            "columnName": "estimatedPlaytimeNormallyHours",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "estimatedPlaytimeCompletelyHours",
+            "columnName": "estimatedPlaytimeCompletelyHours",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "rating",
+            "columnName": "rating",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "notes",
+            "columnName": "notes",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "coverUrl",
+            "columnName": "coverUrl",
+            "affinity": "TEXT"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        }
+      }
+    ],
+    "setupQueries": [
+      "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '12f86605992928740b9c34f8686bc625')"
+    ]
+  }
+}

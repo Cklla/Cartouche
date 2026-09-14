@@ -139,6 +139,15 @@ object CartoucheTextStyles {
         fontSize = 20.sp,
     )
 
+    // Valeurs du temps de jeu estimé IGDB (rapide/normal/complet) : plus petites que `hoursValue`
+    // puisque jusqu'à 3 valeurs sont désormais affichées côte à côte sur cette même fiche.
+    val estimatedPlaytimeValue = TextStyle(
+        fontFamily = FrauncesItalic,
+        fontWeight = FontWeight.SemiBold,
+        fontStyle = FontStyle.Italic,
+        fontSize = 17.sp,
+    )
+
     val notesText = TextStyle(
         fontFamily = InterFamily,
         fontSize = 13.5.sp,

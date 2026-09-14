@@ -67,5 +67,10 @@ private fun levenshteinDistance(a: String, b: String): Int {
     return distances[a.length][b.length]
 }
 
-/** IGDB exprime la durée de vie en secondes ; l'app l'affiche en heures entières. */
-fun secondsToHours(seconds: Int): Int = seconds / 3600
+/**
+ * Convertit une durée IGDB (secondes) en heures affichables, ou `null` si IGDB n'a pas cette
+ * donnée précise pour le jeu. Comme RAWG en son temps (voir historique de `normalizePlaytime`),
+ * IGDB peut renvoyer `null` (champ absent, ex. "Hastily : N/A") ou `0` pour signifier l'absence
+ * de donnée : les deux cas sont traités comme "non disponible", jamais comme "0h".
+ */
+fun toEstimatedHours(seconds: Int?): Int? = seconds?.takeIf { it > 0 }?.let { it / 3600 }

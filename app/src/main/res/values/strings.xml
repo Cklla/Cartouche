@@ -44,6 +44,9 @@
     <string name="detail_rating_label">Note perso</string>
     <string name="detail_rating_star_content_description">Donner une note de %1$d sur 5</string>
     <string name="detail_estimated_playtime_label">Temps de jeu estimé</string>
+    <string name="detail_estimated_playtime_hastily_label">Rapide</string>
+    <string name="detail_estimated_playtime_normally_label">Normal</string>
+    <string name="detail_estimated_playtime_completely_label">Complet</string>
     <string name="detail_estimated_playtime_value">%1$dh</string>
     <string name="detail_estimated_playtime_unavailable">Non disponible</string>
     <string name="detail_hours_label">Mon temps de jeu</string>

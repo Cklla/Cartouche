@@ -18,9 +18,9 @@ data class GameSearchResult(
 /**
  * Convertit un résultat de recherche en jeu du backlog, avec le statut par défaut "À faire".
  *
- * `estimatedPlaytimeHours` n'est jamais renseigné ici : RAWG ne fournit plus cette donnée (trop
- * peu fiable, voir historique du champ). Elle est recherchée séparément via IGDB, seulement à
- * l'ouverture de la fiche détail (voir `DetailViewModel`).
+ * Les champs `estimatedPlaytime*` ne sont jamais renseignés ici : RAWG ne fournit plus cette
+ * donnée (trop peu fiable, voir historique du champ). Ils sont recherchés séparément via IGDB,
+ * seulement à l'ouverture de la fiche détail (voir `DetailViewModel`).
  */
 fun GameSearchResult.toGame(): Game = Game(
     title = title,

@@ -9,11 +9,19 @@ package fr.cklla.cartouche.domain.model
  *
  * @param id identifiant local (0 = jeu pas encore persisté).
  * @param userPlaytimeHours temps de jeu renseigné manuellement par l'utilisateur, en heures.
- * @param estimatedPlaytimeHours temps nécessaire pour "terminer normalement" le jeu selon IGDB
- *   (`game_time_to_beats.normally`), en heures ; `null` si IGDB n'a pas cette donnée ou si la
- *   recherche n'a pas encore eu lieu (voir `DetailViewModel`, qui déclenche la recherche IGDB à
- *   l'ouverture de la fiche détail et met le résultat en cache ici). Distinct de
- *   [userPlaytimeHours], jamais modifiable par l'utilisateur.
+ * @param estimatedPlaytimeHastilyHours temps pour "rusher" le jeu selon IGDB
+ *   (`game_time_to_beats.hastily`), en heures ; `null` si IGDB n'a pas cette donnée pour ce jeu.
+ * @param estimatedPlaytimeNormallyHours temps pour terminer le jeu "normalement" selon IGDB
+ *   (`game_time_to_beats.normally`), en heures ; `null` si IGDB n'a pas cette donnée pour ce jeu.
+ * @param estimatedPlaytimeCompletelyHours temps pour terminer le jeu "à 100%" selon IGDB
+ *   (`game_time_to_beats.completely`), en heures ; `null` si IGDB n'a pas cette donnée pour ce jeu.
+ *
+ * Les trois champs `estimatedPlaytime*` sont indépendamment nullables : IGDB peut n'avoir que
+ * certaines des trois durées pour un jeu donné (voir `DetailScreen`, qui n'affiche que celles
+ * renseignées). Tous les trois valent `null` tant que la recherche IGDB n'a pas encore eu lieu
+ * (voir `DetailViewModel`, qui la déclenche à l'ouverture de la fiche détail et met le résultat
+ * en cache ici) ; aucun n'est jamais modifiable par l'utilisateur, contrairement à
+ * [userPlaytimeHours].
  * @param rating note personnelle de 1 à 5, ou null si le jeu n'est pas encore noté.
  */
 data class Game(
@@ -23,7 +31,9 @@ data class Game(
     val genre: String,
     val status: GameStatus,
     val userPlaytimeHours: Int = 0,
-    val estimatedPlaytimeHours: Int? = null,
+    val estimatedPlaytimeHastilyHours: Int? = null,
+    val estimatedPlaytimeNormallyHours: Int? = null,
+    val estimatedPlaytimeCompletelyHours: Int? = null,
     val rating: Int? = null,
     val notes: String = "",
     val coverUrl: String? = null,

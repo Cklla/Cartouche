@@ -50,10 +50,12 @@ class DetailViewModel @Inject constructor(
             isLoading.value = false
 
             // Lookup IGDB déclenché une seule fois, seulement à l'ouverture de la fiche et
-            // seulement si le temps de jeu estimé n'est pas déjà en cache (voir `Game.
-            // estimatedPlaytimeHours`) — jamais pendant la recherche RAWG ni sur la liste du
-            // backlog, pour éviter des appels inutiles.
-            if (game != null && game.estimatedPlaytimeHours == null) {
+            // seulement si aucun des trois temps de jeu estimés n'est déjà en cache (voir
+            // `Game.estimatedPlaytime*Hours`) — jamais pendant la recherche RAWG ni sur la liste
+            // du backlog, pour éviter des appels inutiles.
+            if (game != null && game.estimatedPlaytimeHastilyHours == null &&
+                game.estimatedPlaytimeNormallyHours == null && game.estimatedPlaytimeCompletelyHours == null
+            ) {
                 fetchEstimatedPlaytime(game)
             }
         }
@@ -61,10 +63,16 @@ class DetailViewModel @Inject constructor(
 
     private fun fetchEstimatedPlaytime(game: Game) {
         viewModelScope.launch {
-            val hours = igdbPlaytimeRepository.findEstimatedPlaytimeHours(game.title) ?: return@launch
+            val estimate = igdbPlaytimeRepository.findEstimatedPlaytime(game.title) ?: return@launch
             // Le jeu affiché a pu changer entretemps (retiré du backlog) : `applyEdit` gère déjà
             // ce cas (no-op si `workingGame` est `null`), donc pas de vérification supplémentaire ici.
-            applyEdit { it.copy(estimatedPlaytimeHours = hours) }
+            applyEdit {
+                it.copy(
+                    estimatedPlaytimeHastilyHours = estimate.hastilyHours,
+                    estimatedPlaytimeNormallyHours = estimate.normallyHours,
+                    estimatedPlaytimeCompletelyHours = estimate.completelyHours,
+                )
+            }
         }
     }
 

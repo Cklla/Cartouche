@@ -1,14 +1,15 @@
 package fr.cklla.cartouche.ui.detail
 
+import fr.cklla.cartouche.domain.model.IgdbPlaytimeEstimate
 import fr.cklla.cartouche.domain.repository.IgdbPlaytimeRepository
 
-/** Double de test en mémoire : renvoie une valeur fixe et compte les appels reçus. */
-class FakeIgdbPlaytimeRepository(private val result: Int? = null) : IgdbPlaytimeRepository {
+/** Double de test en mémoire : renvoie un résultat fixe et compte les appels reçus. */
+class FakeIgdbPlaytimeRepository(private val result: IgdbPlaytimeEstimate? = null) : IgdbPlaytimeRepository {
 
     var callCount = 0
         private set
 
-    override suspend fun findEstimatedPlaytimeHours(title: String): Int? {
+    override suspend fun findEstimatedPlaytime(title: String): IgdbPlaytimeEstimate? {
         callCount++
         return result
     }

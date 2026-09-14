@@ -6,7 +6,8 @@ import fr.cklla.cartouche.data.remote.igdb.IgdbTokenProvider
 import fr.cklla.cartouche.data.remote.igdb.buildSearchQuery
 import fr.cklla.cartouche.data.remote.igdb.buildTimeToBeatQuery
 import fr.cklla.cartouche.data.remote.igdb.findBestMatch
-import fr.cklla.cartouche.data.remote.igdb.secondsToHours
+import fr.cklla.cartouche.data.remote.igdb.toEstimatedHours
+import fr.cklla.cartouche.domain.model.IgdbPlaytimeEstimate
 import fr.cklla.cartouche.domain.repository.IgdbPlaytimeRepository
 import javax.inject.Inject
 import okhttp3.MediaType.Companion.toMediaType
@@ -18,7 +19,7 @@ class IgdbPlaytimeRepositoryImpl @Inject constructor(
     private val tokenProvider: IgdbTokenProvider,
 ) : IgdbPlaytimeRepository {
 
-    override suspend fun findEstimatedPlaytimeHours(title: String): Int? {
+    override suspend fun findEstimatedPlaytime(title: String): IgdbPlaytimeEstimate? {
         val token = tokenProvider.getValidToken() ?: return null
         val authorization = "Bearer $token"
 
@@ -34,9 +35,13 @@ class IgdbPlaytimeRepositoryImpl @Inject constructor(
                 clientId = BuildConfig.IGDB_CLIENT_ID,
                 authorization = authorization,
                 query = buildTimeToBeatQuery(match.id).toApicalypseBody(),
-            ).firstOrNull()
+            ).firstOrNull() ?: return@runCatching null
 
-            timeToBeat?.normallySeconds?.let { secondsToHours(it) }
+            IgdbPlaytimeEstimate(
+                hastilyHours = toEstimatedHours(timeToBeat.hastilySeconds),
+                normallyHours = toEstimatedHours(timeToBeat.normallySeconds),
+                completelyHours = toEstimatedHours(timeToBeat.completelySeconds),
+            )
         }.getOrNull()
     }
 

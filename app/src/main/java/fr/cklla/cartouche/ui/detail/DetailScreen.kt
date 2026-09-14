@@ -148,7 +148,11 @@ private fun DetailContent(
             TitleSection(game = game)
             StatusSection(selected = game.status, onStatusSelected = onStatusSelected)
             RatingSection(rating = game.rating, onRatingSelected = onRatingSelected)
-            EstimatedPlaytimeSection(hours = game.estimatedPlaytimeHours)
+            EstimatedPlaytimeSection(
+                hastily = game.estimatedPlaytimeHastilyHours,
+                normally = game.estimatedPlaytimeNormallyHours,
+                completely = game.estimatedPlaytimeCompletelyHours,
+            )
             HoursSection(
                 hours = game.userPlaytimeHours,
                 onIncrement = onHoursIncrement,
@@ -287,23 +291,48 @@ private fun RatingSection(rating: Int?, onRatingSelected: (Int) -> Unit) {
 }
 
 /**
- * Temps de jeu moyen constaté par RAWG (majoritairement Steam), en lecture seule — distinct de
+ * Temps de jeu estimé par IGDB (rapide/normal/complet), en lecture seule — distinct de
  * [HoursSection] (temps de jeu personnel, éditable) : jamais dans le même bloc UI, pour ne pas
- * laisser croire que cette valeur est modifiable ou qu'elle vient du joueur.
+ * laisser croire que ces valeurs sont modifiables ou qu'elles viennent du joueur.
+ *
+ * Seules les valeurs effectivement renseignées par IGDB sont affichées (certains jeux n'ont
+ * qu'une partie des trois, ex. seul "normally" pour *Trails in the Sky First Chapter*) ; si
+ * aucune des trois n'est disponible, un unique message "Non disponible" est affiché à la place.
  */
 @Composable
-private fun EstimatedPlaytimeSection(hours: Int?) {
+private fun EstimatedPlaytimeSection(hastily: Int?, normally: Int?, completely: Int?) {
+    val entries = listOfNotNull(
+        hastily?.let { R.string.detail_estimated_playtime_hastily_label to it },
+        normally?.let { R.string.detail_estimated_playtime_normally_label to it },
+        completely?.let { R.string.detail_estimated_playtime_completely_label to it },
+    )
+
     Column {
         SectionLabel(stringResource(R.string.detail_estimated_playtime_label))
         Spacer(modifier = Modifier.height(10.dp))
+        if (entries.isEmpty()) {
+            Text(
+                text = stringResource(R.string.detail_estimated_playtime_unavailable),
+                style = CartoucheTextStyles.hoursValue,
+                color = TextMuted,
+            )
+        } else {
+            Row(horizontalArrangement = Arrangement.spacedBy(24.dp)) {
+                entries.forEach { (labelRes, hours) -> EstimatedPlaytimeEntry(labelRes = labelRes, hours = hours) }
+            }
+        }
+    }
+}
+
+@Composable
+private fun EstimatedPlaytimeEntry(labelRes: Int, hours: Int) {
+    Column {
+        Text(text = stringResource(labelRes), style = CartoucheTextStyles.cardSubtitle, color = TextTertiary)
+        Spacer(modifier = Modifier.height(2.dp))
         Text(
-            text = if (hours != null) {
-                stringResource(R.string.detail_estimated_playtime_value, hours)
-            } else {
-                stringResource(R.string.detail_estimated_playtime_unavailable)
-            },
-            style = CartoucheTextStyles.hoursValue,
-            color = if (hours != null) TextSecondary else TextMuted,
+            text = stringResource(R.string.detail_estimated_playtime_value, hours),
+            style = CartoucheTextStyles.estimatedPlaytimeValue,
+            color = TextSecondary,
         )
     }
 }
@@ -454,7 +483,9 @@ private fun DetailContentPreview() {
         genre = "Aventure",
         status = GameStatus.EN_COURS,
         userPlaytimeHours = 34,
-        estimatedPlaytimeHours = 48,
+        estimatedPlaytimeHastilyHours = 38,
+        estimatedPlaytimeNormallyHours = 48,
+        estimatedPlaytimeCompletelyHours = 96,
         rating = 4,
         notes = "Exploration incroyable, à reprendre le week-end.",
     )

@@ -11,8 +11,8 @@ data class IgdbGameDto(
 )
 
 /**
- * Durée de vie d'un jeu IGDB (`POST /v4/game_time_to_beats`), en secondes.
- * [normally] est la valeur affichée par défaut dans l'app (voir `estimatedPlaytimeHours`).
+ * Durée de vie d'un jeu IGDB (`POST /v4/game_time_to_beats`), en secondes. Les trois champs sont
+ * tous affichés dans l'app quand ils sont renseignés (voir `Game.estimatedPlaytime*Hours`).
  */
 @JsonClass(generateAdapter = true)
 data class IgdbTimeToBeatDto(

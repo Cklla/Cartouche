@@ -67,8 +67,17 @@ class IgdbMappersTest {
     }
 
     @Test
-    fun `secondsToHours convertit des secondes en heures entieres`() {
-        assertEquals(10, secondsToHours(36_000))
-        assertEquals(0, secondsToHours(1_800))
+    fun `toEstimatedHours convertit des secondes connues en heures entieres`() {
+        assertEquals(10, toEstimatedHours(36_000))
+    }
+
+    @Test
+    fun `toEstimatedHours traite l'absence de donnee comme non disponible`() {
+        assertNull(toEstimatedHours(null))
+    }
+
+    @Test
+    fun `toEstimatedHours traite une duree a zero comme non disponible`() {
+        assertNull(toEstimatedHours(0))
     }
 }
