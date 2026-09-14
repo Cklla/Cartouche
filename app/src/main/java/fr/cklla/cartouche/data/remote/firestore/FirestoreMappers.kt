@@ -71,6 +71,8 @@ fun mapToGame(id: String, data: Map<String, Any?>): Game? {
         estimatedPlaytimeCompletelyHours = (data[FIELD_ESTIMATED_PLAYTIME_COMPLETELY_HOURS] as? Number)?.toInt(),
         rating = (data[FIELD_RATING] as? Number)?.toInt(),
         notes = data[FIELD_NOTES] as? String ?: "",
-        coverUrl = data[FIELD_COVER_URL] as? String,
+        // Cette URL finit directement dans un chargeur d'images : on n'accepte que du HTTPS,
+        // plutôt que de charger n'importe quel schéma présent dans le document.
+        coverUrl = (data[FIELD_COVER_URL] as? String)?.takeIf { it.startsWith("https://") },
     )
 }

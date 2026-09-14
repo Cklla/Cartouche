@@ -10,6 +10,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -37,12 +38,12 @@ class GameRepositoryImplTest {
         status = GameStatus.A_FAIRE,
     )
 
-    private fun buildRepository() {
+    private fun buildRepository(scope: CoroutineScope = CoroutineScope(UnconfinedTestDispatcher())) {
         repository = GameRepositoryImpl(
             gameDao = dao,
             firestoreDataSource = firestoreDataSource,
             authRepository = authRepository,
-            repositoryScope = CoroutineScope(UnconfinedTestDispatcher()),
+            repositoryScope = scope,
         )
     }
 
@@ -118,6 +119,33 @@ class GameRepositoryImplTest {
         authRepository.signOut()
 
         assertTrue(repository.observeGames().first().isEmpty())
+    }
+
+    @Test
+    fun `deconnexion purge aussi le cache disque de Firestore`() = runTest {
+        repository.addGame(hades)
+
+        authRepository.signOut()
+
+        assertEquals(1, firestoreDataSource.clearLocalCacheCallCount)
+    }
+
+    @Test
+    fun `la synchro reprend apres une erreur Firestore`() = runTest {
+        // Même horloge virtuelle que le test, sinon les délais entre deux tentatives
+        // n'avanceraient jamais.
+        authRepository = FakeAuthRepository(user = null)
+        firestoreDataSource = FakeFirestoreGameDataSource().apply { failedObserveAttempts = 2 }
+        buildRepository(CoroutineScope(UnconfinedTestDispatcher(testScheduler)))
+        firestoreDataSource.remoteGames.value = listOf(hades.copy(id = "distant-1"))
+
+        authRepository.signInAs(AuthUser(uid = "user", displayName = "Joueur"))
+        advanceUntilIdle()
+
+        // Sans retry, les deux premières erreurs auraient coupé la synchro définitivement et le
+        // jeu distant ne serait jamais arrivé jusqu'à Room.
+        assertEquals(3, firestoreDataSource.observeCallCount)
+        assertEquals(listOf("distant-1"), repository.observeGames().first().map { it.id })
     }
 
     @Test

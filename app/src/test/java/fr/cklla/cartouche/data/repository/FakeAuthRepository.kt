@@ -27,7 +27,7 @@ class FakeAuthRepository(
         return signInResult
     }
 
-    override fun signOut() {
+    override suspend fun signOut() {
         signOutCallCount++
         _currentUser.value = null
     }

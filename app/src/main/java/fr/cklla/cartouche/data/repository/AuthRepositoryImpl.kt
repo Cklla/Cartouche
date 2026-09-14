@@ -1,6 +1,7 @@
 package fr.cklla.cartouche.data.repository
 
 import android.content.Context
+import androidx.credentials.ClearCredentialStateRequest
 import androidx.credentials.CredentialManager
 import androidx.credentials.CustomCredential
 import androidx.credentials.GetCredentialRequest
@@ -10,6 +11,7 @@ import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.auth.GoogleAuthProvider
+import dagger.hilt.android.qualifiers.ApplicationContext
 import fr.cklla.cartouche.R
 import fr.cklla.cartouche.domain.model.AuthUser
 import fr.cklla.cartouche.domain.model.Resource
@@ -26,6 +28,7 @@ private fun FirebaseUser.toAuthUser() = AuthUser(uid = uid, displayName = displa
  * Google, puis échange du jeton Google contre une session Firebase Auth.
  */
 class AuthRepositoryImpl @Inject constructor(
+    @ApplicationContext private val applicationContext: Context,
     private val firebaseAuth: FirebaseAuth,
 ) : AuthRepository {
 
@@ -68,8 +71,15 @@ class AuthRepositoryImpl @Inject constructor(
         },
     )
 
-    override fun signOut() {
+    override suspend fun signOut() {
         firebaseAuth.signOut()
+        // Firebase oublie la session, mais le système garde de son côté la trace du compte
+        // Google associé à l'app : sans ce nettoyage, la reconnexion suivante peut resélectionner
+        // le compte précédent sans jamais repasser par le sélecteur. Échec sans conséquence (la
+        // déconnexion Firebase, elle, a déjà eu lieu), d'où le runCatching.
+        runCatching {
+            CredentialManager.create(applicationContext).clearCredentialState(ClearCredentialStateRequest())
+        }
     }
 
     private fun generateNonce(): String {

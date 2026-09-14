@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 /**
@@ -34,5 +35,7 @@ class StatsViewModel @Inject constructor(
 
     val currentUser: StateFlow<AuthUser?> = authRepository.currentUser
 
-    fun onSignOutClicked() = authRepository.signOut()
+    fun onSignOutClicked() {
+        viewModelScope.launch { authRepository.signOut() }
+    }
 }
