@@ -16,9 +16,11 @@ synchronisé automatiquement entre tous vos appareils grâce à Firebase.
 - [Architecture](#architecture)
 - [Installation](#installation)
 - [Configuration des règles Firestore](#configuration-des-règles-firestore)
+- [Sécurité](#sécurité)
 - [Tests](#tests)
 - [Structure du projet](#structure-du-projet)
 - [Choix techniques notables](#choix-techniques-notables)
+- [Confidentialité](#confidentialité)
 - [Licence](#licence)
 
 ## Fonctionnalités
@@ -138,6 +140,10 @@ IGDB_CLIENT_SECRET=votre_client_secret_twitch
 3. Renseigner l'empreinte SHA-1 du keystore de debug (`./gradlew signingReport`) dans les
    paramètres de l'application Android sur la console Firebase — requis par Google Sign-In.
 4. Télécharger le fichier `google-services.json` généré et le placer dans `app/` (ignoré par git).
+5. Activer **App Check** (onglet dédié de la console Firebase), enregistrer l'app avec le
+   fournisseur **Play Integrity**. Au premier lancement en debug, un jeton s'affiche dans logcat :
+   à déclarer dans App Check → l'app Android → menu **⋮** → *Gérer les jetons de débogage*, sans
+   quoi les builds de debug seront rejetés dès qu'App Check passera en mode appliqué.
 
 ### 4. Compiler et lancer
 
@@ -150,21 +156,26 @@ ou directement depuis Android Studio (Run ▶).
 ## Configuration des règles Firestore
 
 Les règles de sécurité (`firestore.rules`, versionnées dans ce dépôt) restreignent chaque
-utilisateur à ses propres données :
-
-```
-rules_version = '2';
-service cloud.firestore {
-  match /databases/{database}/documents {
-    match /users/{userId}/games/{gameId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
-    }
-  }
-}
-```
+utilisateur à ses propres données et valident la forme de chaque document écrit (champs
+autorisés, types, bornes numériques) — voir le fichier pour le détail, il fait foi.
 
 À publier depuis l'onglet **Firestore Database → Règles** de la console Firebase (copier/coller le
 contenu du fichier, puis **Publier**).
+
+## Sécurité
+
+- **Règles Firestore** : accès restreint à `users/{uid}/...` où `uid` est celui de l'utilisateur
+  authentifié, et validation stricte des documents écrits (voir ci-dessus).
+- **Firebase App Check** : chaque appel à Firestore/Auth est accompagné d'un jeton attestant que la
+  requête vient bien de cette app installée sur un appareil légitime (fournisseur **Play Integrity**
+  en release, fournisseur de debug en développement) — empêche l'utilisation du projet Firebase
+  depuis un script ou une app reconstruite à partir du binaire.
+- **`allowBackup="false"`** : aucune donnée locale (base Room, session Firebase, jeton IGDB) ne part
+  dans une sauvegarde Google Drive ni un transfert d'appareil.
+- **R8 + shrinking des ressources en release** : code réduit et obfusqué, ressources inutilisées
+  retirées.
+- **Jaquettes en HTTPS uniquement** : toute URL d'image reçue d'une API externe est vérifiée avant
+  affichage.
 
 ## Tests
 
@@ -212,6 +223,11 @@ app/src/main/java/fr/cklla/cartouche/
   un fonctionnement hors-ligne complet, Firestore ne faisant que mirrorer en arrière-plan.
 - **Connexion Google obligatoire** dès le lancement : simplifie les règles de sécurité Firestore
   (un utilisateur = un espace de données) sans avoir à gérer de mot de passe dédié.
+
+## Confidentialité
+
+Voir [PRIVACY.md](PRIVACY.md) pour le détail des données traitées (compte Google, backlog) et de
+leur usage.
 
 ## Licence
 
