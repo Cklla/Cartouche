@@ -81,9 +81,17 @@ android {
 
     buildTypes {
         release {
+            // R8 actif : le code est réduit et obfusqué, et les ressources inutilisées retirées.
+            // Ça ne rend pas secret ce qui est embarqué dans l'APK (une constante reste lisible),
+            // mais ça complique nettement la rétro-ingénierie et allège le binaire.
             optimization {
-                enable = false
+                enable = true
             }
+            isShrinkResources = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro",
+            )
             if (keystoreProperties.isNotEmpty()) {
                 signingConfig = signingConfigs.getByName("release")
             }
