@@ -18,14 +18,14 @@ interface GameRepository {
     fun observeGames(): Flow<List<Game>>
 
     /** Flux d'un jeu précis, ou `null` s'il n'existe pas (ou plus). */
-    fun observeGame(id: Long): Flow<Game?>
+    fun observeGame(id: String): Flow<Game?>
 
-    /** Ajoute un nouveau jeu au backlog. Retourne l'id généré en cas de succès. */
-    suspend fun addGame(game: Game): Resource<Long>
+    /** Ajoute un nouveau jeu au backlog. Retourne l'id (UUID) généré en cas de succès. */
+    suspend fun addGame(game: Game): Resource<String>
 
     /** Met à jour un jeu existant (statut, note, temps de jeu, notes libres...). */
     suspend fun updateGame(game: Game): Resource<Unit>
 
     /** Retire un jeu du backlog. */
-    suspend fun deleteGame(id: Long): Resource<Unit>
+    suspend fun deleteGame(id: String): Resource<Unit>
 }

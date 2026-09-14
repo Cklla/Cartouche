@@ -7,7 +7,9 @@ package fr.cklla.cartouche.domain.model
  * ni de Firestore, ni de RAWG (réponse API). Le Repository fait la conversion
  * entre ces représentations et ce modèle.
  *
- * @param id identifiant local (0 = jeu pas encore persisté).
+ * @param id identifiant du jeu (UUID généré à la création) — chaîne vide si pas encore persisté.
+ *   Sert aussi d'identifiant de document Firestore, pour que le même id désigne le même jeu sur
+ *   Room et sur le cloud sans table de correspondance séparée.
  * @param rawgId identifiant RAWG du jeu, ou `null` pour un jeu ajouté avant l'introduction de ce
  *   champ. Sert uniquement à retrouver la fiche Steam du jeu (voir `IgdbPlaytimeRepository`,
  *   étape 1 de la correspondance IGDB par ID Steam) — jamais affiché ni utilisé ailleurs.
@@ -30,7 +32,7 @@ package fr.cklla.cartouche.domain.model
  * @param rating note personnelle de 1 à 5, ou null si le jeu n'est pas encore noté.
  */
 data class Game(
-    val id: Long = 0L,
+    val id: String = "",
     val title: String,
     val platform: String,
     val genre: String,

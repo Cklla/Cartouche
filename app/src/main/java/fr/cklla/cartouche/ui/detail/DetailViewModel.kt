@@ -38,7 +38,7 @@ class DetailViewModel @Inject constructor(
     private val igdbPlaytimeRepository: IgdbPlaytimeRepository,
 ) : ViewModel() {
 
-    private val gameId: Long = checkNotNull(savedStateHandle[CartoucheDestinations.DETAIL_ARG_GAME_ID])
+    private val gameId: String = checkNotNull(savedStateHandle[CartoucheDestinations.DETAIL_ARG_GAME_ID])
 
     private val workingGame = MutableStateFlow<Game?>(null)
     private val isLoading = MutableStateFlow(true)

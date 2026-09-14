@@ -36,7 +36,7 @@ class DetailViewModelTest {
         Dispatchers.resetMain()
     }
 
-    private suspend fun setUpGame(repository: GameRepositoryImpl): Long {
+    private suspend fun setUpGame(repository: GameRepositoryImpl): String {
         val result = repository.addGame(
             Game(title = "Hades", platform = "PC", genre = "Roguelike", status = GameStatus.A_FAIRE),
         )
@@ -45,7 +45,7 @@ class DetailViewModelTest {
 
     private fun viewModel(
         repository: GameRepositoryImpl,
-        gameId: Long,
+        gameId: String,
         igdbPlaytimeRepository: FakeIgdbPlaytimeRepository = FakeIgdbPlaytimeRepository(),
     ) = DetailViewModel(
         savedStateHandle = SavedStateHandle(mapOf(CartoucheDestinations.DETAIL_ARG_GAME_ID to gameId)),

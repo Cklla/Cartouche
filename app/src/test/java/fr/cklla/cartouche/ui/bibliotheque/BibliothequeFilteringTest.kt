@@ -7,9 +7,9 @@ import org.junit.Test
 
 class BibliothequeFilteringTest {
 
-    private val hades = Game(id = 1, title = "Hades", platform = "PC", genre = "Roguelike", status = GameStatus.TERMINE)
-    private val eldenRing = Game(id = 2, title = "Elden Ring", platform = "PS5", genre = "Action-RPG", status = GameStatus.A_FAIRE)
-    private val zelda = Game(id = 3, title = "Zelda", platform = "Switch", genre = "Aventure", status = GameStatus.EN_COURS)
+    private val hades = Game(id = "1", title = "Hades", platform = "PC", genre = "Roguelike", status = GameStatus.TERMINE)
+    private val eldenRing = Game(id = "2", title = "Elden Ring", platform = "PS5", genre = "Action-RPG", status = GameStatus.A_FAIRE)
+    private val zelda = Game(id = "3", title = "Zelda", platform = "Switch", genre = "Aventure", status = GameStatus.EN_COURS)
     private val games = listOf(hades, eldenRing, zelda)
 
     @Test

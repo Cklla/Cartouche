@@ -284,7 +284,7 @@ private fun StatsContentPreview() {
         GameStatus.TERMINE, GameStatus.TERMINE, GameStatus.TERMINE, GameStatus.TERMINE,
     ).mapIndexed { index, status ->
         fr.cklla.cartouche.domain.model.Game(
-            id = index.toLong(),
+            id = index.toString(),
             title = "Jeu $index",
             platform = "PC",
             genre = "Aventure",

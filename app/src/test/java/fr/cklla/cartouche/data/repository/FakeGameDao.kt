@@ -14,29 +14,25 @@ import kotlinx.coroutines.flow.update
 class FakeGameDao : GameDao {
 
     private val games = MutableStateFlow<List<GameEntity>>(emptyList())
-    private var nextId = 1L
 
     /** Permet de simuler un échec Room (contrainte violée, disque plein...) dans les tests. */
     var shouldThrowOnInsert = false
 
     override fun observeAll(): Flow<List<GameEntity>> = games
 
-    override fun observeById(id: Long): Flow<GameEntity?> =
+    override fun observeById(id: String): Flow<GameEntity?> =
         games.map { list -> list.find { it.id == id } }
 
-    override suspend fun insert(game: GameEntity): Long {
+    override suspend fun insert(game: GameEntity) {
         if (shouldThrowOnInsert) error("Échec Room simulé")
-        val id = if (game.id != 0L) game.id else nextId++
-        val stored = game.copy(id = id)
-        games.update { list -> list.filterNot { it.id == id } + stored }
-        return id
+        games.update { list -> list.filterNot { it.id == game.id } + game }
     }
 
     override suspend fun update(game: GameEntity) {
         games.update { list -> list.map { if (it.id == game.id) game else it } }
     }
 
-    override suspend fun deleteById(id: Long) {
+    override suspend fun deleteById(id: String) {
         games.update { list -> list.filterNot { it.id == id } }
     }
 }

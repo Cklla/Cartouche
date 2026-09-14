@@ -10,10 +10,15 @@ import androidx.room.PrimaryKey
  * entier : c'est un peu plus verbeux en base, mais ça reste lisible en cas
  * d'inspection manuelle de la base et ça évite de casser les données existantes
  * si l'ordre des valeurs de l'enum change un jour.
+ *
+ * [id] est un UUID (généré côté Repository, pas par Room) plutôt qu'un entier auto-incrémenté :
+ * une fois la synchro Firestore en place, cet id doit être stable et unique sur tous les
+ * appareils, ce qu'un compteur local ne garantit pas (deux téléphones généreraient tous les deux
+ * un jeu n°1).
  */
 @Entity(tableName = "games")
 data class GameEntity(
-    @PrimaryKey(autoGenerate = true) val id: Long = 0L,
+    @PrimaryKey val id: String,
     val title: String,
     val platform: String,
     val genre: String,

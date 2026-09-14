@@ -56,7 +56,7 @@ import fr.cklla.cartouche.ui.theme.TextTertiary
 @Composable
 fun BibliothequeScreen(
     modifier: Modifier = Modifier,
-    onGameClick: (Long) -> Unit = {},
+    onGameClick: (String) -> Unit = {},
     viewModel: BibliothequeViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -72,7 +72,7 @@ fun BibliothequeScreen(
 private fun BibliothequeContent(
     uiState: BibliothequeUiState,
     onFilterSelected: (BacklogFilter) -> Unit,
-    onGameClick: (Long) -> Unit,
+    onGameClick: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -251,9 +251,9 @@ private fun EmptyState(filter: BacklogFilter, modifier: Modifier = Modifier) {
 @Composable
 private fun BibliothequeContentPreview() {
     val games = listOf(
-        Game(id = 1, title = "The Legend of Zelda: Tears of the Kingdom", platform = "Switch", genre = "Aventure", status = GameStatus.EN_COURS),
-        Game(id = 2, title = "Hades", platform = "PC", genre = "Roguelike", status = GameStatus.TERMINE),
-        Game(id = 3, title = "Elden Ring", platform = "PS5", genre = "Action-RPG", status = GameStatus.A_FAIRE),
+        Game(id = "1", title = "The Legend of Zelda: Tears of the Kingdom", platform = "Switch", genre = "Aventure", status = GameStatus.EN_COURS),
+        Game(id = "2", title = "Hades", platform = "PC", genre = "Roguelike", status = GameStatus.TERMINE),
+        Game(id = "3", title = "Elden Ring", platform = "PS5", genre = "Action-RPG", status = GameStatus.A_FAIRE),
     )
     CartoucheTheme {
         BibliothequeContent(

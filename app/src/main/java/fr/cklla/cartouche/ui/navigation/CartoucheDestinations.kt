@@ -18,7 +18,7 @@ object CartoucheDestinations {
     const val DETAIL_ARG_GAME_ID = "gameId"
     const val DETAIL = "detail/{$DETAIL_ARG_GAME_ID}"
 
-    fun detailRoute(gameId: Long) = "detail/$gameId"
+    fun detailRoute(gameId: String) = "detail/$gameId"
 }
 
 /** Route associée à chaque onglet de la navigation basse. */

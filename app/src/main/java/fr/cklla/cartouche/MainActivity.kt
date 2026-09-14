@@ -96,7 +96,7 @@ fun CartoucheApp() {
             }
             composable(
                 route = CartoucheDestinations.DETAIL,
-                arguments = listOf(navArgument(CartoucheDestinations.DETAIL_ARG_GAME_ID) { type = NavType.LongType }),
+                arguments = listOf(navArgument(CartoucheDestinations.DETAIL_ARG_GAME_ID) { type = NavType.StringType }),
             ) {
                 DetailScreen(onBackClick = { navController.popBackStack() })
             }

@@ -477,7 +477,7 @@ private fun RemoveConfirmDialog(onConfirm: () -> Unit, onDismiss: () -> Unit) {
 @Composable
 private fun DetailContentPreview() {
     val game = Game(
-        id = 1,
+        id = "1",
         title = "The Legend of Zelda: Tears of the Kingdom",
         platform = "Switch",
         genre = "Aventure",

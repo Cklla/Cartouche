@@ -11,7 +11,7 @@ class GameMappersTest {
     @Test
     fun `toEntity puis toDomain conserve toutes les donnees`() {
         val game = Game(
-            id = 42L,
+            id = "42",
             title = "Hollow Knight",
             platform = "PC",
             genre = "Metroidvania",
@@ -35,7 +35,7 @@ class GameMappersTest {
     @Test
     fun `toDomain convertit correctement le statut stocke en texte`() {
         val entity = GameEntity(
-            id = 1L,
+            id = "1",
             title = "t",
             platform = "p",
             genre = "g",

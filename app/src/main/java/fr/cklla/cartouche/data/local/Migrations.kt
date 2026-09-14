@@ -122,3 +122,50 @@ val MIGRATION_3_4 = object : Migration(3, 4) {
         connection.execSQL("ALTER TABLE `games_new` RENAME TO `games`")
     }
 }
+
+/**
+ * `id` passe d'un entier auto-incrémenté à un UUID (`TEXT`) : préparation de la synchro
+ * Firestore, où l'id d'un jeu doit être stable et unique sur tous les appareils (deux téléphones
+ * généreraient tous les deux un jeu n°1 avec un simple compteur local, voir `GameEntity`).
+ *
+ * SQLite n'a pas de fonction UUID native : `lower(hex(randomblob(4)) || '-' || ...)` génère une
+ * chaîne au format UUID (groupes 8-4-4-4-12) à partir d'octets aléatoires. Ce n'est pas un vrai
+ * UUIDv4 au sens strict (les bits de version/variant ne sont pas forcés à la bonne valeur), mais
+ * l'app n'a besoin que d'un identifiant unique et stable, pas de conformité RFC 4122 — chaque
+ * appel à `randomblob()` est réévalué pour chaque ligne copiée par l'`INSERT ... SELECT`, donc
+ * chaque jeu reçoit bien un id différent.
+ */
+val MIGRATION_4_5 = object : Migration(4, 5) {
+    override fun migrate(connection: SQLiteConnection) {
+        connection.execSQL(
+            "CREATE TABLE IF NOT EXISTS `games_new` (" +
+                "`id` TEXT NOT NULL PRIMARY KEY, " +
+                "`title` TEXT NOT NULL, " +
+                "`platform` TEXT NOT NULL, " +
+                "`genre` TEXT NOT NULL, " +
+                "`status` TEXT NOT NULL, " +
+                "`rawgId` INTEGER, " +
+                "`releaseYear` INTEGER, " +
+                "`userPlaytimeHours` INTEGER NOT NULL, " +
+                "`estimatedPlaytimeHastilyHours` INTEGER, " +
+                "`estimatedPlaytimeNormallyHours` INTEGER, " +
+                "`estimatedPlaytimeCompletelyHours` INTEGER, " +
+                "`rating` INTEGER, " +
+                "`notes` TEXT NOT NULL, " +
+                "`coverUrl` TEXT)",
+        )
+        connection.execSQL(
+            "INSERT INTO `games_new` " +
+                "(`id`, `title`, `platform`, `genre`, `status`, `rawgId`, `releaseYear`, " +
+                "`userPlaytimeHours`, `estimatedPlaytimeHastilyHours`, `estimatedPlaytimeNormallyHours`, " +
+                "`estimatedPlaytimeCompletelyHours`, `rating`, `notes`, `coverUrl`) " +
+                "SELECT lower(hex(randomblob(4)) || '-' || hex(randomblob(2)) || '-' || " +
+                "hex(randomblob(2)) || '-' || hex(randomblob(2)) || '-' || hex(randomblob(6))), " +
+                "`title`, `platform`, `genre`, `status`, `rawgId`, `releaseYear`, " +
+                "`userPlaytimeHours`, `estimatedPlaytimeHastilyHours`, `estimatedPlaytimeNormallyHours`, " +
+                "`estimatedPlaytimeCompletelyHours`, `rating`, `notes`, `coverUrl` FROM `games`",
+        )
+        connection.execSQL("DROP TABLE `games`")
+        connection.execSQL("ALTER TABLE `games_new` RENAME TO `games`")
+    }
+}
