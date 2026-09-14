@@ -7,15 +7,14 @@ plugins {
     alias(libs.plugins.ksp)
     alias(libs.plugins.hilt)
     alias(libs.plugins.androidx.room)
-    // Lit google-services.json (non commité, voir .gitignore) et génère les ressources/config
+    // Lit google-services.json et génère les ressources/config
     // nécessaires aux SDK Firebase (Auth, Firestore) à la compilation.
     alias(libs.plugins.google.services)
 }
 
-// La clé API RAWG est un secret personnel : elle vit uniquement dans
-// local.properties (ignoré par git, voir .gitignore), jamais dans le code
-// source. On l'expose au code Kotlin via un champ BuildConfig généré à la
-// compilation.
+// La clé API RAWG vit uniquement dans local.properties,
+// jamais dans le code source. On l'expose au code Kotlin via un champ
+// BuildConfig généré à la compilation.
 val localProperties = Properties().apply {
     val localPropertiesFile = rootProject.file("local.properties")
     if (localPropertiesFile.exists()) {
@@ -23,8 +22,7 @@ val localProperties = Properties().apply {
     }
 }
 
-// Identifiants du keystore de release : même principe que local.properties, jamais commités
-// (voir .gitignore). Absent en configuration debug, donc chargé de façon optionnelle : un
+// Identifiants du keystore de release : absent en configuration debug, donc chargé de façon optionnelle : un
 // simple ./gradlew assembleDebug ne nécessite pas ce fichier.
 val keystoreProperties = Properties().apply {
     val keystorePropertiesFile = rootProject.file("keystore.properties")
@@ -55,8 +53,7 @@ android {
         )
         // Identifiants de l'app Twitch (console.twitch.tv/console/apps), utilisés pour le flow
         // OAuth2 client credentials qui authentifie les appels à l'API IGDB (voir
-        // `data/remote/igdb/TwitchAuthApi.kt`). Mêmes garanties que RAWG_API_KEY : jamais en dur
-        // dans le code, jamais commités.
+        // `data/remote/igdb/TwitchAuthApi.kt`).
         buildConfigField(
             "String",
             "IGDB_CLIENT_ID",
@@ -70,8 +67,7 @@ android {
     }
 
     signingConfigs {
-        // Défini uniquement si keystore.properties existe (poste du développeur avec le
-        // keystore de release) : permet à assembleRelease de fonctionner ailleurs (CI, autre
+        // Défini uniquement si keystore.properties existe: permet à assembleRelease de fonctionner ailleurs (CI, autre
         // machine) sans configuration de signature, tant qu'on ne publie pas depuis là.
         if (keystoreProperties.isNotEmpty()) {
             create("release") {
@@ -140,7 +136,7 @@ dependencies {
     implementation(libs.androidx.hilt.navigation.compose)
 
     // Réseau : recherche de jeux via l'API RAWG (seul usage de Retrofit/Moshi,
-    // le backlog lui-même reste stocké via Room/Firestore, voir CLAUDE.md)
+    // le backlog lui-même reste stocké via Room/Firestore).
     implementation(libs.retrofit.core)
     implementation(libs.retrofit.converter.moshi)
     implementation(libs.moshi.kotlin)
@@ -156,7 +152,7 @@ dependencies {
     implementation(libs.firebase.auth)
     implementation(libs.firebase.firestore)
 
-    // Connexion Google (Credential Manager, remplace l'ancien GoogleSignInClient déprécié)
+    // Connexion Google (Credential Manager)
     implementation(libs.androidx.credentials)
     implementation(libs.androidx.credentials.play.services.auth)
     implementation(libs.googleid)
