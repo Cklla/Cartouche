@@ -159,6 +159,12 @@ dependencies {
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.auth)
     implementation(libs.firebase.firestore)
+    // App Check : atteste que les appels à Firestore/Auth viennent bien de cette app installée
+    // depuis le Play Store, et pas d'un script ou d'une app reconstruite à partir du binaire.
+    implementation(libs.firebase.appcheck.playintegrity)
+    // Le fournisseur Play Integrity ne peut rien attester sur un émulateur ou un build local :
+    // en debug, App Check s'appuie sur un jeton à déclarer dans la console Firebase.
+    debugImplementation(libs.firebase.appcheck.debug)
 
     // Connexion Google (Credential Manager)
     implementation(libs.androidx.credentials)
