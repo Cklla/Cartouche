@@ -25,6 +25,7 @@ import fr.cklla.cartouche.ui.components.PlaceholderScreen
 import fr.cklla.cartouche.ui.detail.DetailScreen
 import fr.cklla.cartouche.ui.navigation.CartoucheDestinations
 import fr.cklla.cartouche.ui.navigation.route
+import fr.cklla.cartouche.ui.recherche.RechercheScreen
 import fr.cklla.cartouche.ui.theme.BackgroundDark
 import fr.cklla.cartouche.ui.theme.CartoucheTheme
 
@@ -89,7 +90,7 @@ fun CartoucheApp() {
                 )
             }
             composable(CartoucheDestinations.RECHERCHE) {
-                PlaceholderScreen(label = stringResource(R.string.placeholder_bientot_disponible))
+                RechercheScreen()
             }
             composable(CartoucheDestinations.STATS) {
                 PlaceholderScreen(label = stringResource(R.string.placeholder_bientot_disponible))

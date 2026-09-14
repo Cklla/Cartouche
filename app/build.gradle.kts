@@ -1,9 +1,23 @@
+import java.io.FileInputStream
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.ksp)
     alias(libs.plugins.hilt)
     alias(libs.plugins.androidx.room)
+}
+
+// La clé API RAWG est un secret personnel : elle vit uniquement dans
+// local.properties (ignoré par git, voir .gitignore), jamais dans le code
+// source. On l'expose au code Kotlin via un champ BuildConfig généré à la
+// compilation.
+val localProperties = Properties().apply {
+    val localPropertiesFile = rootProject.file("local.properties")
+    if (localPropertiesFile.exists()) {
+        FileInputStream(localPropertiesFile).use { load(it) }
+    }
 }
 
 android {
@@ -20,6 +34,12 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        buildConfigField(
+            "String",
+            "RAWG_API_KEY",
+            "\"${localProperties.getProperty("RAWG_API_KEY", "")}\"",
+        )
     }
 
     buildTypes {
@@ -35,6 +55,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 }
 
@@ -70,6 +91,16 @@ dependencies {
     implementation(libs.hilt.android)
     ksp(libs.hilt.android.compiler)
     implementation(libs.androidx.hilt.navigation.compose)
+
+    // Réseau : recherche de jeux via l'API RAWG (seul usage de Retrofit/Moshi,
+    // le backlog lui-même reste stocké via Room/Firestore, voir CLAUDE.md)
+    implementation(libs.retrofit.core)
+    implementation(libs.retrofit.converter.moshi)
+    implementation(libs.moshi.kotlin)
+    implementation(libs.okhttp.logging.interceptor)
+
+    // Chargement des jaquettes réelles renvoyées par RAWG
+    implementation(libs.coil.compose)
 
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)

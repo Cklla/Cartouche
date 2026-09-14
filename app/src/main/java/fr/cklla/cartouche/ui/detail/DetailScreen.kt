@@ -140,6 +140,7 @@ private fun DetailContent(
                 modifier = Modifier
                     .fillMaxWidth()
                     .aspectRatio(3f / 4f),
+                coverUrl = game.coverUrl,
                 letterStyle = CartoucheTextStyles.coverLetterLarge,
                 letterAlpha = 0.14f,
                 showLabel = true,

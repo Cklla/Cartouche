@@ -176,7 +176,7 @@ private fun GameCard(game: Game, onClick: () -> Unit) {
             .padding(10.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        GameCoverPlaceholder(title = game.title, width = 56.dp, height = 76.dp)
+        GameCoverPlaceholder(title = game.title, width = 56.dp, height = 76.dp, coverUrl = game.coverUrl)
         Column {
             Text(
                 text = game.title,
