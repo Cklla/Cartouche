@@ -21,6 +21,9 @@ interface AuthRepository {
     /** Déclenche le flow "Se connecter avec Google" (Credential Manager). */
     suspend fun signIn(context: Context): Resource<AuthUser>
 
-    /** Déconnecte l'utilisateur courant. */
-    fun signOut()
+    /**
+     * Déconnecte l'utilisateur courant et efface l'état de connexion mémorisé par le système.
+     * `suspend` pour cette seconde partie : Credential Manager n'expose qu'une API asynchrone.
+     */
+    suspend fun signOut()
 }

@@ -79,6 +79,7 @@ class StatsViewModelTest {
         val viewModel = StatsViewModel(repository, authRepository)
 
         viewModel.onSignOutClicked()
+        dispatcher.scheduler.advanceUntilIdle()
 
         assertEquals(1, authRepository.signOutCallCount)
     }
