@@ -25,8 +25,8 @@ import javax.inject.Inject
  *
  * Sans cette copie locale, deux actions déclenchées coup sur coup (ex. taper
  * plusieurs caractères dans les notes, ou noter puis changer le statut) liraient
- * toutes les deux le même jeu "avant écriture" — Room (et plus tard Firestore)
- * étant asynchrones, la première modification serait alors écrasée par la
+ * toutes les deux le même jeu "avant écriture" — Room et Firestore étant
+ * asynchrones, la première modification serait alors écrasée par la
  * seconde à l'aller-retour suivant. Le repository reste la seule source de
  * vérité pour la *persistance* ; [workingGame] n'est qu'un cache d'édition
  * pour cet écran.

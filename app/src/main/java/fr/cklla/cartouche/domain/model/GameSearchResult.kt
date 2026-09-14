@@ -18,9 +18,9 @@ data class GameSearchResult(
 /**
  * Convertit un résultat de recherche en jeu du backlog, avec le statut par défaut "À faire".
  *
- * Les champs `estimatedPlaytime*` ne sont jamais renseignés ici : RAWG ne fournit plus cette
- * donnée (trop peu fiable, voir historique du champ). Ils sont recherchés séparément via IGDB,
- * seulement à l'ouverture de la fiche détail (voir `DetailViewModel`).
+ * Les champs `estimatedPlaytime*` ne sont jamais renseignés ici : RAWG ne fournit pas cette
+ * donnée. Ils sont recherchés séparément via IGDB, seulement à l'ouverture de la fiche détail
+ * (voir `DetailViewModel`).
  *
  * `rawgId` et `releaseYear` sont en revanche conservés : ils ne servent à rien pour l'affichage,
  * mais permettent de fiabiliser la correspondance IGDB au moment de cette recherche (voir

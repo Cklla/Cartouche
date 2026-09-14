@@ -6,7 +6,7 @@ package fr.cklla.cartouche.domain.model
  *
  * Le Repository ne traduit jamais l'erreur en texte destiné à l'utilisateur :
  * il fournit un [message] technique/contextuel, et c'est la couche UI qui
- * décide comment l'afficher (voir convention "erreurs structurées" du projet).
+ * décide comment l'afficher.
  */
 sealed interface Resource<out T> {
     data class Success<T>(val data: T) : Resource<T>

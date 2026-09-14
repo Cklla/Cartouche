@@ -33,8 +33,6 @@ import fr.cklla.cartouche.ui.stats.StatsScreen
 import fr.cklla.cartouche.ui.theme.BackgroundDark
 import fr.cklla.cartouche.ui.theme.CartoucheTheme
 
-// @AndroidEntryPoint permet d'injecter des ViewModels Hilt (hiltViewModel())
-// depuis les écrans Compose affichés par cette Activity.
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -60,8 +58,7 @@ class MainActivity : ComponentActivity() {
 // Détail est poussé par-dessus depuis la Bibliothèque et n'affiche pas la
 // barre de navigation basse (écran "empilé/push", voir maquette).
 //
-// Connexion Google obligatoire au lancement (décision actée avec le développeur, aucune maquette
-// ne couvre l'authentification) : tant que personne n'est connecté, on affiche `LoginScreen` à la
+// Connexion Google obligatoire au lancement : tant que personne n'est connecté, on affiche `LoginScreen` à la
 // place du `NavHost` — pas une destination de plus dans le graphe de navigation, un vrai "portail"
 // en dehors de la pile. Dès que `AuthRepository.currentUser` devient non-null (connexion réussie),
 // la recomposition bascule automatiquement sur le NavHost normal, qui démarre toujours sur la

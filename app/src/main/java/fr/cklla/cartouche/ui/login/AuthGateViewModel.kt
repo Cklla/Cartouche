@@ -9,8 +9,8 @@ import javax.inject.Inject
 
 /**
  * N'expose que l'état de connexion, utilisé par `CartoucheApp` pour décider d'afficher
- * [LoginScreen] ou le `NavHost` normal — connexion obligatoire au lancement (voir décision actée
- * avec le développeur), pas de mode "backlog local sans compte".
+ * [LoginScreen] ou le `NavHost` normal — connexion obligatoire au lancement, pas de mode
+ * "backlog local sans compte".
  */
 @HiltViewModel
 class AuthGateViewModel @Inject constructor(

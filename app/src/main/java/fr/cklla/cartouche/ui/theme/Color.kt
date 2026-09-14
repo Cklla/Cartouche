@@ -2,8 +2,7 @@ package fr.cklla.cartouche.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-// Palette issue de la maquette (Maquettes/design_handoff_backlog_jeux/README.md,
-// section "Design Tokens"). Thème sombre uniquement pour l'instant.
+//Thème sombre uniquement
 
 val BackgroundDark = Color(0xFF0A0812)
 val SurfaceCard = Color(0xFF130F24)
@@ -23,8 +22,7 @@ val TextMuted = Color(0xFF8A75C0)
 val SuccessGreen = Color(0xFF5DCAA5)
 val ErrorCoral = Color(0xFFF09595)
 
-// Dégradés de jaquette placeholder (en rotation selon le titre du jeu, voir
-// GameCoverPlaceholder) — tons violets cohérents avec la charte.
+// Dégradés de jaquette placeholder
 val CoverGradients: List<Pair<Color, Color>> = listOf(
     Color(0xFF3D2D6A) to Color(0xFF1C1638),
     Color(0xFF5A3D9E) to Color(0xFF2A1F4A),

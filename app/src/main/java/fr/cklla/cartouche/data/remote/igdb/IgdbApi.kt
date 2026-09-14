@@ -12,10 +12,9 @@ import retrofit2.http.POST
 /**
  * API IGDB (https://api-docs.igdb.com), utilisée uniquement pour compléter le temps de jeu
  * estimé d'un jeu (`Game.estimatedPlaytime*Hours` : rapide/normal/complet) — RAWG reste la seule
- * source pour tout le reste
- * (recherche, fiche jeu). Contrairement à RAWG, IGDB attend le corps de chaque requête au format
- * "Apicalypse" (texte brut, pas de JSON) : voir `IgdbMappers.buildSearchQuery`/
- * `buildTimeToBeatQuery` pour la construction de ces requêtes.
+ * source pour tout le reste (recherche, fiche jeu). Contrairement à RAWG, IGDB attend le corps de
+ * chaque requête au format "Apicalypse" (texte brut, pas de JSON) : voir
+ * `IgdbMappers.buildSearchQuery`/`buildTimeToBeatQuery` pour la construction de ces requêtes.
  */
 interface IgdbApi {
 

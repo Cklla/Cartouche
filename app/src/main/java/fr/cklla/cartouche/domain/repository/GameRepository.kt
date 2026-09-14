@@ -10,7 +10,7 @@ import kotlinx.coroutines.flow.Flow
  * Le ViewModel ne connaît que cette interface : il ignore si les jeux
  * viennent de Room, de Firestore ou d'un cache mémoire. L'implémentation
  * (voir `data.repository.GameRepositoryImpl`) orchestre Room (lecture/écriture
- * hors-ligne) et, à terme, Firestore (synchro multi-appareils).
+ * hors-ligne) et Firestore (synchro multi-appareils).
  */
 interface GameRepository {
 
