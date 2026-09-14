@@ -55,6 +55,7 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -418,6 +419,13 @@ private fun HoursValueField(hours: Int, onHoursSet: (Int) -> Unit) {
         )
     }
     val focusRequester = remember { FocusRequester() }
+    val focusManager = LocalFocusManager.current
+    // `Modifier.onFocusChanged` est aussi déclenché une première fois dès l'attachement du champ,
+    // avec `isFocused = false` (avant même que `LaunchedEffect` ci-dessous n'ait pu appeler
+    // `requestFocus()`) — sans cette garde, ce tout premier appel valait "perte de focus" et
+    // refermait le champ instantanément (à peine un flash à l'écran, jamais éditable). On ne
+    // valide donc une perte de focus que si le champ avait bien été focus au moins une fois avant.
+    var hasBeenFocused by remember(isEditing) { mutableStateOf(false) }
     val editContentDescription = stringResource(R.string.detail_hours_edit_content_description, hours)
     val inputContentDescription = stringResource(R.string.detail_hours_input_content_description)
 
@@ -436,13 +444,27 @@ private fun HoursValueField(hours: Int, onHoursSet: (Int) -> Unit) {
             textStyle = CartoucheTextStyles.hoursValue.copy(color = TextPrimary),
             cursorBrush = SolidColor(AccentPurple),
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done),
-            keyboardActions = KeyboardActions(onDone = { commit() }),
+            // On ne valide pas directement ici : on relâche le focus proprement (masque le
+            // clavier), ce qui déclenche `onFocusChanged` ci-dessous et commit *à ce moment-là*.
+            // En committant directement ici, le champ disparaissait de la composition (isEditing
+            // = false) alors qu'il était encore focus — Compose devait alors reporter le focus
+            // ailleurs dans l'écran de son propre chef, et retombait sur la première zone
+            // cliquable de l'écran (l'en-tête "Retour à la bibliothèque"), qui affichait alors
+            // brièvement son halo de focus (violet) : effet de bord purement visuel, sans lien
+            // avec la donnée saisie.
+            keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus() }),
             modifier = Modifier
                 .heightIn(min = 48.dp)
                 .widthIn(min = 32.dp)
                 .wrapContentHeight(Alignment.CenterVertically)
                 .focusRequester(focusRequester)
-                .onFocusChanged { state -> if (!state.isFocused) commit() }
+                .onFocusChanged { state ->
+                    if (state.isFocused) {
+                        hasBeenFocused = true
+                    } else if (hasBeenFocused) {
+                        commit()
+                    }
+                }
                 .semantics { contentDescription = inputContentDescription },
         )
         LaunchedEffect(Unit) { focusRequester.requestFocus() }
