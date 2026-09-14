@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.MenuBook
@@ -45,6 +46,10 @@ fun BottomNavBar(selectedTab: AppTab, onTabSelected: (AppTab) -> Unit, modifier:
             .fillMaxWidth()
             .background(BackgroundDark)
             .border(0.5.dp, BorderHairline)
+            // Le fond continue jusqu'au bord de l'écran (edge-to-edge), mais le
+            // contenu (icônes/labels) doit rester au-dessus de la barre de
+            // navigation système (gestes ou boutons).
+            .navigationBarsPadding()
             .padding(vertical = 8.dp),
         horizontalArrangement = Arrangement.SpaceEvenly,
     ) {
