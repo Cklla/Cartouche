@@ -111,7 +111,7 @@ Room (cache local, offline)      Firebase Firestore/Auth (sync distante)
 ### 1. Cloner le projet
 
 ```bash
-git clone <url-du-repo>
+git clone https://github.com/Cklla/Cartouche
 cd Cartouche
 ```
 
