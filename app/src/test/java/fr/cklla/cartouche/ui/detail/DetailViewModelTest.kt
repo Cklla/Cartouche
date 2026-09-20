@@ -5,6 +5,7 @@ import fr.cklla.cartouche.data.repository.FakeGameDao
 import fr.cklla.cartouche.data.repository.fakeGameRepository
 import fr.cklla.cartouche.domain.model.Game
 import fr.cklla.cartouche.domain.model.GameStatus
+import fr.cklla.cartouche.domain.model.IgdbGameMatch
 import fr.cklla.cartouche.domain.model.IgdbPlaytimeEstimate
 import fr.cklla.cartouche.domain.model.Resource
 import fr.cklla.cartouche.domain.repository.GameRepository
@@ -286,7 +287,10 @@ class DetailViewModelTest {
         val repository = fakeGameRepository(dao)
         val gameId = setUpGame(repository)
         val igdbRepository = FakeIgdbPlaytimeRepository(
-            result = IgdbPlaytimeEstimate(hastilyHours = 20, normallyHours = 25, completelyHours = 40),
+            result = IgdbGameMatch(
+                playtimeEstimate = IgdbPlaytimeEstimate(hastilyHours = 20, normallyHours = 25, completelyHours = 40),
+                platform = null,
+            ),
         )
         val viewModel = viewModel(repository, gameId, igdbRepository)
         val collectorJob = launch { viewModel.uiState.collect {} }
@@ -306,7 +310,10 @@ class DetailViewModelTest {
         val repository = fakeGameRepository(dao)
         val gameId = setUpGame(repository)
         val igdbRepository = FakeIgdbPlaytimeRepository(
-            result = IgdbPlaytimeEstimate(hastilyHours = null, normallyHours = 12, completelyHours = null),
+            result = IgdbGameMatch(
+                playtimeEstimate = IgdbPlaytimeEstimate(hastilyHours = null, normallyHours = 12, completelyHours = null),
+                platform = null,
+            ),
         )
         val viewModel = viewModel(repository, gameId, igdbRepository)
         val collectorJob = launch { viewModel.uiState.collect {} }
@@ -334,7 +341,10 @@ class DetailViewModelTest {
         )
         val gameId = (result as Resource.Success).data
         val igdbRepository = FakeIgdbPlaytimeRepository(
-            result = IgdbPlaytimeEstimate(hastilyHours = 1, normallyHours = 999, completelyHours = 1),
+            result = IgdbGameMatch(
+                playtimeEstimate = IgdbPlaytimeEstimate(hastilyHours = 1, normallyHours = 999, completelyHours = 1),
+                platform = null,
+            ),
         )
         val viewModel = viewModel(repository, gameId, igdbRepository)
         val collectorJob = launch { viewModel.uiState.collect {} }
@@ -418,7 +428,10 @@ class DetailViewModelTest {
         val dao = FakeGameDao()
         val repository = fakeGameRepository(dao)
         val igdbRepository = FakeIgdbPlaytimeRepository(
-            result = IgdbPlaytimeEstimate(hastilyHours = 10, normallyHours = 27, completelyHours = 60),
+            result = IgdbGameMatch(
+                playtimeEstimate = IgdbPlaytimeEstimate(hastilyHours = 10, normallyHours = 27, completelyHours = 60),
+                platform = null,
+            ),
         )
         val viewModel = previewViewModel(repository, title = "Hollow Knight", igdbPlaytimeRepository = igdbRepository)
         val collectorJob = launch { viewModel.uiState.collect {} }
@@ -427,6 +440,113 @@ class DetailViewModelTest {
         assertEquals(1, igdbRepository.callCount)
         assertEquals(27, viewModel.uiState.value.game?.estimatedPlaytimeNormallyHours)
         assertEquals(0, dao.getAllIds().size)
+        collectorJob.cancel()
+    }
+
+    @Test
+    fun `une correspondance IGDB sans plateforme laisse platform inchange`() = runTest {
+        val dao = FakeGameDao()
+        val repository = fakeGameRepository(dao)
+        val gameId = setUpGame(repository) // platform = "PC"
+        val igdbRepository = FakeIgdbPlaytimeRepository(
+            result = IgdbGameMatch(playtimeEstimate = null, platform = null),
+        )
+        val viewModel = viewModel(repository, gameId, igdbRepository)
+        val collectorJob = launch { viewModel.uiState.collect {} }
+        dispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals("PC", viewModel.uiState.value.game?.platform)
+        collectorJob.cancel()
+    }
+
+    @Test
+    fun `une plateforme IGDB remplace platform quand aucune plateforme jouee n'est cochee`() = runTest {
+        val dao = FakeGameDao()
+        val repository = fakeGameRepository(dao)
+        val gameId = setUpGame(repository) // platform = "PC", playedPlatforms vide
+        val igdbRepository = FakeIgdbPlaytimeRepository(
+            result = IgdbGameMatch(playtimeEstimate = null, platform = "PC (Microsoft Windows)"),
+        )
+        val viewModel = viewModel(repository, gameId, igdbRepository)
+        val collectorJob = launch { viewModel.uiState.collect {} }
+        dispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals("PC (Microsoft Windows)", viewModel.uiState.value.game?.platform)
+        collectorJob.cancel()
+    }
+
+    @Test
+    fun `une plateforme jouee cochee est realignee sur la casse IGDB quand platform est remplace`() = runTest {
+        val dao = FakeGameDao()
+        val repository = fakeGameRepository(dao)
+        val result = repository.addGame(
+            Game(
+                title = "Trails in the Sky",
+                platform = "PC/PS5/Switch",
+                genre = "RPG",
+                status = GameStatus.EN_COURS,
+                playedPlatforms = setOf("Switch"),
+            ),
+        )
+        val gameId = (result as Resource.Success).data
+        val igdbRepository = FakeIgdbPlaytimeRepository(
+            result = IgdbGameMatch(playtimeEstimate = null, platform = "PC/PlayStation 5/switch"),
+        )
+        val viewModel = viewModel(repository, gameId, igdbRepository)
+        val collectorJob = launch { viewModel.uiState.collect {} }
+        dispatcher.scheduler.advanceUntilIdle()
+
+        val game = viewModel.uiState.value.game
+        assertEquals("PC/PlayStation 5/switch", game?.platform)
+        assertEquals(setOf("switch"), game?.playedPlatforms)
+        collectorJob.cancel()
+    }
+
+    @Test
+    fun `platform n'est pas remplace si une plateforme deja cochee n'a plus de correspondance (Switch vers Switch 2)`() = runTest {
+        val dao = FakeGameDao()
+        val repository = fakeGameRepository(dao)
+        val result = repository.addGame(
+            Game(
+                title = "Kirby Air Riders",
+                platform = "Switch",
+                genre = "Course",
+                status = GameStatus.A_FAIRE,
+                playedPlatforms = setOf("Switch"),
+            ),
+        )
+        val gameId = (result as Resource.Success).data
+        val igdbRepository = FakeIgdbPlaytimeRepository(
+            result = IgdbGameMatch(playtimeEstimate = null, platform = "Nintendo Switch 2"),
+        )
+        val viewModel = viewModel(repository, gameId, igdbRepository)
+        val collectorJob = launch { viewModel.uiState.collect {} }
+        dispatcher.scheduler.advanceUntilIdle()
+
+        val game = viewModel.uiState.value.game
+        assertEquals("Switch", game?.platform)
+        assertEquals(setOf("Switch"), game?.playedPlatforms)
+        collectorJob.cancel()
+    }
+
+    @Test
+    fun `temps de jeu et plateforme sont appliques ensemble depuis la meme correspondance IGDB`() = runTest {
+        val dao = FakeGameDao()
+        val repository = fakeGameRepository(dao)
+        val gameId = setUpGame(repository) // platform = "PC"
+        val igdbRepository = FakeIgdbPlaytimeRepository(
+            result = IgdbGameMatch(
+                playtimeEstimate = IgdbPlaytimeEstimate(hastilyHours = 8, normallyHours = 15, completelyHours = 30),
+                platform = "PC (Microsoft Windows)",
+            ),
+        )
+        val viewModel = viewModel(repository, gameId, igdbRepository)
+        val collectorJob = launch { viewModel.uiState.collect {} }
+        dispatcher.scheduler.advanceUntilIdle()
+
+        val game = viewModel.uiState.value.game
+        assertEquals(15, game?.estimatedPlaytimeNormallyHours)
+        assertEquals("PC (Microsoft Windows)", game?.platform)
         collectorJob.cancel()
     }
 }

@@ -6,13 +6,23 @@ import com.squareup.moshi.JsonClass
 /**
  * Un jeu IGDB, tel que renvoyé par l'endpoint de recherche (`POST /v4/games`). `firstReleaseDate`
  * (timestamp Unix en secondes) sert de signal secondaire pour départager des candidats au nom
- * proche (voir `IgdbMappers.findBestMatch`).
+ * proche (voir `IgdbMappers.findBestMatch`). `platforms` sert à fiabiliser `Game.platform` une fois
+ * la correspondance IGDB établie (voir `IgdbMappers.formatIgdbPlatforms`) — absent des candidats de
+ * recherche tant qu'on n'a pas retenu le bon (voir `buildSearchQuery`, qui le demande directement
+ * pour éviter un second appel).
  */
 @JsonClass(generateAdapter = true)
 data class IgdbGameDto(
     @Json(name = "id") val id: Long,
     @Json(name = "name") val name: String,
     @Json(name = "first_release_date") val firstReleaseDate: Long? = null,
+    @Json(name = "platforms") val platforms: List<IgdbPlatformDto>? = null,
+)
+
+/** Une plateforme IGDB (`games.platforms`), voir `IgdbGameDto.platforms`. */
+@JsonClass(generateAdapter = true)
+data class IgdbPlatformDto(
+    @Json(name = "name") val name: String,
 )
 
 /**

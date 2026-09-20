@@ -1,6 +1,7 @@
 package fr.cklla.cartouche.data.remote.igdb
 
 import fr.cklla.cartouche.data.remote.igdb.dto.IgdbGameDto
+import fr.cklla.cartouche.data.remote.igdb.dto.IgdbPlatformDto
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
@@ -10,7 +11,7 @@ class IgdbMappersTest {
     @Test
     fun `buildSearchQuery construit une requete Apicalypse de recherche par titre`() {
         assertEquals(
-            "search \"Hades\"; fields id,name,first_release_date; limit 30;",
+            "search \"Hades\"; fields id,name,first_release_date,platforms.name; limit 30;",
             buildSearchQuery("Hades"),
         )
     }
@@ -19,7 +20,7 @@ class IgdbMappersTest {
     fun `buildSearchQuery echappe les guillemets du titre pour ne pas casser la requete`() {
         val titleWithQuotes = "Baldur's Gate 3: " + "\"Honour Mode\""
         val expected = "search \"Baldur's Gate 3: " + "\\\"Honour Mode\\\"" +
-            "\"; fields id,name,first_release_date; limit 30;"
+            "\"; fields id,name,first_release_date,platforms.name; limit 30;"
 
         assertEquals(expected, buildSearchQuery(titleWithQuotes))
     }
@@ -37,6 +38,14 @@ class IgdbMappersTest {
         assertEquals(
             "fields game; where uid = \"1145360\" & category = 1; limit 1;",
             buildSteamExternalGameQuery(1145360L),
+        )
+    }
+
+    @Test
+    fun `buildPlatformsQuery filtre sur l'id du jeu IGDB et ne demande que les plateformes`() {
+        assertEquals(
+            "fields platforms.name; where id = 252647; limit 1;",
+            buildPlatformsQuery(252647L),
         )
     }
 
@@ -163,5 +172,39 @@ class IgdbMappersTest {
     @Test
     fun `toEstimatedHours traite une duree a zero comme non disponible`() {
         assertNull(toEstimatedHours(0))
+    }
+
+    @Test
+    fun `formatIgdbPlatforms joint les noms de plateformes avec un slash`() {
+        val platforms = listOf(IgdbPlatformDto(name = "PC"), IgdbPlatformDto(name = "PlayStation 5"))
+        assertEquals("PC/PlayStation 5", formatIgdbPlatforms(platforms))
+    }
+
+    @Test
+    fun `formatIgdbPlatforms trie les plateformes independamment de l'ordre IGDB`() {
+        val platforms = listOf(IgdbPlatformDto(name = "PlayStation 5"), IgdbPlatformDto(name = "Nintendo Switch 2"))
+        assertEquals("Nintendo Switch 2/PlayStation 5", formatIgdbPlatforms(platforms))
+    }
+
+    @Test
+    fun `formatIgdbPlatforms deduplique les plateformes identiques`() {
+        val platforms = listOf(IgdbPlatformDto(name = "PC"), IgdbPlatformDto(name = "PC"))
+        assertEquals("PC", formatIgdbPlatforms(platforms))
+    }
+
+    @Test
+    fun `formatIgdbPlatforms ignore les noms vides ou blancs`() {
+        val platforms = listOf(IgdbPlatformDto(name = "PC"), IgdbPlatformDto(name = "  "))
+        assertEquals("PC", formatIgdbPlatforms(platforms))
+    }
+
+    @Test
+    fun `formatIgdbPlatforms renvoie null sans liste de plateformes`() {
+        assertNull(formatIgdbPlatforms(null))
+    }
+
+    @Test
+    fun `formatIgdbPlatforms renvoie null pour une liste vide, jamais une chaine vide`() {
+        assertNull(formatIgdbPlatforms(emptyList()))
     }
 }

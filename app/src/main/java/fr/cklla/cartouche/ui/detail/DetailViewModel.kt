@@ -7,7 +7,9 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import fr.cklla.cartouche.domain.model.Game
 import fr.cklla.cartouche.domain.model.GameSearchResult
 import fr.cklla.cartouche.domain.model.GameStatus
+import fr.cklla.cartouche.domain.model.IgdbGameMatch
 import fr.cklla.cartouche.domain.model.Resource
+import fr.cklla.cartouche.domain.model.realignPlayedPlatformsOrNull
 import fr.cklla.cartouche.domain.model.toGame
 import fr.cklla.cartouche.domain.repository.GameRepository
 import fr.cklla.cartouche.domain.repository.IgdbPlaytimeRepository
@@ -82,21 +84,36 @@ class DetailViewModel @Inject constructor(
 
     private fun fetchEstimatedPlaytime(game: Game) {
         viewModelScope.launch {
-            val estimate = igdbPlaytimeRepository.findEstimatedPlaytime(
+            val match = igdbPlaytimeRepository.findEstimatedPlaytime(
                 title = game.title,
                 releaseYear = game.releaseYear,
                 rawgId = game.rawgId,
             ) ?: return@launch
             // Le jeu affiché a pu changer entretemps (retiré du backlog) : `applyEdit` gère déjà
             // ce cas (no-op si `workingGame` est `null`), donc pas de vérification supplémentaire ici.
-            applyEdit {
-                it.copy(
-                    estimatedPlaytimeHastilyHours = estimate.hastilyHours,
-                    estimatedPlaytimeNormallyHours = estimate.normallyHours,
-                    estimatedPlaytimeCompletelyHours = estimate.completelyHours,
-                )
-            }
+            applyEdit { applyIgdbMatch(it, match) }
         }
+    }
+
+    /**
+     * Applique un [IgdbGameMatch] résolu à [game] : temps de jeu estimé si IGDB en a trouvé, et
+     * correction de `platform` si IGDB a une liste de plateformes et que ce remplacement ne casse
+     * aucune entrée déjà cochée de `playedPlatforms` (voir `realignPlayedPlatformsOrNull` pour le
+     * raisonnement détaillé — notamment le cas Switch/Switch 2 qui motive cette prudence).
+     */
+    private fun applyIgdbMatch(game: Game, match: IgdbGameMatch): Game {
+        val withPlaytime = match.playtimeEstimate?.let { estimate ->
+            game.copy(
+                estimatedPlaytimeHastilyHours = estimate.hastilyHours,
+                estimatedPlaytimeNormallyHours = estimate.normallyHours,
+                estimatedPlaytimeCompletelyHours = estimate.completelyHours,
+            )
+        } ?: game
+
+        val newPlatform = match.platform ?: return withPlaytime
+        val realignedPlayedPlatforms = realignPlayedPlatformsOrNull(withPlaytime.playedPlatforms, newPlatform)
+            ?: return withPlaytime
+        return withPlaytime.copy(platform = newPlatform, playedPlatforms = realignedPlayedPlatforms)
     }
 
     val uiState: StateFlow<DetailUiState> = combine(isLoading, workingGame) { loading, game ->
