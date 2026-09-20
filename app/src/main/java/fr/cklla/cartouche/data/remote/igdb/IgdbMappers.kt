@@ -165,12 +165,31 @@ fun toEstimatedHours(seconds: Int?): Int? = seconds?.takeIf { it > 0 }?.let { it
  * déterministe. Renvoie `null` (jamais une chaîne vide) si IGDB n'a aucune plateforme pour ce jeu —
  * `IgdbPlaytimeRepositoryImpl` s'en sert comme signal pour ne jamais écraser `Game.platform` avec
  * une liste vide.
+ *
+ * Chaque nom passe par [normalizeIgdbPlatformName] avant tri/dédoublonnage : IGDB distingue les OS
+ * PC ("PC (Microsoft Windows)", "Mac", "Linux") là où RAWG et l'app ne veulent qu'un seul "PC",
+ * peu importe l'OS — sans ce regroupement, un jeu multi-OS afficherait plusieurs cases "PC" à
+ * cocher séparément côté `playedPlatforms`, ce qui n'a pas de sens pour l'utilisateur.
  */
 fun formatIgdbPlatforms(platforms: List<IgdbPlatformDto>?): String? =
     platforms.orEmpty()
-        .map { it.name.trim() }
+        .map { normalizeIgdbPlatformName(it.name) }
         .filter { it.isNotEmpty() }
         .distinct()
         .sorted()
         .takeIf { it.isNotEmpty() }
         ?.joinToString("/")
+
+/** Noms IGDB (en minuscules) désignant un système d'exploitation de la famille PC. */
+private val PC_FAMILY_PLATFORM_NAMES = setOf(
+    "pc",
+    "pc (microsoft windows)",
+    "mac",
+    "macos",
+    "linux",
+)
+
+private fun normalizeIgdbPlatformName(name: String): String {
+    val trimmed = name.trim()
+    return if (trimmed.lowercase(Locale.ROOT) in PC_FAMILY_PLATFORM_NAMES) "PC" else trimmed
+}
