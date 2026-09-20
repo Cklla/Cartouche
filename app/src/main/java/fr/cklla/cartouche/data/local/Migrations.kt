@@ -195,3 +195,26 @@ val MIGRATION_6_7 = object : Migration(6, 7) {
         connection.execSQL("ALTER TABLE `games` ADD COLUMN `abandonedAt` INTEGER")
     }
 }
+
+/**
+ * Ajoute `playedPlatforms` (plateforme(s) sur laquelle/lesquelles l'utilisateur a joué, voir
+ * `Game.playedPlatforms`), au même format que `platform` (plateformes jointes par "/").
+ * `NOT NULL DEFAULT ''` plutôt que nullable : une chaîne vide ("aucune plateforme cochée") est une
+ * valeur normale du champ, pas une absence de donnée à distinguer.
+ *
+ * Backfill pour les jeux déjà en backlog : quand `platform` ne liste qu'une seule plateforme (pas
+ * de "/"), elle est forcément celle sur laquelle le jeu a été joué — aucune case à cocher n'aurait
+ * de sens pour ce jeu de toute façon (voir `DetailScreen`), donc autant préremplir la donnée plutôt
+ * que de forcer une confirmation manuelle inutile. Pour les jeux multi-plateformes déjà en
+ * backlog, impossible de deviner laquelle a été jouée : `playedPlatforms` reste vide, à renseigner
+ * manuellement — même limite assumée que `completedAt`/`abandonedAt` (voir `MIGRATION_5_6`).
+ */
+val MIGRATION_7_8 = object : Migration(7, 8) {
+    override fun migrate(connection: SQLiteConnection) {
+        connection.execSQL("ALTER TABLE `games` ADD COLUMN `playedPlatforms` TEXT NOT NULL DEFAULT ''")
+        connection.execSQL(
+            "UPDATE `games` SET `playedPlatforms` = `platform` " +
+                "WHERE `platform` != '' AND `platform` NOT LIKE '%/%'",
+        )
+    }
+}

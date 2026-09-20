@@ -44,6 +44,34 @@ class GameSearchResultTest {
     }
 
     @Test
+    fun `toGame precoche automatiquement l'unique plateforme disponible`() {
+        val result = GameSearchResult(
+            rawgId = 1L,
+            title = "Hades",
+            platform = "PC",
+            genre = "Roguelike",
+            year = "2020",
+            coverUrl = null,
+        )
+
+        assertEquals(setOf("PC"), result.toGame().playedPlatforms)
+    }
+
+    @Test
+    fun `toGame laisse playedPlatforms vide quand plusieurs plateformes sont possibles`() {
+        val result = GameSearchResult(
+            rawgId = 1L,
+            title = "Trails in the Sky First Chapter",
+            platform = "PC/PS5/Switch",
+            genre = "RPG",
+            year = "2020",
+            coverUrl = null,
+        )
+
+        assertEquals(emptySet<String>(), result.toGame().playedPlatforms)
+    }
+
+    @Test
     fun `toGame laisse les temps de jeu estimes a null, renseignes plus tard via IGDB`() {
         val result = GameSearchResult(
             rawgId = 1L,

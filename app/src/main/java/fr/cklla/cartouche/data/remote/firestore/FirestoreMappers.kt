@@ -29,6 +29,7 @@ private const val FIELD_NOTES = "notes"
 private const val FIELD_COVER_URL = "coverUrl"
 private const val FIELD_COMPLETED_AT = "completedAt"
 private const val FIELD_ABANDONED_AT = "abandonedAt"
+private const val FIELD_PLAYED_PLATFORMS = "playedPlatforms"
 
 fun Game.toFirestoreMap(): Map<String, Any?> = mapOf(
     FIELD_TITLE to title,
@@ -46,6 +47,9 @@ fun Game.toFirestoreMap(): Map<String, Any?> = mapOf(
     FIELD_COVER_URL to coverUrl,
     FIELD_COMPLETED_AT to completedAt,
     FIELD_ABANDONED_AT to abandonedAt,
+    // Firestore stocke nativement des listes : pas besoin de la joindre en chaîne comme côté Room
+    // (voir `GameEntity.playedPlatforms`), qui n'a pas ce luxe.
+    FIELD_PLAYED_PLATFORMS to playedPlatforms.sorted(),
 )
 
 // Firestore n'a pas de type `Int` natif (tout nombre entier remonte en `Long`) : cast via `Number`
@@ -80,5 +84,9 @@ fun mapToGame(id: String, data: Map<String, Any?>): Game? {
         coverUrl = (data[FIELD_COVER_URL] as? String)?.takeIf { it.startsWith("https://") },
         completedAt = (data[FIELD_COMPLETED_AT] as? Number)?.toLong(),
         abandonedAt = (data[FIELD_ABANDONED_AT] as? Number)?.toLong(),
+        playedPlatforms = (data[FIELD_PLAYED_PLATFORMS] as? List<*>)
+            ?.filterIsInstance<String>()
+            ?.toSet()
+            .orEmpty(),
     )
 }

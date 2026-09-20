@@ -125,6 +125,13 @@ class DetailViewModel @Inject constructor(
 
     fun onNotesChanged(notes: String) = applyEdit { it.copy(notes = notes) }
 
+    // Cases à cocher "joué sur" (voir `PlayedPlatformsSection`) : plusieurs plateformes peuvent
+    // être cochées à la fois (jeu fait pour partie sur PC, pour partie sur PS5 par exemple).
+    fun onPlayedPlatformToggled(platform: String) = applyEdit {
+        val updated = if (platform in it.playedPlatforms) it.playedPlatforms - platform else it.playedPlatforms + platform
+        it.copy(playedPlatforms = updated)
+    }
+
     /**
      * Ajoute la fiche en aperçu au backlog. La fiche ne navigue nulle part : `workingGame` reçoit
      * l'id fraîchement généré, ce qui fait basculer `isInBacklog` à `true` et affiche directement

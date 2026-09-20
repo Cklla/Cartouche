@@ -14,6 +14,10 @@ import androidx.room.PrimaryKey
  * [id] est un UUID (généré côté Repository, pas par Room) plutôt qu'un entier auto-incrémenté :
  * avec la synchro Firestore, cet id doit être stable et unique sur tous les appareils, ce qu'un
  * compteur local ne garantit pas (deux téléphones généreraient tous les deux un jeu n°1).
+ *
+ * [playedPlatforms] réutilise le même format que [platform] (plateformes jointes par "/") plutôt
+ * qu'une table séparée : c'est un simple sous-ensemble de peu d'éléments, une table dédiée serait
+ * disproportionnée (voir `Game.playedPlatforms`, `GameMappers` pour la conversion vers/depuis `Set`).
  */
 @Entity(tableName = "games")
 data class GameEntity(
@@ -33,4 +37,5 @@ data class GameEntity(
     val coverUrl: String?,
     val completedAt: Long?,
     val abandonedAt: Long?,
+    val playedPlatforms: String,
 )

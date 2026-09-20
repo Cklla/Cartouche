@@ -218,6 +218,52 @@ class DetailViewModelTest {
     }
 
     @Test
+    fun `cocher une plateforme jouee ajoute une plateforme sans retirer les autres`() = runTest {
+        val dao = FakeGameDao()
+        val repository = fakeGameRepository(dao)
+        val result = repository.addGame(
+            Game(title = "Trails in the Sky", platform = "PC/PS5/Switch", genre = "RPG", status = GameStatus.EN_COURS),
+        )
+        val gameId = (result as Resource.Success).data
+        val viewModel = viewModel(repository, gameId)
+        val collectorJob = launch { viewModel.uiState.collect {} }
+        dispatcher.scheduler.advanceUntilIdle()
+
+        viewModel.onPlayedPlatformToggled("Switch")
+        dispatcher.scheduler.advanceUntilIdle()
+        viewModel.onPlayedPlatformToggled("PC")
+        dispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals(setOf("Switch", "PC"), viewModel.uiState.value.game?.playedPlatforms)
+        collectorJob.cancel()
+    }
+
+    @Test
+    fun `decocher une plateforme jouee la retire de la selection`() = runTest {
+        val dao = FakeGameDao()
+        val repository = fakeGameRepository(dao)
+        val result = repository.addGame(
+            Game(
+                title = "Trails in the Sky",
+                platform = "PC/PS5/Switch",
+                genre = "RPG",
+                status = GameStatus.EN_COURS,
+                playedPlatforms = setOf("Switch"),
+            ),
+        )
+        val gameId = (result as Resource.Success).data
+        val viewModel = viewModel(repository, gameId)
+        val collectorJob = launch { viewModel.uiState.collect {} }
+        dispatcher.scheduler.advanceUntilIdle()
+
+        viewModel.onPlayedPlatformToggled("Switch")
+        dispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals(emptySet<String>(), viewModel.uiState.value.game?.playedPlatforms)
+        collectorJob.cancel()
+    }
+
+    @Test
     fun `retirer le jeu du backlog fait disparaitre le jeu observe`() = runTest {
         val dao = FakeGameDao()
         val repository = fakeGameRepository(dao)

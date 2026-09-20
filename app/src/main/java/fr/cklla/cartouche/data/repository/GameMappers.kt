@@ -3,6 +3,7 @@ package fr.cklla.cartouche.data.repository
 import fr.cklla.cartouche.data.local.entity.GameEntity
 import fr.cklla.cartouche.domain.model.Game
 import fr.cklla.cartouche.domain.model.GameStatus
+import fr.cklla.cartouche.domain.model.parsePlatforms
 
 /**
  * Conversions entre le modèle métier [Game] et l'entité Room [GameEntity].
@@ -28,6 +29,7 @@ fun GameEntity.toDomain(): Game = Game(
     coverUrl = coverUrl,
     completedAt = completedAt,
     abandonedAt = abandonedAt,
+    playedPlatforms = parsePlatforms(playedPlatforms).toSet(),
 )
 
 fun Game.toEntity(): GameEntity = GameEntity(
@@ -47,4 +49,5 @@ fun Game.toEntity(): GameEntity = GameEntity(
     coverUrl = coverUrl,
     completedAt = completedAt,
     abandonedAt = abandonedAt,
+    playedPlatforms = playedPlatforms.sorted().joinToString("/"),
 )

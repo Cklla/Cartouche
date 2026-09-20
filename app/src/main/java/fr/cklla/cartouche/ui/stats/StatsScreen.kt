@@ -99,6 +99,16 @@ private fun StatsContent(
         ) {
             StatCardsGrid(stats = stats)
             DonutSection(stats = stats)
+            PlatformBreakdownSection(
+                titleRes = R.string.stats_completed_by_platform_label,
+                counts = stats.completedByPlatform,
+                dotColor = GameStatus.TERMINE.palette().color,
+            )
+            PlatformBreakdownSection(
+                titleRes = R.string.stats_in_progress_by_platform_label,
+                counts = stats.inProgressByPlatform,
+                dotColor = GameStatus.EN_COURS.palette().color,
+            )
         }
     }
 }
@@ -361,14 +371,63 @@ private fun LegendRow(status: GameStatus, count: Int) {
     }
 }
 
+/**
+ * Répartition par plateforme (voir `Game.playedPlatforms`), affichée deux fois sur cet écran :
+ * une fois pour les jeux Terminé (respecte le filtre par année, voir `StatsData.completedByPlatform`)
+ * et une fois pour les jeux En cours (toujours toutes années, voir `StatsData.inProgressByPlatform`).
+ * Masquée entièrement quand `counts` est vide — aucune plateforme à zéro n'y figure jamais (voir
+ * `platformCounts`, qui les exclut à la source), inutile d'afficher un titre de section sans lignes.
+ */
+@Composable
+private fun PlatformBreakdownSection(titleRes: Int, counts: Map<String, Int>, dotColor: Color) {
+    if (counts.isEmpty()) return
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Text(
+            text = stringResource(titleRes).uppercase(Locale.FRENCH),
+            style = CartoucheTextStyles.sectionLabel,
+            color = TextMuted,
+        )
+        counts.forEach { (platform, count) -> PlatformBreakdownRow(platform = platform, count = count, dotColor = dotColor) }
+    }
+}
+
+@Composable
+private fun PlatformBreakdownRow(platform: String, count: Int, dotColor: Color) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        Box(
+            modifier = Modifier
+                .size(9.dp)
+                .clip(CircleShape)
+                .background(dotColor),
+        )
+        Text(
+            text = platform,
+            style = CartoucheTextStyles.legendLabel,
+            color = TextSecondary,
+            modifier = Modifier.weight(1f),
+        )
+        Text(text = count.toString(), style = CartoucheTextStyles.legendCount, color = TextPrimary)
+    }
+}
+
 @Preview(showBackground = true, backgroundColor = 0xFF0A0812)
 @Composable
 private fun StatsContentPreview() {
     val games = listOf(
-        GameStatus.A_FAIRE, GameStatus.A_FAIRE, GameStatus.A_FAIRE,
-        GameStatus.EN_COURS, GameStatus.EN_COURS,
-        GameStatus.TERMINE, GameStatus.TERMINE, GameStatus.TERMINE, GameStatus.TERMINE,
-    ).mapIndexed { index, status ->
+        GameStatus.A_FAIRE to setOf("PC"),
+        GameStatus.A_FAIRE to setOf("PC"),
+        GameStatus.A_FAIRE to setOf("PC"),
+        GameStatus.EN_COURS to setOf("PC"),
+        GameStatus.EN_COURS to setOf("Switch"),
+        GameStatus.TERMINE to setOf("PC"),
+        GameStatus.TERMINE to setOf("PS5"),
+        GameStatus.TERMINE to setOf("Switch"),
+        GameStatus.TERMINE to setOf("PC", "PS5"),
+    ).mapIndexed { index, (status, playedPlatforms) ->
         fr.cklla.cartouche.domain.model.Game(
             id = index.toString(),
             title = "Jeu $index",
@@ -376,6 +435,7 @@ private fun StatsContentPreview() {
             genre = "Aventure",
             status = status,
             userPlaytimeHours = index * 5,
+            playedPlatforms = playedPlatforms,
         )
     }
     CartoucheTheme {
