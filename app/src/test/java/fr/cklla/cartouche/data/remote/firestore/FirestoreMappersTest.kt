@@ -57,6 +57,7 @@ class FirestoreMappersTest {
             "rating" to 4L,
             "notes" to "",
             "completedAt" to 1_700_000_000_000L,
+            "abandonedAt" to 1_650_000_000_000L,
         )
 
         val game = mapToGame("1", data)
@@ -67,6 +68,21 @@ class FirestoreMappersTest {
         assertEquals(5, game?.estimatedPlaytimeHastilyHours)
         assertEquals(4, game?.rating)
         assertEquals(1_700_000_000_000L, game?.completedAt)
+        assertEquals(1_650_000_000_000L, game?.abandonedAt)
+    }
+
+    @Test
+    fun `abandonedAt est conserve au round-trip`() {
+        val game = Game(
+            id = "43",
+            title = "Cyberpunk 2077",
+            platform = "PC",
+            genre = "Action-RPG",
+            status = GameStatus.ABANDONNE,
+            abandonedAt = 1_650_000_000_000L,
+        )
+
+        assertEquals(game, mapToGame(game.id, game.toFirestoreMap()))
     }
 
     @Test
@@ -114,5 +130,6 @@ class FirestoreMappersTest {
         assertNull(game?.rating)
         assertNull(game?.coverUrl)
         assertNull(game?.completedAt)
+        assertNull(game?.abandonedAt)
     }
 }

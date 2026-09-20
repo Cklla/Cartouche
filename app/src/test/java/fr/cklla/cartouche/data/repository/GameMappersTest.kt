@@ -26,11 +26,26 @@ class GameMappersTest {
             notes = "Excellent",
             coverUrl = "https://example.com/cover.jpg",
             completedAt = 1_700_000_000_000L,
+            abandonedAt = null,
         )
 
         val roundTripped = game.toEntity().toDomain()
 
         assertEquals(game, roundTripped)
+    }
+
+    @Test
+    fun `abandonedAt est conserve au round-trip`() {
+        val game = Game(
+            id = "43",
+            title = "Cyberpunk 2077",
+            platform = "PC",
+            genre = "Action-RPG",
+            status = GameStatus.ABANDONNE,
+            abandonedAt = 1_700_000_000_000L,
+        )
+
+        assertEquals(game, game.toEntity().toDomain())
     }
 
     @Test
@@ -51,6 +66,7 @@ class GameMappersTest {
             notes = "",
             coverUrl = null,
             completedAt = null,
+            abandonedAt = null,
         )
 
         assertEquals(GameStatus.ABANDONNE, entity.toDomain().status)

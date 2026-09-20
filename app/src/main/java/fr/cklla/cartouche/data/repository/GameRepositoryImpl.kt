@@ -68,7 +68,11 @@ class GameRepositoryImpl @Inject constructor(
     // dans Firestore, les deux doivent donc partager exactement le même id.
     override suspend fun addGame(game: Game): Resource<String> = runCatching {
         val id = game.id.ifBlank { UUID.randomUUID().toString() }
-        val gameWithId = game.copy(id = id, completedAt = resolveCompletedAt(previous = null, newStatus = game.status))
+        val gameWithId = game.copy(
+            id = id,
+            completedAt = resolveCompletedAt(previous = null, newStatus = game.status),
+            abandonedAt = resolveAbandonedAt(previous = null, newStatus = game.status),
+        )
         gameDao.insert(gameWithId.toEntity())
         pushToFirestore { uid -> firestoreDataSource.upsertGame(uid, gameWithId) }
         id
@@ -79,7 +83,10 @@ class GameRepositoryImpl @Inject constructor(
 
     override suspend fun updateGame(game: Game): Resource<Unit> = runCatching {
         val previous = gameDao.getByIdOnce(game.id)
-        val gameToPersist = game.copy(completedAt = resolveCompletedAt(previous, game.status))
+        val gameToPersist = game.copy(
+            completedAt = resolveCompletedAt(previous, game.status),
+            abandonedAt = resolveAbandonedAt(previous, game.status),
+        )
         gameDao.update(gameToPersist.toEntity())
         pushToFirestore { uid -> firestoreDataSource.upsertGame(uid, gameToPersist) }
     }.fold(
@@ -105,6 +112,18 @@ class GameRepositoryImpl @Inject constructor(
         return when {
             newStatus != GameStatus.TERMINE -> null
             previousStatus == GameStatus.TERMINE -> previous?.completedAt
+            else -> System.currentTimeMillis()
+        }
+    }
+
+    // Même mécanique que [resolveCompletedAt], pour le statut ABANDONNE. Un jeu ne pouvant avoir
+    // qu'un seul statut à la fois, passer à TERMINE efface naturellement `abandonedAt` (et
+    // inversement) : chaque fonction renvoie `null` dès que `newStatus` n'est pas son statut cible.
+    private fun resolveAbandonedAt(previous: GameEntity?, newStatus: GameStatus): Long? {
+        val previousStatus = previous?.status?.let { runCatching { GameStatus.valueOf(it) }.getOrNull() }
+        return when {
+            newStatus != GameStatus.ABANDONNE -> null
+            previousStatus == GameStatus.ABANDONNE -> previous?.abandonedAt
             else -> System.currentTimeMillis()
         }
     }

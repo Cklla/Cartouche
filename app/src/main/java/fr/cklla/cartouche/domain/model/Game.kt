@@ -34,6 +34,8 @@ package fr.cklla.cartouche.domain.model
  *   ou `null` si le jeu n'est pas terminé (ou l'était déjà avant l'introduction de ce champ).
  *   Dérivé automatiquement par le Repository à chaque transition de statut, jamais renseigné par
  *   l'UI — sert au filtre par année de complétion (Bibliothèque et Stats).
+ * @param abandonedAt même mécanique que [completedAt], mais pour le passage au statut
+ *   [GameStatus.ABANDONNE] — sert au filtre par année d'abandon (Bibliothèque et Stats).
  */
 data class Game(
     val id: String = "",
@@ -51,4 +53,5 @@ data class Game(
     val notes: String = "",
     val coverUrl: String? = null,
     val completedAt: Long? = null,
+    val abandonedAt: Long? = null,
 )

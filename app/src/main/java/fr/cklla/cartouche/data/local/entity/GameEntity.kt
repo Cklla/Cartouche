@@ -32,4 +32,5 @@ data class GameEntity(
     val notes: String,
     val coverUrl: String?,
     val completedAt: Long?,
+    val abandonedAt: Long?,
 )

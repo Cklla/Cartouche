@@ -4,7 +4,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import fr.cklla.cartouche.domain.repository.GameRepository
-import fr.cklla.cartouche.ui.availableCompletedYears
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -30,7 +29,7 @@ class BibliothequeViewModel @Inject constructor(
             visibleGames = filterGames(games, filter, year),
             selectedFilter = filter,
             filterCounts = countByFilter(games),
-            availableCompletedYears = availableCompletedYears(games),
+            availableYears = availableYearsFor(filter, games),
             selectedYear = year,
         )
     }.stateIn(
@@ -41,9 +40,9 @@ class BibliothequeViewModel @Inject constructor(
 
     fun onFilterSelected(filter: BacklogFilter) {
         selectedFilter.value = filter
-        // Le filtre par année n'a de sens que sous "Terminé" (voir `filterGames`) : changer de
-        // filtre de statut repart d'une sélection d'année propre plutôt que de garder un choix
-        // invisible.
+        // Le filtre par année n'a de sens que sous "Terminé"/"Abandonné" (voir `filterGames`), et
+        // les deux n'ont pas les mêmes années disponibles : changer de filtre de statut repart
+        // d'une sélection d'année propre plutôt que de garder un choix invisible ou incohérent.
         selectedYear.value = null
     }
 
