@@ -207,4 +207,24 @@ class IgdbMappersTest {
     fun `formatIgdbPlatforms renvoie null pour une liste vide, jamais une chaine vide`() {
         assertNull(formatIgdbPlatforms(emptyList()))
     }
+
+    @Test
+    fun `formatIgdbPlatforms regroupe les OS PC sous un seul PC`() {
+        val platforms = listOf(
+            IgdbPlatformDto(name = "PC (Microsoft Windows)"),
+            IgdbPlatformDto(name = "Mac"),
+            IgdbPlatformDto(name = "Linux"),
+        )
+        assertEquals("PC", formatIgdbPlatforms(platforms))
+    }
+
+    @Test
+    fun `formatIgdbPlatforms regroupe PC avec les autres plateformes sans les dupliquer`() {
+        val platforms = listOf(
+            IgdbPlatformDto(name = "PC (Microsoft Windows)"),
+            IgdbPlatformDto(name = "Nintendo Switch 2"),
+            IgdbPlatformDto(name = "Mac"),
+        )
+        assertEquals("Nintendo Switch 2/PC", formatIgdbPlatforms(platforms))
+    }
 }
