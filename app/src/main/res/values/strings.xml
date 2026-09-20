@@ -43,6 +43,7 @@
     <string name="stats_hours_label">heures de jeu enregistrées</string>
     <string name="stats_completion_percent">%1$d%%</string>
     <string name="stats_completion_label">complété</string>
+    <string name="stats_year_total_label">jeux clôturés</string>
     <string name="stats_signed_in_as">Connecté en tant que %1$s</string>
     <string name="stats_sign_out">Se déconnecter</string>
 

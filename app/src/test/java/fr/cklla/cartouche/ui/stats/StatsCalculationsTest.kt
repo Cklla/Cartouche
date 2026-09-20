@@ -88,4 +88,28 @@ class StatsCalculationsTest {
         assertEquals(1, stats.countsByStatus[GameStatus.TERMINE])
         assertEquals(0, stats.countsByStatus[GameStatus.A_FAIRE])
     }
+
+    @Test
+    fun `avec une annee selectionnee, compte aussi les jeux abandonnes cette annee-la`() {
+        val hades = Game(title = "Hades", platform = "PC", genre = "Roguelike", status = GameStatus.TERMINE, userPlaytimeHours = 28, completedAt = completedIn2024)
+        val cyberpunk = Game(title = "Cyberpunk 2077", platform = "PC", genre = "Action-RPG", status = GameStatus.ABANDONNE, abandonedAt = completedIn2024)
+        val celeste = Game(title = "Celeste", platform = "PC", genre = "Plateforme", status = GameStatus.ABANDONNE, abandonedAt = completedIn2023)
+        val games = listOf(hades, cyberpunk, celeste)
+
+        val stats = computeStats(games, selectedYear = 2024)
+
+        assertEquals(1, stats.completedCount)
+        assertEquals(1, stats.countsByStatus[GameStatus.TERMINE])
+        assertEquals(1, stats.countsByStatus[GameStatus.ABANDONNE])
+        // Les heures de jeu ne portent que sur les jeux terminés, pas sur les abandonnés.
+        assertEquals(28, stats.totalHoursPlayed)
+    }
+
+    @Test
+    fun `availableYears est l'union des annees de completion et d'abandon`() {
+        val hades = Game(title = "Hades", platform = "PC", genre = "Roguelike", status = GameStatus.TERMINE, completedAt = completedIn2024)
+        val cyberpunk = Game(title = "Cyberpunk 2077", platform = "PC", genre = "Action-RPG", status = GameStatus.ABANDONNE, abandonedAt = completedIn2023)
+
+        assertEquals(listOf(2024, 2023), computeStats(listOf(hades, cyberpunk)).availableYears)
+    }
 }

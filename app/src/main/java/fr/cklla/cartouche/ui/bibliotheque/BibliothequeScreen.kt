@@ -89,9 +89,11 @@ private fun BibliothequeContent(
             counts = uiState.filterCounts,
             onFilterSelected = onFilterSelected,
         )
-        if (uiState.selectedFilter == BacklogFilter.TERMINE && uiState.availableCompletedYears.isNotEmpty()) {
+        val yearFilterableStatus = uiState.selectedFilter == BacklogFilter.TERMINE ||
+            uiState.selectedFilter == BacklogFilter.ABANDONNE
+        if (yearFilterableStatus && uiState.availableYears.isNotEmpty()) {
             YearChipsRow(
-                years = uiState.availableCompletedYears,
+                years = uiState.availableYears,
                 selectedYear = uiState.selectedYear,
                 onYearSelected = onYearSelected,
             )

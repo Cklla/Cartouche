@@ -232,4 +232,49 @@ class GameRepositoryImplTest {
         val game = repository.observeGames().first().first()
         assertEquals(null, game.completedAt)
     }
+
+    @Test
+    fun `passer un jeu a Abandonne renseigne abandonedAt`() = runTest {
+        val addedId = (repository.addGame(hades) as Resource.Success).data
+
+        repository.updateGame(hades.copy(id = addedId, status = GameStatus.ABANDONNE))
+
+        val game = repository.observeGames().first().first()
+        assertTrue(game.abandonedAt != null)
+    }
+
+    @Test
+    fun `rester Abandonne ne deplace pas abandonedAt`() = runTest {
+        val addedId = (repository.addGame(hades) as Resource.Success).data
+        repository.updateGame(hades.copy(id = addedId, status = GameStatus.ABANDONNE))
+        val firstAbandonedAt = repository.observeGames().first().first().abandonedAt
+
+        repository.updateGame(hades.copy(id = addedId, status = GameStatus.ABANDONNE, rating = 2))
+
+        val secondAbandonedAt = repository.observeGames().first().first().abandonedAt
+        assertEquals(firstAbandonedAt, secondAbandonedAt)
+    }
+
+    @Test
+    fun `sortir d'Abandonne efface abandonedAt`() = runTest {
+        val addedId = (repository.addGame(hades) as Resource.Success).data
+        repository.updateGame(hades.copy(id = addedId, status = GameStatus.ABANDONNE))
+
+        repository.updateGame(hades.copy(id = addedId, status = GameStatus.EN_COURS))
+
+        val game = repository.observeGames().first().first()
+        assertEquals(null, game.abandonedAt)
+    }
+
+    @Test
+    fun `passer d'Abandonne a Termine bascule completedAt et efface abandonedAt`() = runTest {
+        val addedId = (repository.addGame(hades) as Resource.Success).data
+        repository.updateGame(hades.copy(id = addedId, status = GameStatus.ABANDONNE))
+
+        repository.updateGame(hades.copy(id = addedId, status = GameStatus.TERMINE))
+
+        val game = repository.observeGames().first().first()
+        assertTrue(game.completedAt != null)
+        assertEquals(null, game.abandonedAt)
+    }
 }

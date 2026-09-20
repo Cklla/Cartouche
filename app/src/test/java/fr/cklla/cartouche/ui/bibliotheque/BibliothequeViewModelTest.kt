@@ -74,7 +74,7 @@ class BibliothequeViewModelTest {
 
         viewModel.onFilterSelected(BacklogFilter.TERMINE)
         dispatcher.scheduler.advanceUntilIdle()
-        val availableYear = viewModel.uiState.value.availableCompletedYears.first()
+        val availableYear = viewModel.uiState.value.availableYears.first()
 
         viewModel.onYearSelected(availableYear)
         dispatcher.scheduler.advanceUntilIdle()
@@ -110,7 +110,7 @@ class BibliothequeViewModelTest {
 
         viewModel.onFilterSelected(BacklogFilter.TERMINE)
         dispatcher.scheduler.advanceUntilIdle()
-        viewModel.onYearSelected(viewModel.uiState.value.availableCompletedYears.first())
+        viewModel.onYearSelected(viewModel.uiState.value.availableYears.first())
         dispatcher.scheduler.advanceUntilIdle()
 
         viewModel.onFilterSelected(BacklogFilter.TOUS)

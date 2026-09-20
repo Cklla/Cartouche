@@ -2,6 +2,8 @@ package fr.cklla.cartouche.ui.bibliotheque
 
 import fr.cklla.cartouche.domain.model.Game
 import fr.cklla.cartouche.domain.model.GameStatus
+import fr.cklla.cartouche.ui.abandonedYear
+import fr.cklla.cartouche.ui.availableAbandonedYears
 import fr.cklla.cartouche.ui.availableCompletedYears
 import fr.cklla.cartouche.ui.completedYear
 import org.junit.Assert.assertEquals
@@ -70,12 +72,50 @@ class BibliothequeFilteringTest {
     }
 
     @Test
-    fun `le filtre par annee ne s'applique pas en dehors du filtre Termine`() {
+    fun `le filtre par annee ne s'applique pas en dehors du filtre Termine ou Abandonne`() {
         val eldenRingTermine2023 = eldenRing.copy(status = GameStatus.TERMINE, completedAt = completedIn2023)
 
         // TOUS ignore l'année sélectionnée : un jeu "à faire" sans completedAt reste visible.
         val result = filterGames(listOf(eldenRingTermine2023, zelda), BacklogFilter.TOUS, selectedYear = 2024)
 
         assertEquals(listOf(eldenRingTermine2023, zelda), result)
+    }
+
+    @Test
+    fun `abandonedYear derive l'annee d'abandon depuis abandonedAt`() {
+        assertEquals(2023, abandonedYear(eldenRing.copy(abandonedAt = completedIn2023)))
+        assertEquals(null, abandonedYear(eldenRing))
+    }
+
+    @Test
+    fun `availableAbandonedYears ne considere que les jeux Abandonne, sans doublon, du plus recent au plus ancien`() {
+        val celeste = Game(id = "4", title = "Celeste", platform = "PC", genre = "Plateforme", status = GameStatus.ABANDONNE, abandonedAt = completedIn2024)
+        val eldenRingAbandonne2023 = eldenRing.copy(status = GameStatus.ABANDONNE, abandonedAt = completedIn2023)
+        val zeldaAbandonne2023 = zelda.copy(status = GameStatus.ABANDONNE, abandonedAt = completedIn2023)
+
+        val years = availableAbandonedYears(listOf(eldenRingAbandonne2023, zeldaAbandonne2023, celeste, hades))
+
+        assertEquals(listOf(2024, 2023), years)
+    }
+
+    @Test
+    fun `filtre par annee d'abandon ne garde que les jeux Abandonne cette annee-la`() {
+        val celeste = Game(id = "4", title = "Celeste", platform = "PC", genre = "Plateforme", status = GameStatus.ABANDONNE, abandonedAt = completedIn2024)
+        val eldenRingAbandonne2023 = eldenRing.copy(status = GameStatus.ABANDONNE, abandonedAt = completedIn2023)
+
+        val result = filterGames(listOf(eldenRingAbandonne2023, celeste, hades), BacklogFilter.ABANDONNE, selectedYear = 2024)
+
+        assertEquals(listOf(celeste), result)
+    }
+
+    @Test
+    fun `availableYearsFor renvoie les annees selon l'onglet actif`() {
+        val hadesTermine2023 = hades.copy(completedAt = completedIn2023)
+        val eldenRingAbandonne2024 = eldenRing.copy(status = GameStatus.ABANDONNE, abandonedAt = completedIn2024)
+        val all = listOf(hadesTermine2023, eldenRingAbandonne2024, zelda)
+
+        assertEquals(listOf(2023), availableYearsFor(BacklogFilter.TERMINE, all))
+        assertEquals(listOf(2024), availableYearsFor(BacklogFilter.ABANDONNE, all))
+        assertEquals(emptyList<Int>(), availableYearsFor(BacklogFilter.TOUS, all))
     }
 }

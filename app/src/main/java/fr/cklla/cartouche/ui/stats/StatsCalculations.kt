@@ -2,15 +2,17 @@ package fr.cklla.cartouche.ui.stats
 
 import fr.cklla.cartouche.domain.model.Game
 import fr.cklla.cartouche.domain.model.GameStatus
-import fr.cklla.cartouche.ui.availableCompletedYears
+import fr.cklla.cartouche.ui.abandonedYear
+import fr.cklla.cartouche.ui.availableActivityYears
 import fr.cklla.cartouche.ui.completedYear
 
 /**
  * Données affichées par l'écran Stats, calculées soit sur le backlog complet
- * ([selectedYear] `null`), soit sur les seuls jeux terminés une année précise.
+ * ([selectedYear] `null`), soit sur les seuls jeux Terminé/Abandonné une année précise.
  *
- * `countsByStatus` couvre toujours les 4 [GameStatus] (0 si aucun jeu dans ce statut) :
- * c'est ce qui alimente à la fois l'anneau de progression et sa légende en vue "toutes années".
+ * `countsByStatus` couvre toujours les 4 [GameStatus] (0 si aucun jeu dans ce statut) en vue
+ * "toutes années" — alimente l'anneau de progression et sa légende. En vue "année sélectionnée",
+ * seuls TERMINE et ABANDONNE y figurent (les deux seuls statuts datés).
  * `backlogSize`/`completionPercent` n'ont de sens qu'en vue "toutes années" — l'UI ne les affiche
  * pas quand [selectedYear] est renseigné (voir `StatsScreen`).
  */
@@ -31,12 +33,14 @@ data class StatsData(
  * complétion selon la même formule que le prototype (`Math.round(termineCount / totalCount *
  * 100)`, 0 si le backlog est vide).
  *
- * Vue "année sélectionnée" : ne porte que sur les jeux Terminé cette année-là (voir
- * `completedYear`) — "taille du backlog", "À faire"/"En cours" et le pourcentage n'ont plus de
- * sens une fois filtré sur une seule année (voir `StatsScreen`, qui masque ces éléments).
+ * Vue "année sélectionnée" : ne porte que sur les jeux Terminé ou Abandonné cette année-là (voir
+ * `completedYear`/`abandonedYear`) — "taille du backlog", "À faire"/"En cours" et le pourcentage
+ * n'ont plus de sens une fois filtré sur une seule année (voir `StatsScreen`, qui masque ces
+ * éléments). `countsByStatus` ne porte alors que sur TERMINE et ABANDONNE, les deux seuls statuts
+ * datés.
  */
 fun computeStats(games: List<Game>, selectedYear: Int? = null): StatsData {
-    val availableYears = availableCompletedYears(games)
+    val availableYears = availableActivityYears(games)
 
     if (selectedYear == null) {
         val backlogSize = games.size
@@ -57,11 +61,16 @@ fun computeStats(games: List<Game>, selectedYear: Int? = null): StatsData {
     }
 
     val completedThisYear = games.filter { it.status == GameStatus.TERMINE && completedYear(it) == selectedYear }
+    val abandonedThisYear = games.filter { it.status == GameStatus.ABANDONNE && abandonedYear(it) == selectedYear }
     return StatsData(
         completedCount = completedThisYear.size,
         totalHoursPlayed = completedThisYear.sumOf { it.userPlaytimeHours },
         countsByStatus = GameStatus.entries.associateWith { status ->
-            if (status == GameStatus.TERMINE) completedThisYear.size else 0
+            when (status) {
+                GameStatus.TERMINE -> completedThisYear.size
+                GameStatus.ABANDONNE -> abandonedThisYear.size
+                else -> 0
+            }
         },
         availableYears = availableYears,
         selectedYear = selectedYear,

@@ -230,6 +230,10 @@ private fun DonutSection(stats: StatsData) {
     }
 }
 
+/** Les deux seuls statuts datés, dans l'ordre d'affichage de l'anneau et de la légende en vue
+ * "année sélectionnée" — [GameStatus.entries] complet n'a de sens qu'en vue "toutes années". */
+private val YEAR_FILTERED_STATUSES = listOf(GameStatus.TERMINE, GameStatus.ABANDONNE)
+
 /**
  * Anneau de progression, équivalent natif du `conic-gradient` CSS du prototype.
  *
@@ -237,9 +241,9 @@ private fun DonutSection(stats: StatsData) {
  * proportionnel à son nombre de jeux, dessiné en partant du haut (`startAngle = -90f`) dans le
  * sens horaire — même convention que le prototype.
  *
- * Vue "année sélectionnée" : plus de proportion à calculer (À faire/En cours exclus, backlog
- * total sans rapport avec une seule année) — anneau plein dans la couleur "Terminé", simple
- * indicateur du nombre de jeux terminés cette année-là.
+ * Vue "année sélectionnée" : même principe mais restreint aux deux statuts datés (Terminé/
+ * Abandonné, voir [YEAR_FILTERED_STATUSES]) — À faire/En cours n'ont pas de date de transition,
+ * donc pas de sens une fois filtré sur une seule année.
  */
 @Composable
 private fun DonutChart(stats: StatsData) {
@@ -253,17 +257,15 @@ private fun DonutChart(stats: StatsData) {
             val topLeft = Offset(strokeWidthPx / 2, strokeWidthPx / 2)
             val arcSize = Size(diameter, diameter)
 
-            when {
-                stats.selectedYear != null && stats.completedCount > 0 -> drawArc(
-                    color = GameStatus.TERMINE.palette().color,
-                    startAngle = 0f,
-                    sweepAngle = 360f,
-                    useCenter = false,
-                    topLeft = topLeft,
-                    size = arcSize,
-                    style = Stroke(width = strokeWidthPx),
-                )
-                stats.selectedYear != null || stats.backlogSize == 0 -> drawArc(
+            val statuses = if (stats.selectedYear != null) YEAR_FILTERED_STATUSES else GameStatus.entries
+            val total = if (stats.selectedYear != null) {
+                statuses.sumOf { stats.countsByStatus[it] ?: 0 }
+            } else {
+                stats.backlogSize
+            }
+
+            if (total == 0) {
+                drawArc(
                     color = BorderHairline,
                     startAngle = 0f,
                     sweepAngle = 360f,
@@ -272,23 +274,22 @@ private fun DonutChart(stats: StatsData) {
                     size = arcSize,
                     style = Stroke(width = strokeWidthPx),
                 )
-                else -> {
-                    var startAngle = -90f
-                    GameStatus.entries.forEach { status ->
-                        val count = stats.countsByStatus[status] ?: 0
-                        val sweep = 360f * count / stats.backlogSize
-                        if (sweep > 0f) {
-                            drawArc(
-                                color = status.palette().color,
-                                startAngle = startAngle,
-                                sweepAngle = sweep,
-                                useCenter = false,
-                                topLeft = topLeft,
-                                size = arcSize,
-                                style = Stroke(width = strokeWidthPx),
-                            )
-                            startAngle += sweep
-                        }
+            } else {
+                var startAngle = -90f
+                statuses.forEach { status ->
+                    val count = stats.countsByStatus[status] ?: 0
+                    val sweep = 360f * count / total
+                    if (sweep > 0f) {
+                        drawArc(
+                            color = status.palette().color,
+                            startAngle = startAngle,
+                            sweepAngle = sweep,
+                            useCenter = false,
+                            topLeft = topLeft,
+                            size = arcSize,
+                            style = Stroke(width = strokeWidthPx),
+                        )
+                        startAngle += sweep
                     }
                 }
             }
@@ -307,14 +308,15 @@ private fun DonutChart(stats: StatsData) {
                 )
             }
         } else {
+            val total = YEAR_FILTERED_STATUSES.sumOf { stats.countsByStatus[it] ?: 0 }
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Text(
-                    text = stats.completedCount.toString(),
+                    text = total.toString(),
                     style = CartoucheTextStyles.donutPercent,
                     color = TextPrimary,
                 )
                 Text(
-                    text = stringResource(R.string.stats_completed_label).uppercase(Locale.FRENCH),
+                    text = stringResource(R.string.stats_year_total_label).uppercase(Locale.FRENCH),
                     style = CartoucheTextStyles.donutLabel,
                     color = TextMuted,
                 )
@@ -329,14 +331,9 @@ private fun LegendList(stats: StatsData) {
         modifier = Modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        if (stats.selectedYear == null) {
-            GameStatus.entries.forEach { status ->
-                LegendRow(status = status, count = stats.countsByStatus[status] ?: 0)
-            }
-        } else {
-            // À faire/En cours n'ont pas de date de complétion, Abandonné non plus : seul
-            // "Terminé" a un sens une fois filtré sur une année précise.
-            LegendRow(status = GameStatus.TERMINE, count = stats.completedCount)
+        val statuses = if (stats.selectedYear == null) GameStatus.entries else YEAR_FILTERED_STATUSES
+        statuses.forEach { status ->
+            LegendRow(status = status, count = stats.countsByStatus[status] ?: 0)
         }
     }
 }
