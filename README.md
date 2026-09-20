@@ -31,9 +31,14 @@ synchronisé automatiquement entre tous vos appareils grâce à Firebase.
   année de sortie) et ajout en un tap au backlog.
 - **Fiche détail** : édition du statut, de la note personnelle, du temps de jeu personnel et de
   notes libres ; affichage du temps de jeu estimé (rapide / normal / complet) récupéré
-  automatiquement depuis [IGDB](https://www.igdb.com/api).
+  automatiquement depuis [IGDB](https://www.igdb.com/api) ; pour un jeu multi-plateforme, cases à
+  cocher « Joué sur » pour préciser sur quelle(s) plateforme(s) il a été fait.
+- **Plateforme fiabilisée via IGDB** : la plateforme d'un jeu ajouté depuis RAWG est recoupée avec
+  IGDB pour distinguer Switch et Switch 2 (RAWG ne les différencie pas) ; les OS PC
+  (Windows/Mac/Linux) sont regroupés sous un seul « PC ».
 - **Statistiques** : vue d'ensemble de la progression du backlog (répartition par statut, temps de
-  jeu cumulé, etc.).
+  jeu cumulé, filtre par année pour les jeux terminés/abandonnés, répartition des jeux terminés et
+  en cours par plateforme, etc.).
 - **Connexion Google** : authentification obligatoire (Firebase Auth) pour identifier
   l'utilisateur et sécuriser ses données côté cloud.
 - **Synchronisation multi-appareils** : le backlog est mirroré en continu entre l'appareil (Room)
@@ -210,8 +215,9 @@ app/src/main/java/fr/cklla/cartouche/
 ## Choix techniques notables
 
 - **RAWG plutôt qu'IGDB** pour la recherche de jeux : clé API simple, pas d'OAuth, suffisant pour
-  un usage personnel. IGDB est utilisé en complément uniquement pour le temps de jeu estimé
-  (donnée plus fiable sur ce point précis).
+  un usage personnel. IGDB est utilisé en complément pour le temps de jeu estimé et pour fiabiliser
+  la plateforme d'un jeu (données plus fiables sur ces deux points précis), en réutilisant la même
+  correspondance IGDB résolue une seule fois par jeu.
 - **UUID plutôt qu'identifiant auto-incrémenté** pour `Game.id` : le même identifiant désigne le
   même jeu sur Room et sur Firestore, sans table de correspondance séparée.
 - **Room comme unique source lue par l'UI**, même en ligne : garantit un affichage instantané et
