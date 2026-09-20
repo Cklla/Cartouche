@@ -41,9 +41,19 @@ import java.util.Locale
  * (ex. les nombreux packs de costumes/musique de *Persona 3 Reload*, qui partagent le même
  * préfixe) : [findBestMatch] élimine ensuite ces candidats sur la seule similarité de nom, sans
  * avoir besoin de connaître leur catégorie.
+ *
+ * [title] passe par [stripDisambiguatingSuffixes] avant de devenir le texte de la clause `search` :
+ * confirmé via l'API IGDB elle-même (cas concret *God of War (2018)*, RAWG désambiguïsant ce titre
+ * du *God of War* de 2005 en ajoutant l'année entre parenthèses) que `search "God of War (2018)"`
+ * renvoie **0 résultat**, alors que `search "God of War"` retrouve bien le jeu — le moteur de
+ * recherche IGDB n'ignore pas ce genre de texte parasite comme le ferait une recherche floue
+ * classique, il ne matche simplement plus rien. Jusqu'ici seuls les candidats *renvoyés* par IGDB
+ * passaient par un nettoyage équivalent ([normalizeForMatching], ajouté pour le cas inverse —
+ * *Persona 3 Reload* vs IGDB "Persona 3 Reload (2024)") ; le texte de la requête elle-même restait
+ * le titre RAWG brut, jamais nettoyé avant cet ajout.
  */
 fun buildSearchQuery(title: String): String =
-    "search \"${escapeQueryText(title)}\"; fields id,name,first_release_date,platforms.name; limit 30;"
+    "search \"${escapeQueryText(stripDisambiguatingSuffixes(title))}\"; fields id,name,first_release_date,platforms.name; limit 30;"
 
 /** Requête de durée de vie pour un jeu IGDB déjà identifié. */
 fun buildTimeToBeatQuery(igdbGameId: Long): String =
@@ -104,20 +114,30 @@ fun igdbReleaseYear(game: IgdbGameDto): Int? =
 private const val MATCH_SIMILARITY_THRESHOLD = 0.75
 
 /**
- * Retire la casse/ponctuation, mais aussi les suffixes entre parenthèses (années, mentions
- * diverses — ex. IGDB "Persona 3 Reload (2024)" vs RAWG "Persona 3 Reload") et les mentions
- * d'édition courantes ("Deluxe Edition", "Definitive Edition"...), pour que deux titres qui ne
- * diffèrent que par ces mentions soient reconnus comme identiques.
+ * Retire les suffixes entre parenthèses (années, mentions diverses — ex. IGDB "Persona 3 Reload
+ * (2024)" vs RAWG "Persona 3 Reload") et les mentions d'édition courantes ("Deluxe Edition",
+ * "Definitive Edition"...), sans toucher à la casse ni au reste de la ponctuation : utilisé à la
+ * fois par [normalizeForMatching] (comparaison de candidats déjà renvoyés par IGDB) et par
+ * [buildSearchQuery] (texte de la requête envoyée à IGDB) — voir ce dernier pour le cas concret qui
+ * a motivé cette réutilisation.
  */
-private fun normalizeForMatching(value: String): String {
-    val withoutParentheticals = value.replace(PARENTHETICAL_REGEX, " ")
-    val withoutEditionSuffix = withoutParentheticals.replace(EDITION_SUFFIX_REGEX, "")
-    return withoutEditionSuffix
+private fun stripDisambiguatingSuffixes(value: String): String =
+    value.replace(PARENTHETICAL_REGEX, " ")
+        .replace(EDITION_SUFFIX_REGEX, "")
+        .replace(Regex(" +"), " ")
+        .trim()
+
+/**
+ * Retire en plus la casse/ponctuation restante de [stripDisambiguatingSuffixes], pour que deux
+ * titres qui ne diffèrent que par ces mentions soient reconnus comme identiques lors de la
+ * comparaison de similarité.
+ */
+private fun normalizeForMatching(value: String): String =
+    stripDisambiguatingSuffixes(value)
         .lowercase(Locale.ROOT)
         .filter { it.isLetterOrDigit() || it == ' ' }
         .replace(Regex(" +"), " ")
         .trim()
-}
 
 private val PARENTHETICAL_REGEX = Regex("""\([^)]*\)|\[[^]]*\]""")
 
