@@ -26,6 +26,7 @@ fun GameEntity.toDomain(): Game = Game(
     rating = rating,
     notes = notes,
     coverUrl = coverUrl,
+    completedAt = completedAt,
 )
 
 fun Game.toEntity(): GameEntity = GameEntity(
@@ -43,4 +44,5 @@ fun Game.toEntity(): GameEntity = GameEntity(
     rating = rating,
     notes = notes,
     coverUrl = coverUrl,
+    completedAt = completedAt,
 )

@@ -40,6 +40,7 @@ import fr.cklla.cartouche.domain.model.Game
 import fr.cklla.cartouche.domain.model.GameStatus
 import fr.cklla.cartouche.ui.components.GameCoverPlaceholder
 import fr.cklla.cartouche.ui.components.StatusBadge
+import fr.cklla.cartouche.ui.components.YearChipsRow
 import fr.cklla.cartouche.ui.theme.AccentPurple
 import fr.cklla.cartouche.ui.theme.AccentPurpleLight
 import fr.cklla.cartouche.ui.theme.AccentPurpleMuted
@@ -63,6 +64,7 @@ fun BibliothequeScreen(
     BibliothequeContent(
         uiState = uiState,
         onFilterSelected = viewModel::onFilterSelected,
+        onYearSelected = viewModel::onYearSelected,
         onGameClick = onGameClick,
         modifier = modifier,
     )
@@ -72,6 +74,7 @@ fun BibliothequeScreen(
 private fun BibliothequeContent(
     uiState: BibliothequeUiState,
     onFilterSelected: (BacklogFilter) -> Unit,
+    onYearSelected: (Int?) -> Unit,
     onGameClick: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -86,6 +89,13 @@ private fun BibliothequeContent(
             counts = uiState.filterCounts,
             onFilterSelected = onFilterSelected,
         )
+        if (uiState.selectedFilter == BacklogFilter.TERMINE && uiState.availableCompletedYears.isNotEmpty()) {
+            YearChipsRow(
+                years = uiState.availableCompletedYears,
+                selectedYear = uiState.selectedYear,
+                onYearSelected = onYearSelected,
+            )
+        }
         if (uiState.visibleGames.isEmpty()) {
             EmptyState(filter = uiState.selectedFilter, modifier = Modifier.weight(1f))
         } else {
@@ -264,6 +274,7 @@ private fun BibliothequeContentPreview() {
                 filterCounts = countByFilter(games),
             ),
             onFilterSelected = {},
+            onYearSelected = {},
             onGameClick = {},
         )
     }
@@ -276,6 +287,7 @@ private fun BibliothequeEmptyPreview() {
         BibliothequeContent(
             uiState = BibliothequeUiState(isLoading = false, selectedFilter = BacklogFilter.ABANDONNE),
             onFilterSelected = {},
+            onYearSelected = {},
             onGameClick = {},
         )
     }

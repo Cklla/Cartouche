@@ -23,6 +23,8 @@ class FakeGameDao : GameDao {
     override fun observeById(id: String): Flow<GameEntity?> =
         games.map { list -> list.find { it.id == id } }
 
+    override suspend fun getByIdOnce(id: String): GameEntity? = games.value.find { it.id == id }
+
     override suspend fun insert(game: GameEntity) {
         if (shouldThrowOnInsert) error("Échec Room simulé")
         games.update { list -> list.filterNot { it.id == game.id } + game }

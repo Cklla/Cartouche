@@ -30,6 +30,10 @@ package fr.cklla.cartouche.domain.model
  * en cache ici) ; aucun n'est jamais modifiable par l'utilisateur, contrairement à
  * [userPlaytimeHours].
  * @param rating note personnelle de 1 à 5, ou null si le jeu n'est pas encore noté.
+ * @param completedAt date (epoch millis) à laquelle le jeu est passé au statut [GameStatus.TERMINE],
+ *   ou `null` si le jeu n'est pas terminé (ou l'était déjà avant l'introduction de ce champ).
+ *   Dérivé automatiquement par le Repository à chaque transition de statut, jamais renseigné par
+ *   l'UI — sert au filtre par année de complétion (Bibliothèque et Stats).
  */
 data class Game(
     val id: String = "",
@@ -46,4 +50,5 @@ data class Game(
     val rating: Int? = null,
     val notes: String = "",
     val coverUrl: String? = null,
+    val completedAt: Long? = null,
 )

@@ -25,6 +25,7 @@ class FirestoreMappersTest {
             rating = 5,
             notes = "Excellent",
             coverUrl = "https://example.com/cover.jpg",
+            completedAt = 1_700_000_000_000L,
         )
 
         val roundTripped = mapToGame(game.id, game.toFirestoreMap())
@@ -55,6 +56,7 @@ class FirestoreMappersTest {
             "estimatedPlaytimeCompletelyHours" to 15L,
             "rating" to 4L,
             "notes" to "",
+            "completedAt" to 1_700_000_000_000L,
         )
 
         val game = mapToGame("1", data)
@@ -64,6 +66,7 @@ class FirestoreMappersTest {
         assertEquals(10, game?.userPlaytimeHours)
         assertEquals(5, game?.estimatedPlaytimeHastilyHours)
         assertEquals(4, game?.rating)
+        assertEquals(1_700_000_000_000L, game?.completedAt)
     }
 
     @Test
@@ -110,5 +113,6 @@ class FirestoreMappersTest {
         assertNull(game?.estimatedPlaytimeHastilyHours)
         assertNull(game?.rating)
         assertNull(game?.coverUrl)
+        assertNull(game?.completedAt)
     }
 }

@@ -20,6 +20,9 @@
     <string name="filter_termine">Terminé</string>
     <string name="filter_abandonne">Abandonné</string>
 
+    <!-- Filtre par année de complétion (Bibliothèque "Terminé" et Stats) -->
+    <string name="filter_annee_toutes">Toutes les années</string>
+
     <!-- État vide de la bibliothèque, message selon le filtre actif -->
     <string name="empty_title">Rien par ici</string>
     <string name="empty_message_tous">Ton backlog est vide. Ajoute un premier jeu depuis la recherche.</string>

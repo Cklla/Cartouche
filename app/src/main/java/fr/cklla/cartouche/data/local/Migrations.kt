@@ -169,3 +169,18 @@ val MIGRATION_4_5 = object : Migration(4, 5) {
         connection.execSQL("ALTER TABLE `games_new` RENAME TO `games`")
     }
 }
+
+/**
+ * Ajoute `completedAt` (date de passage au statut TERMINE, voir `Game`), utilisé par le filtre
+ * par année de complétion. Simple `ALTER TABLE ... ADD COLUMN` plutôt qu'une recréation de table :
+ * contrairement à `RENAME COLUMN` (voir `MIGRATION_1_2`), `ADD COLUMN` est fiable sur toutes les
+ * versions de SQLite embarquées par `minSdk 24`. Les jeux déjà terminés avant cette migration
+ * démarrent avec `completedAt = NULL` (date de complétion historique inconnue, impossible à
+ * reconstituer) : ils restent visibles sous le filtre "Terminé" mais n'apparaissent sous aucune
+ * année tant que leur statut n'est pas de nouveau modifié — même limite assumée que côté Pellicule.
+ */
+val MIGRATION_5_6 = object : Migration(5, 6) {
+    override fun migrate(connection: SQLiteConnection) {
+        connection.execSQL("ALTER TABLE `games` ADD COLUMN `completedAt` INTEGER")
+    }
+}

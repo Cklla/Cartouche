@@ -36,6 +36,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import fr.cklla.cartouche.R
 import fr.cklla.cartouche.domain.model.GameStatus
+import fr.cklla.cartouche.ui.components.YearChipsRow
 import fr.cklla.cartouche.ui.theme.AccentPurple
 import fr.cklla.cartouche.ui.theme.AccentPurpleLight
 import fr.cklla.cartouche.ui.theme.BackgroundDark
@@ -63,6 +64,7 @@ fun StatsScreen(
         stats = uiState,
         signedInAs = currentUser?.displayName,
         onSignOutClick = viewModel::onSignOutClicked,
+        onYearSelected = viewModel::onYearSelected,
         modifier = modifier,
     )
 }
@@ -72,6 +74,7 @@ private fun StatsContent(
     stats: StatsData,
     signedInAs: String?,
     onSignOutClick: () -> Unit,
+    onYearSelected: (Int?) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -80,6 +83,13 @@ private fun StatsContent(
             .background(BackgroundDark),
     ) {
         Header(signedInAs = signedInAs, onSignOutClick = onSignOutClick)
+        if (stats.availableYears.isNotEmpty()) {
+            YearChipsRow(
+                years = stats.availableYears,
+                selectedYear = stats.selectedYear,
+                onYearSelected = onYearSelected,
+            )
+        }
         Column(
             modifier = Modifier
                 .weight(1f)
@@ -136,18 +146,29 @@ private fun Header(signedInAs: String?, onSignOutClick: () -> Unit) {
 @Composable
 private fun StatCardsGrid(stats: StatsData) {
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        if (stats.selectedYear == null) {
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                StatCard(
+                    value = stats.completedCount.toString(),
+                    label = stringResource(R.string.stats_completed_label),
+                    valueColor = SuccessGreen,
+                    modifier = Modifier.weight(1f),
+                )
+                // "Taille du backlog" n'a plus de sens une fois filtré sur une année : un jeu
+                // À faire/En cours n'a pas d'année de complétion, il n'y a donc rien à compter.
+                StatCard(
+                    value = stats.backlogSize.toString(),
+                    label = stringResource(R.string.stats_backlog_size_label),
+                    valueColor = TextPrimary,
+                    modifier = Modifier.weight(1f),
+                )
+            }
+        } else {
             StatCard(
                 value = stats.completedCount.toString(),
                 label = stringResource(R.string.stats_completed_label),
                 valueColor = SuccessGreen,
-                modifier = Modifier.weight(1f),
-            )
-            StatCard(
-                value = stats.backlogSize.toString(),
-                label = stringResource(R.string.stats_backlog_size_label),
-                valueColor = TextPrimary,
-                modifier = Modifier.weight(1f),
+                modifier = Modifier.fillMaxWidth(),
             )
         }
         HoursCard(hours = stats.totalHoursPlayed)
@@ -210,10 +231,15 @@ private fun DonutSection(stats: StatsData) {
 }
 
 /**
- * Anneau de progression, équivalent natif du `conic-gradient` CSS du prototype :
- * un segment par statut (dans l'ordre de [GameStatus.entries]), proportionnel à
- * son nombre de jeux, dessiné en partant du haut (`startAngle = -90f`) dans le
+ * Anneau de progression, équivalent natif du `conic-gradient` CSS du prototype.
+ *
+ * Vue "toutes années" : un segment par statut (dans l'ordre de [GameStatus.entries]),
+ * proportionnel à son nombre de jeux, dessiné en partant du haut (`startAngle = -90f`) dans le
  * sens horaire — même convention que le prototype.
+ *
+ * Vue "année sélectionnée" : plus de proportion à calculer (À faire/En cours exclus, backlog
+ * total sans rapport avec une seule année) — anneau plein dans la couleur "Terminé", simple
+ * indicateur du nombre de jeux terminés cette année-là.
  */
 @Composable
 private fun DonutChart(stats: StatsData) {
@@ -227,8 +253,17 @@ private fun DonutChart(stats: StatsData) {
             val topLeft = Offset(strokeWidthPx / 2, strokeWidthPx / 2)
             val arcSize = Size(diameter, diameter)
 
-            if (stats.backlogSize == 0) {
-                drawArc(
+            when {
+                stats.selectedYear != null && stats.completedCount > 0 -> drawArc(
+                    color = GameStatus.TERMINE.palette().color,
+                    startAngle = 0f,
+                    sweepAngle = 360f,
+                    useCenter = false,
+                    topLeft = topLeft,
+                    size = arcSize,
+                    style = Stroke(width = strokeWidthPx),
+                )
+                stats.selectedYear != null || stats.backlogSize == 0 -> drawArc(
                     color = BorderHairline,
                     startAngle = 0f,
                     sweepAngle = 360f,
@@ -237,37 +272,53 @@ private fun DonutChart(stats: StatsData) {
                     size = arcSize,
                     style = Stroke(width = strokeWidthPx),
                 )
-            } else {
-                var startAngle = -90f
-                GameStatus.entries.forEach { status ->
-                    val count = stats.countsByStatus[status] ?: 0
-                    val sweep = 360f * count / stats.backlogSize
-                    if (sweep > 0f) {
-                        drawArc(
-                            color = status.palette().color,
-                            startAngle = startAngle,
-                            sweepAngle = sweep,
-                            useCenter = false,
-                            topLeft = topLeft,
-                            size = arcSize,
-                            style = Stroke(width = strokeWidthPx),
-                        )
-                        startAngle += sweep
+                else -> {
+                    var startAngle = -90f
+                    GameStatus.entries.forEach { status ->
+                        val count = stats.countsByStatus[status] ?: 0
+                        val sweep = 360f * count / stats.backlogSize
+                        if (sweep > 0f) {
+                            drawArc(
+                                color = status.palette().color,
+                                startAngle = startAngle,
+                                sweepAngle = sweep,
+                                useCenter = false,
+                                topLeft = topLeft,
+                                size = arcSize,
+                                style = Stroke(width = strokeWidthPx),
+                            )
+                            startAngle += sweep
+                        }
                     }
                 }
             }
         }
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(
-                text = stringResource(R.string.stats_completion_percent, stats.completionPercent),
-                style = CartoucheTextStyles.donutPercent,
-                color = TextPrimary,
-            )
-            Text(
-                text = stringResource(R.string.stats_completion_label).uppercase(Locale.FRENCH),
-                style = CartoucheTextStyles.donutLabel,
-                color = TextMuted,
-            )
+        if (stats.selectedYear == null) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(
+                    text = stringResource(R.string.stats_completion_percent, stats.completionPercent),
+                    style = CartoucheTextStyles.donutPercent,
+                    color = TextPrimary,
+                )
+                Text(
+                    text = stringResource(R.string.stats_completion_label).uppercase(Locale.FRENCH),
+                    style = CartoucheTextStyles.donutLabel,
+                    color = TextMuted,
+                )
+            }
+        } else {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(
+                    text = stats.completedCount.toString(),
+                    style = CartoucheTextStyles.donutPercent,
+                    color = TextPrimary,
+                )
+                Text(
+                    text = stringResource(R.string.stats_completed_label).uppercase(Locale.FRENCH),
+                    style = CartoucheTextStyles.donutLabel,
+                    color = TextMuted,
+                )
+            }
         }
     }
 }
@@ -278,8 +329,14 @@ private fun LegendList(stats: StatsData) {
         modifier = Modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        GameStatus.entries.forEach { status ->
-            LegendRow(status = status, count = stats.countsByStatus[status] ?: 0)
+        if (stats.selectedYear == null) {
+            GameStatus.entries.forEach { status ->
+                LegendRow(status = status, count = stats.countsByStatus[status] ?: 0)
+            }
+        } else {
+            // À faire/En cours n'ont pas de date de complétion, Abandonné non plus : seul
+            // "Terminé" a un sens une fois filtré sur une année précise.
+            LegendRow(status = GameStatus.TERMINE, count = stats.completedCount)
         }
     }
 }
@@ -325,7 +382,7 @@ private fun StatsContentPreview() {
         )
     }
     CartoucheTheme {
-        StatsContent(stats = computeStats(games), signedInAs = "Joueur Test", onSignOutClick = {})
+        StatsContent(stats = computeStats(games), signedInAs = "Joueur Test", onSignOutClick = {}, onYearSelected = {})
     }
 }
 
@@ -333,6 +390,6 @@ private fun StatsContentPreview() {
 @Composable
 private fun StatsContentEmptyPreview() {
     CartoucheTheme {
-        StatsContent(stats = StatsData(), signedInAs = null, onSignOutClick = {})
+        StatsContent(stats = StatsData(), signedInAs = null, onSignOutClick = {}, onYearSelected = {})
     }
 }
