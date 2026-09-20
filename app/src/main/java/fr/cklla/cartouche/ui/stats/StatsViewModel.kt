@@ -6,9 +6,10 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import fr.cklla.cartouche.domain.model.AuthUser
 import fr.cklla.cartouche.domain.repository.AuthRepository
 import fr.cklla.cartouche.domain.repository.GameRepository
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -25,8 +26,12 @@ class StatsViewModel @Inject constructor(
     private val authRepository: AuthRepository,
 ) : ViewModel() {
 
-    val uiState: StateFlow<StatsData> = gameRepository.observeGames()
-        .map { games -> computeStats(games) }
+    private val selectedYear = MutableStateFlow<Int?>(null)
+
+    val uiState: StateFlow<StatsData> = combine(
+        gameRepository.observeGames(),
+        selectedYear,
+    ) { games, year -> computeStats(games, year) }
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5_000),
@@ -34,6 +39,11 @@ class StatsViewModel @Inject constructor(
         )
 
     val currentUser: StateFlow<AuthUser?> = authRepository.currentUser
+
+    /** Re-sélectionner l'année déjà active la désélectionne (retour aux stats toutes années). */
+    fun onYearSelected(year: Int?) {
+        selectedYear.value = if (year != null && selectedYear.value == year) null else year
+    }
 
     fun onSignOutClicked() {
         viewModelScope.launch { authRepository.signOut() }

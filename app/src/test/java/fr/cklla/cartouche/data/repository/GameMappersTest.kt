@@ -25,6 +25,7 @@ class GameMappersTest {
             rating = 5,
             notes = "Excellent",
             coverUrl = "https://example.com/cover.jpg",
+            completedAt = 1_700_000_000_000L,
         )
 
         val roundTripped = game.toEntity().toDomain()
@@ -49,6 +50,7 @@ class GameMappersTest {
             rating = null,
             notes = "",
             coverUrl = null,
+            completedAt = null,
         )
 
         assertEquals(GameStatus.ABANDONNE, entity.toDomain().status)

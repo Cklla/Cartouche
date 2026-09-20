@@ -6,6 +6,7 @@ import fr.cklla.cartouche.data.repository.fakeGameRepository
 import fr.cklla.cartouche.domain.model.AuthUser
 import fr.cklla.cartouche.domain.model.Game
 import fr.cklla.cartouche.domain.model.GameStatus
+import fr.cklla.cartouche.domain.model.Resource
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.launch
@@ -82,5 +83,39 @@ class StatsViewModelTest {
         dispatcher.scheduler.advanceUntilIdle()
 
         assertEquals(1, authRepository.signOutCallCount)
+    }
+
+    @Test
+    fun `selectionner une annee restreint les stats aux jeux termines cette annee-la`() = runTest {
+        val dao = FakeGameDao()
+        val repository = fakeGameRepository(dao)
+        val addedId = (repository.addGame(
+            Game(title = "Hades", platform = "PC", genre = "Roguelike", status = GameStatus.A_FAIRE, userPlaytimeHours = 28),
+        ) as Resource.Success).data
+        repository.updateGame(
+            Game(id = addedId, title = "Hades", platform = "PC", genre = "Roguelike", status = GameStatus.TERMINE, userPlaytimeHours = 28),
+        )
+
+        val viewModel = StatsViewModel(repository, FakeAuthRepository())
+        val collectorJob = launch { viewModel.uiState.collect {} }
+        dispatcher.scheduler.advanceUntilIdle()
+
+        val year = viewModel.uiState.value.availableYears.first()
+        viewModel.onYearSelected(year)
+        dispatcher.scheduler.advanceUntilIdle()
+
+        var state = viewModel.uiState.value
+        assertEquals(year, state.selectedYear)
+        assertEquals(1, state.completedCount)
+        assertEquals(28, state.totalHoursPlayed)
+
+        // Re-sélectionner la même année la désélectionne (retour aux stats toutes années).
+        viewModel.onYearSelected(year)
+        dispatcher.scheduler.advanceUntilIdle()
+
+        state = viewModel.uiState.value
+        assertEquals(null, state.selectedYear)
+
+        collectorJob.cancel()
     }
 }

@@ -27,6 +27,7 @@ private const val FIELD_ESTIMATED_PLAYTIME_COMPLETELY_HOURS = "estimatedPlaytime
 private const val FIELD_RATING = "rating"
 private const val FIELD_NOTES = "notes"
 private const val FIELD_COVER_URL = "coverUrl"
+private const val FIELD_COMPLETED_AT = "completedAt"
 
 fun Game.toFirestoreMap(): Map<String, Any?> = mapOf(
     FIELD_TITLE to title,
@@ -42,6 +43,7 @@ fun Game.toFirestoreMap(): Map<String, Any?> = mapOf(
     FIELD_RATING to rating,
     FIELD_NOTES to notes,
     FIELD_COVER_URL to coverUrl,
+    FIELD_COMPLETED_AT to completedAt,
 )
 
 // Firestore n'a pas de type `Int` natif (tout nombre entier remonte en `Long`) : cast via `Number`
@@ -74,5 +76,6 @@ fun mapToGame(id: String, data: Map<String, Any?>): Game? {
         // Cette URL finit directement dans un chargeur d'images : on n'accepte que du HTTPS,
         // plutôt que de charger n'importe quel schéma présent dans le document.
         coverUrl = (data[FIELD_COVER_URL] as? String)?.takeIf { it.startsWith("https://") },
+        completedAt = (data[FIELD_COMPLETED_AT] as? Number)?.toLong(),
     )
 }

@@ -2,6 +2,8 @@ package fr.cklla.cartouche.ui.bibliotheque
 
 import fr.cklla.cartouche.domain.model.Game
 import fr.cklla.cartouche.domain.model.GameStatus
+import fr.cklla.cartouche.ui.availableCompletedYears
+import fr.cklla.cartouche.ui.completedYear
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
@@ -11,6 +13,11 @@ class BibliothequeFilteringTest {
     private val eldenRing = Game(id = "2", title = "Elden Ring", platform = "PS5", genre = "Action-RPG", status = GameStatus.A_FAIRE)
     private val zelda = Game(id = "3", title = "Zelda", platform = "Switch", genre = "Aventure", status = GameStatus.EN_COURS)
     private val games = listOf(hades, eldenRing, zelda)
+
+    // Milieu d'année en UTC : hors de portée d'un changement de fuseau horaire local qui ferait
+    // basculer la date sur l'année voisine (au plus ±14h autour de l'UTC).
+    private val completedIn2023 = 1_688_169_600_000L // 2023-07-01T00:00:00Z
+    private val completedIn2024 = 1_719_792_000_000L // 2024-07-01T00:00:00Z
 
     @Test
     fun `filtre TOUS renvoie tous les jeux`() {
@@ -33,5 +40,42 @@ class BibliothequeFilteringTest {
         assertEquals(1, counts[BacklogFilter.A_FAIRE])
         assertEquals(1, counts[BacklogFilter.EN_COURS])
         assertEquals(0, counts[BacklogFilter.ABANDONNE])
+    }
+
+    @Test
+    fun `completedYear derive l'annee de completion depuis completedAt`() {
+        assertEquals(2023, completedYear(hades.copy(completedAt = completedIn2023)))
+        assertEquals(null, completedYear(hades))
+    }
+
+    @Test
+    fun `availableCompletedYears ne considere que les jeux Termine, sans doublon, du plus recent au plus ancien`() {
+        val celeste = Game(id = "4", title = "Celeste", platform = "PC", genre = "Plateforme", status = GameStatus.TERMINE, completedAt = completedIn2024)
+        val hadesTermine2023 = hades.copy(completedAt = completedIn2023)
+        val zeldaTermine2023 = zelda.copy(status = GameStatus.TERMINE, completedAt = completedIn2023)
+
+        val years = availableCompletedYears(listOf(hadesTermine2023, zeldaTermine2023, celeste, eldenRing))
+
+        assertEquals(listOf(2024, 2023), years)
+    }
+
+    @Test
+    fun `filtre par annee de completion ne garde que les jeux Termine cette annee-la`() {
+        val celeste = Game(id = "4", title = "Celeste", platform = "PC", genre = "Plateforme", status = GameStatus.TERMINE, completedAt = completedIn2024)
+        val hadesTermine2023 = hades.copy(completedAt = completedIn2023)
+
+        val result = filterGames(listOf(hadesTermine2023, celeste, eldenRing), BacklogFilter.TERMINE, selectedYear = 2024)
+
+        assertEquals(listOf(celeste), result)
+    }
+
+    @Test
+    fun `le filtre par annee ne s'applique pas en dehors du filtre Termine`() {
+        val eldenRingTermine2023 = eldenRing.copy(status = GameStatus.TERMINE, completedAt = completedIn2023)
+
+        // TOUS ignore l'année sélectionnée : un jeu "à faire" sans completedAt reste visible.
+        val result = filterGames(listOf(eldenRingTermine2023, zelda), BacklogFilter.TOUS, selectedYear = 2024)
+
+        assertEquals(listOf(eldenRingTermine2023, zelda), result)
     }
 }

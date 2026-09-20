@@ -1,9 +1,11 @@
 package fr.cklla.cartouche.data.repository
 
 import fr.cklla.cartouche.data.local.GameDao
+import fr.cklla.cartouche.data.local.entity.GameEntity
 import fr.cklla.cartouche.data.remote.firestore.FirestoreGameDataSource
 import fr.cklla.cartouche.di.ApplicationScope
 import fr.cklla.cartouche.domain.model.Game
+import fr.cklla.cartouche.domain.model.GameStatus
 import fr.cklla.cartouche.domain.model.Resource
 import fr.cklla.cartouche.domain.repository.AuthRepository
 import fr.cklla.cartouche.domain.repository.GameRepository
@@ -66,7 +68,7 @@ class GameRepositoryImpl @Inject constructor(
     // dans Firestore, les deux doivent donc partager exactement le même id.
     override suspend fun addGame(game: Game): Resource<String> = runCatching {
         val id = game.id.ifBlank { UUID.randomUUID().toString() }
-        val gameWithId = game.copy(id = id)
+        val gameWithId = game.copy(id = id, completedAt = resolveCompletedAt(previous = null, newStatus = game.status))
         gameDao.insert(gameWithId.toEntity())
         pushToFirestore { uid -> firestoreDataSource.upsertGame(uid, gameWithId) }
         id
@@ -76,12 +78,36 @@ class GameRepositoryImpl @Inject constructor(
     )
 
     override suspend fun updateGame(game: Game): Resource<Unit> = runCatching {
-        gameDao.update(game.toEntity())
-        pushToFirestore { uid -> firestoreDataSource.upsertGame(uid, game) }
+        val previous = gameDao.getByIdOnce(game.id)
+        val gameToPersist = game.copy(completedAt = resolveCompletedAt(previous, game.status))
+        gameDao.update(gameToPersist.toEntity())
+        pushToFirestore { uid -> firestoreDataSource.upsertGame(uid, gameToPersist) }
     }.fold(
         onSuccess = { Resource.Success(Unit) },
         onFailure = { Resource.Error("Impossible de mettre à jour le jeu.", it) },
     )
+
+    // Dérive automatiquement la date de complétion à chaque transition de statut, plutôt que de
+    // laisser l'UI la renseigner à la main : un seul point de vérité pour "quand un jeu est-il
+    // devenu Terminé", que le changement vienne d'une sélection manuelle sur la fiche Détail ou
+    // d'ailleurs à l'avenir.
+    //
+    // Se base sur l'état déjà persisté en Room ([previous]), jamais sur `game.completedAt` tel que
+    // fourni par l'appelant : `DetailViewModel.workingGame` ne relit jamais Room après son
+    // chargement initial, un `completedAt` calculé ici et jamais propagé en retour dans cette copie
+    // de travail locale serait sinon écrasé par `null` au prochain appel.
+    //
+    // Horodatage posé une seule fois à l'entrée dans TERMINE (pas de re-timestamp si déjà TERMINE,
+    // sinon éditer la note ou le temps de jeu déplacerait la date de complétion à chaque fois),
+    // effacé dès que le jeu quitte TERMINE (redevient pertinent le jour où il y repasse).
+    private fun resolveCompletedAt(previous: GameEntity?, newStatus: GameStatus): Long? {
+        val previousStatus = previous?.status?.let { runCatching { GameStatus.valueOf(it) }.getOrNull() }
+        return when {
+            newStatus != GameStatus.TERMINE -> null
+            previousStatus == GameStatus.TERMINE -> previous?.completedAt
+            else -> System.currentTimeMillis()
+        }
+    }
 
     override suspend fun deleteGame(id: String): Resource<Unit> = runCatching {
         gameDao.deleteById(id)

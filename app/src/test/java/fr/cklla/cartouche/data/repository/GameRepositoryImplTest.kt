@@ -198,4 +198,38 @@ class GameRepositoryImplTest {
         val games = repository.observeGames().first()
         assertEquals(listOf("distant-1"), games.map { it.id })
     }
+
+    @Test
+    fun `passer un jeu a Termine renseigne completedAt`() = runTest {
+        val addedId = (repository.addGame(hades) as Resource.Success).data
+
+        repository.updateGame(hades.copy(id = addedId, status = GameStatus.TERMINE))
+
+        val game = repository.observeGames().first().first()
+        assertTrue(game.completedAt != null)
+    }
+
+    @Test
+    fun `rester Termine ne deplace pas completedAt`() = runTest {
+        val addedId = (repository.addGame(hades) as Resource.Success).data
+        repository.updateGame(hades.copy(id = addedId, status = GameStatus.TERMINE))
+        val firstCompletedAt = repository.observeGames().first().first().completedAt
+
+        // Une simple édition (note perso) sans changement de statut ne doit pas re-timestamper.
+        repository.updateGame(hades.copy(id = addedId, status = GameStatus.TERMINE, rating = 5))
+
+        val secondCompletedAt = repository.observeGames().first().first().completedAt
+        assertEquals(firstCompletedAt, secondCompletedAt)
+    }
+
+    @Test
+    fun `sortir de Termine efface completedAt`() = runTest {
+        val addedId = (repository.addGame(hades) as Resource.Success).data
+        repository.updateGame(hades.copy(id = addedId, status = GameStatus.TERMINE))
+
+        repository.updateGame(hades.copy(id = addedId, status = GameStatus.EN_COURS))
+
+        val game = repository.observeGames().first().first()
+        assertEquals(null, game.completedAt)
+    }
 }

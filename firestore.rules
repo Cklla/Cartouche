@@ -23,7 +23,7 @@ service cloud.firestore {
                'title', 'platform', 'genre', 'status', 'rawgId', 'releaseYear',
                'userPlaytimeHours', 'estimatedPlaytimeHastilyHours',
                'estimatedPlaytimeNormallyHours', 'estimatedPlaytimeCompletelyHours',
-               'rating', 'notes', 'coverUrl'
+               'rating', 'notes', 'coverUrl', 'completedAt'
              ])
              && game.keys().hasAll(['title', 'platform', 'genre', 'status'])
              && game.title is string && game.title.size() <= 300
@@ -37,6 +37,9 @@ service cloud.firestore {
              && isIntBetween(game, 'rating', 0, 5)
              && isIntBetween(game, 'rawgId', 0, 9999999999)
              && isIntBetween(game, 'releaseYear', 1950, 2999)
+             // Epoch millis : borne haute large (au-delà de l'an 3000) plutôt qu'un calcul de date
+             // précis, seul l'ordre de grandeur compte pour empêcher une valeur aberrante.
+             && isIntBetween(game, 'completedAt', 0, 32503680000000)
              && isStringUpTo(game, 'notes', 5000)
              && isStringUpTo(game, 'coverUrl', 2000);
     }

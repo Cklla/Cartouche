@@ -56,4 +56,36 @@ class StatsCalculationsTest {
 
     private fun termineGame() = Game(title = "Jeu", platform = "PC", genre = "Genre", status = GameStatus.TERMINE)
     private fun aFaireGame() = Game(title = "Jeu", platform = "PC", genre = "Genre", status = GameStatus.A_FAIRE)
+
+    // Milieu d'année en UTC : hors de portée d'un changement de fuseau horaire local qui ferait
+    // basculer la date sur l'année voisine (au plus ±14h autour de l'UTC).
+    private val completedIn2023 = 1_688_169_600_000L // 2023-07-01T00:00:00Z
+    private val completedIn2024 = 1_719_792_000_000L // 2024-07-01T00:00:00Z
+
+    @Test
+    fun `sans annee selectionnee, availableYears liste les annees disponibles`() {
+        val games = listOf(
+            Game(title = "Hades", platform = "PC", genre = "Roguelike", status = GameStatus.TERMINE, completedAt = completedIn2024),
+            Game(title = "Celeste", platform = "PC", genre = "Plateforme", status = GameStatus.TERMINE, completedAt = completedIn2023),
+            Game(title = "Elden Ring", platform = "PS5", genre = "Action-RPG", status = GameStatus.A_FAIRE),
+        )
+
+        assertEquals(listOf(2024, 2023), computeStats(games).availableYears)
+    }
+
+    @Test
+    fun `avec une annee selectionnee, ne compte que les jeux termines cette annee-la`() {
+        val hades = Game(title = "Hades", platform = "PC", genre = "Roguelike", status = GameStatus.TERMINE, userPlaytimeHours = 28, completedAt = completedIn2024)
+        val celeste = Game(title = "Celeste", platform = "PC", genre = "Plateforme", status = GameStatus.TERMINE, userPlaytimeHours = 9, completedAt = completedIn2023)
+        val eldenRing = Game(title = "Elden Ring", platform = "PS5", genre = "Action-RPG", status = GameStatus.A_FAIRE, userPlaytimeHours = 100)
+        val games = listOf(hades, celeste, eldenRing)
+
+        val stats = computeStats(games, selectedYear = 2024)
+
+        assertEquals(1, stats.completedCount)
+        assertEquals(28, stats.totalHoursPlayed)
+        assertEquals(2024, stats.selectedYear)
+        assertEquals(1, stats.countsByStatus[GameStatus.TERMINE])
+        assertEquals(0, stats.countsByStatus[GameStatus.A_FAIRE])
+    }
 }

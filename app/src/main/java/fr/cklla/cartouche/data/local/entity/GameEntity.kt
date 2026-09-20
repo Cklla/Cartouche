@@ -31,4 +31,5 @@ data class GameEntity(
     val rating: Int?,
     val notes: String,
     val coverUrl: String?,
+    val completedAt: Long?,
 )
