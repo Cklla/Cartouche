@@ -27,6 +27,7 @@ class GameMappersTest {
             coverUrl = "https://example.com/cover.jpg",
             completedAt = 1_700_000_000_000L,
             abandonedAt = null,
+            playedPlatforms = setOf("PC"),
         )
 
         val roundTripped = game.toEntity().toDomain()
@@ -67,8 +68,26 @@ class GameMappersTest {
             coverUrl = null,
             completedAt = null,
             abandonedAt = null,
+            playedPlatforms = "",
         )
 
         assertEquals(GameStatus.ABANDONNE, entity.toDomain().status)
+    }
+
+    @Test
+    fun `playedPlatforms est converti entre Set et chaine jointe par des slash`() {
+        val game = Game(
+            id = "1",
+            title = "Trails in the Sky First Chapter",
+            platform = "PC/PS5/Switch",
+            genre = "RPG",
+            status = GameStatus.EN_COURS,
+            playedPlatforms = setOf("Switch", "PC"),
+        )
+
+        val entity = game.toEntity()
+
+        assertEquals("PC/Switch", entity.playedPlatforms)
+        assertEquals(setOf("PC", "Switch"), entity.toDomain().playedPlatforms)
     }
 }

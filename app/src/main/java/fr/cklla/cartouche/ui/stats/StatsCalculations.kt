@@ -15,6 +15,14 @@ import fr.cklla.cartouche.ui.completedYear
  * seuls TERMINE et ABANDONNE y figurent (les deux seuls statuts datés).
  * `backlogSize`/`completionPercent` n'ont de sens qu'en vue "toutes années" — l'UI ne les affiche
  * pas quand [selectedYear] est renseigné (voir `StatsScreen`).
+ *
+ * `completedByPlatform` compte les jeux Terminé par plateforme jouée (voir [Game.playedPlatforms])
+ * — sur l'année sélectionnée si [selectedYear] est renseigné, sur tout le backlog sinon. Une
+ * plateforme sans aucun jeu terminé n'apparaît pas dans la map (voir `platformCounts`), l'UI n'a
+ * donc rien à filtrer côté affichage.
+ * `inProgressByPlatform` compte les jeux En cours par plateforme jouée, toujours sur tout le
+ * backlog : un jeu en cours n'a pas de date de complétion/abandon, le filtre par année ne
+ * s'applique donc pas à cette statistique.
  */
 data class StatsData(
     val completedCount: Int = 0,
@@ -24,7 +32,13 @@ data class StatsData(
     val countsByStatus: Map<GameStatus, Int> = GameStatus.entries.associateWith { 0 },
     val availableYears: List<Int> = emptyList(),
     val selectedYear: Int? = null,
+    val completedByPlatform: Map<String, Int> = emptyMap(),
+    val inProgressByPlatform: Map<String, Int> = emptyMap(),
 )
+
+/** Nombre de jeux par plateforme jouée, plateformes sans aucun jeu absentes du résultat. */
+private fun platformCounts(games: List<Game>): Map<String, Int> =
+    games.flatMap { it.playedPlatforms }.groupingBy { it }.eachCount().toSortedMap()
 
 /**
  * Logique de calcul extraite du ViewModel pour rester testable en pur Kotlin.
@@ -41,22 +55,25 @@ data class StatsData(
  */
 fun computeStats(games: List<Game>, selectedYear: Int? = null): StatsData {
     val availableYears = availableActivityYears(games)
+    val inProgressByPlatform = platformCounts(games.filter { it.status == GameStatus.EN_COURS })
 
     if (selectedYear == null) {
         val backlogSize = games.size
-        val completedCount = games.count { it.status == GameStatus.TERMINE }
+        val completedGames = games.filter { it.status == GameStatus.TERMINE }
         val completionPercent = if (backlogSize == 0) {
             0
         } else {
-            Math.round(completedCount * 100f / backlogSize)
+            Math.round(completedGames.size * 100f / backlogSize)
         }
         return StatsData(
-            completedCount = completedCount,
+            completedCount = completedGames.size,
             backlogSize = backlogSize,
             totalHoursPlayed = games.sumOf { it.userPlaytimeHours },
             completionPercent = completionPercent,
             countsByStatus = GameStatus.entries.associateWith { status -> games.count { it.status == status } },
             availableYears = availableYears,
+            completedByPlatform = platformCounts(completedGames),
+            inProgressByPlatform = inProgressByPlatform,
         )
     }
 
@@ -74,5 +91,7 @@ fun computeStats(games: List<Game>, selectedYear: Int? = null): StatsData {
         },
         availableYears = availableYears,
         selectedYear = selectedYear,
+        completedByPlatform = platformCounts(completedThisYear),
+        inProgressByPlatform = inProgressByPlatform,
     )
 }

@@ -15,6 +15,7 @@ import fr.cklla.cartouche.data.local.MIGRATION_3_4
 import fr.cklla.cartouche.data.local.MIGRATION_4_5
 import fr.cklla.cartouche.data.local.MIGRATION_5_6
 import fr.cklla.cartouche.data.local.MIGRATION_6_7
+import fr.cklla.cartouche.data.local.MIGRATION_7_8
 import javax.inject.Singleton
 
 /** Fournit la base Room, unique pour toute la durée de vie de l'application. */
@@ -26,7 +27,10 @@ object DatabaseModule {
     @Singleton
     fun provideAppDatabase(@ApplicationContext context: Context): AppDatabase =
         Room.databaseBuilder(context, AppDatabase::class.java, "cartouche.db")
-            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7)
+            .addMigrations(
+                MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5,
+                MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8,
+            )
             .build()
 
     @Provides

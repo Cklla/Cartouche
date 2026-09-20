@@ -112,4 +112,51 @@ class StatsCalculationsTest {
 
         assertEquals(listOf(2024, 2023), computeStats(listOf(hades, cyberpunk)).availableYears)
     }
+
+    @Test
+    fun `completedByPlatform compte les jeux termines par plateforme jouee, sans les plateformes a zero`() {
+        val hades = Game(title = "Hades", platform = "PC", genre = "Roguelike", status = GameStatus.TERMINE, playedPlatforms = setOf("PC"))
+        val trails = Game(
+            title = "Trails in the Sky",
+            platform = "PC/PS5/Switch",
+            genre = "RPG",
+            status = GameStatus.TERMINE,
+            playedPlatforms = setOf("PC", "Switch"),
+        )
+        val eldenRing = Game(title = "Elden Ring", platform = "PS5", genre = "Action-RPG", status = GameStatus.A_FAIRE, playedPlatforms = setOf("PS5"))
+
+        val stats = computeStats(listOf(hades, trails, eldenRing))
+
+        assertEquals(mapOf("PC" to 2, "Switch" to 1), stats.completedByPlatform)
+    }
+
+    @Test
+    fun `inProgressByPlatform compte les jeux en cours par plateforme jouee`() {
+        val persona = Game(title = "Persona 3 Reload", platform = "PC/PS5", genre = "RPG", status = GameStatus.EN_COURS, playedPlatforms = setOf("PC"))
+
+        val stats = computeStats(listOf(persona))
+
+        assertEquals(mapOf("PC" to 1), stats.inProgressByPlatform)
+    }
+
+    @Test
+    fun `inProgressByPlatform reste inchange quelle que soit l'annee selectionnee`() {
+        val persona = Game(title = "Persona 3 Reload", platform = "PC", genre = "RPG", status = GameStatus.EN_COURS, playedPlatforms = setOf("PC"))
+        val hades = Game(title = "Hades", platform = "PC", genre = "Roguelike", status = GameStatus.TERMINE, playedPlatforms = setOf("PC"), completedAt = completedIn2024)
+
+        val stats = computeStats(listOf(persona, hades), selectedYear = 2024)
+
+        assertEquals(mapOf("PC" to 1), stats.inProgressByPlatform)
+        assertEquals(mapOf("PC" to 1), stats.completedByPlatform)
+    }
+
+    @Test
+    fun `avec une annee selectionnee, completedByPlatform ne compte que les jeux termines cette annee-la`() {
+        val hades = Game(title = "Hades", platform = "PC", genre = "Roguelike", status = GameStatus.TERMINE, playedPlatforms = setOf("PC"), completedAt = completedIn2024)
+        val celeste = Game(title = "Celeste", platform = "Switch", genre = "Plateforme", status = GameStatus.TERMINE, playedPlatforms = setOf("Switch"), completedAt = completedIn2023)
+
+        val stats = computeStats(listOf(hades, celeste), selectedYear = 2024)
+
+        assertEquals(mapOf("PC" to 1), stats.completedByPlatform)
+    }
 }

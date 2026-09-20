@@ -25,6 +25,10 @@ data class GameSearchResult(
  * `rawgId` et `releaseYear` sont en revanche conservés : ils ne servent à rien pour l'affichage,
  * mais permettent de fiabiliser la correspondance IGDB au moment de cette recherche (voir
  * `IgdbPlaytimeRepository`).
+ *
+ * `playedPlatforms` démarre pré-rempli avec l'unique plateforme disponible quand `platform` n'en
+ * liste qu'une seule (aucune case à cocher n'a de sens dans ce cas, voir `DetailScreen`) ; laissé
+ * vide si plusieurs plateformes sont possibles, à renseigner manuellement par l'utilisateur.
  */
 fun GameSearchResult.toGame(): Game = Game(
     title = title,
@@ -34,4 +38,5 @@ fun GameSearchResult.toGame(): Game = Game(
     rawgId = rawgId,
     releaseYear = year.toIntOrNull(),
     coverUrl = coverUrl,
+    playedPlatforms = parsePlatforms(platform).singleOrNull()?.let(::setOf).orEmpty(),
 )

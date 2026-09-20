@@ -46,6 +46,8 @@
     <string name="stats_year_total_label">jeux clôturés</string>
     <string name="stats_signed_in_as">Connecté en tant que %1$s</string>
     <string name="stats_sign_out">Se déconnecter</string>
+    <string name="stats_completed_by_platform_label">Terminés par plateforme</string>
+    <string name="stats_in_progress_by_platform_label">En cours par plateforme</string>
 
     <!-- Jaquette placeholder -->
     <string name="cover_placeholder_label">jaquette</string>
@@ -67,6 +69,7 @@
     <string name="detail_hours_decrement">Diminuer le temps de jeu</string>
     <string name="detail_hours_edit_content_description">Mon temps de jeu, %1$d heures. Touchez pour saisir une valeur.</string>
     <string name="detail_hours_input_content_description">Temps de jeu en heures</string>
+    <string name="detail_played_platforms_label">Joué sur</string>
     <string name="detail_notes_label">Notes libres</string>
     <string name="detail_notes_placeholder">Impressions, astuces, où tu t\'es arrêté…</string>
     <string name="detail_add_action">Ajouter au backlog</string>

@@ -25,6 +25,7 @@ import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
@@ -33,6 +34,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.outlined.Star
@@ -73,6 +75,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import fr.cklla.cartouche.R
 import fr.cklla.cartouche.domain.model.Game
 import fr.cklla.cartouche.domain.model.GameStatus
+import fr.cklla.cartouche.domain.model.parsePlatforms
 import fr.cklla.cartouche.ui.components.GameCoverPlaceholder
 import fr.cklla.cartouche.ui.theme.AccentPurple
 import fr.cklla.cartouche.ui.theme.AccentPurpleMuted
@@ -117,6 +120,7 @@ fun DetailScreen(
         onHoursIncrement = viewModel::onHoursIncrement,
         onHoursDecrement = viewModel::onHoursDecrement,
         onHoursSet = viewModel::onHoursSet,
+        onPlayedPlatformToggled = viewModel::onPlayedPlatformToggled,
         onNotesChanged = viewModel::onNotesChanged,
         onRemoveGame = viewModel::onRemoveGame,
         onAddGame = viewModel::onAddGame,
@@ -134,6 +138,7 @@ private fun DetailContent(
     onHoursIncrement: () -> Unit,
     onHoursDecrement: () -> Unit,
     onHoursSet: (Int) -> Unit,
+    onPlayedPlatformToggled: (String) -> Unit,
     onNotesChanged: (String) -> Unit,
     onRemoveGame: () -> Unit,
     onAddGame: () -> Unit,
@@ -184,6 +189,11 @@ private fun DetailContent(
                     onIncrement = onHoursIncrement,
                     onDecrement = onHoursDecrement,
                     onHoursSet = onHoursSet,
+                )
+                PlayedPlatformsSection(
+                    availablePlatforms = parsePlatforms(game.platform),
+                    playedPlatforms = game.playedPlatforms,
+                    onPlatformToggled = onPlayedPlatformToggled,
                 )
                 NotesSection(notes = game.notes, onNotesChanged = onNotesChanged)
                 RemoveLink(onClick = { showRemoveConfirm = true })
@@ -520,6 +530,78 @@ private fun HoursStepButton(
     }
 }
 
+/**
+ * Cases à cocher "joué sur", visibles uniquement quand le jeu est disponible sur plusieurs
+ * plateformes ([availablePlatforms].size > 1) : sur une seule plateforme, il n'y a rien à choisir
+ * (voir `GameSearchResult.toGame`, qui la coche déjà automatiquement dans ce cas). Plusieurs
+ * plateformes peuvent être cochées à la fois (jeu fait pour partie sur PC, pour partie sur PS5).
+ */
+@Composable
+private fun PlayedPlatformsSection(
+    availablePlatforms: List<String>,
+    playedPlatforms: Set<String>,
+    onPlatformToggled: (String) -> Unit,
+) {
+    if (availablePlatforms.size <= 1) return
+
+    Column {
+        SectionLabel(stringResource(R.string.detail_played_platforms_label))
+        Spacer(modifier = Modifier.height(10.dp))
+        FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            availablePlatforms.forEach { platform ->
+                PlatformCheckboxPill(
+                    platform = platform,
+                    checked = platform in playedPlatforms,
+                    onCheckedChange = { onPlatformToggled(platform) },
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun PlatformCheckboxPill(platform: String, checked: Boolean, onCheckedChange: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .heightIn(min = 48.dp)
+            .clip(RoundedCornerShape(20.dp))
+            .then(
+                if (checked) {
+                    Modifier.background(AccentPurple)
+                } else {
+                    Modifier
+                        .background(SurfaceCardPressed)
+                        .border(BorderStroke(0.5.dp, BorderHairline.copy(alpha = 0.6f)), RoundedCornerShape(20.dp))
+                },
+            )
+            .toggleable(value = checked, onValueChange = { onCheckedChange() }, role = Role.Checkbox),
+        contentAlignment = Alignment.Center,
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            if (checked) {
+                Icon(
+                    imageVector = Icons.Filled.Check,
+                    contentDescription = null,
+                    tint = BackgroundDark,
+                    modifier = Modifier.size(16.dp),
+                )
+            }
+            Text(
+                text = platform,
+                style = CartoucheTextStyles.statusPillLabel,
+                color = if (checked) BackgroundDark else TextSecondary,
+            )
+        }
+    }
+}
+
 @Composable
 private fun NotesSection(notes: String, onNotesChanged: (String) -> Unit) {
     val interactionSource = remember { MutableInteractionSource() }
@@ -621,9 +703,9 @@ private fun RemoveConfirmDialog(onConfirm: () -> Unit, onDismiss: () -> Unit) {
 private fun DetailContentPreview() {
     val game = Game(
         id = "1",
-        title = "The Legend of Zelda: Tears of the Kingdom",
-        platform = "Switch",
-        genre = "Aventure",
+        title = "Trails in the Sky First Chapter",
+        platform = "PC/PS5/Switch",
+        genre = "RPG",
         status = GameStatus.EN_COURS,
         userPlaytimeHours = 34,
         estimatedPlaytimeHastilyHours = 38,
@@ -631,6 +713,7 @@ private fun DetailContentPreview() {
         estimatedPlaytimeCompletelyHours = 96,
         rating = 4,
         notes = "Exploration incroyable, à reprendre le week-end.",
+        playedPlatforms = setOf("Switch"),
     )
     CartoucheTheme {
         DetailContent(
@@ -642,6 +725,7 @@ private fun DetailContentPreview() {
             onHoursIncrement = {},
             onHoursDecrement = {},
             onHoursSet = {},
+            onPlayedPlatformToggled = {},
             onNotesChanged = {},
             onRemoveGame = {},
             onAddGame = {},
@@ -669,6 +753,7 @@ private fun DetailContentApercuPreview() {
             onHoursIncrement = {},
             onHoursDecrement = {},
             onHoursSet = {},
+            onPlayedPlatformToggled = {},
             onNotesChanged = {},
             onRemoveGame = {},
             onAddGame = {},

@@ -36,6 +36,12 @@ package fr.cklla.cartouche.domain.model
  *   l'UI — sert au filtre par année de complétion (Bibliothèque et Stats).
  * @param abandonedAt même mécanique que [completedAt], mais pour le passage au statut
  *   [GameStatus.ABANDONNE] — sert au filtre par année d'abandon (Bibliothèque et Stats).
+ * @param playedPlatforms sous-ensemble de [parsePlatforms] de [platform] sur le(s)quel(les)
+ *   l'utilisateur a effectivement joué — un jeu disponible sur PC/PS5/Switch peut n'avoir été fait
+ *   que sur Switch, ou sur plusieurs à la fois. Renseigné par l'utilisateur via des cases à cocher
+ *   (voir `DetailScreen`) quand [platform] liste plusieurs plateformes ; pré-rempli automatiquement
+ *   avec l'unique plateforme disponible sinon (voir `GameSearchResult.toGame`), aucune case à
+ *   cocher n'ayant de sens dans ce cas. Sert aux statistiques par plateforme (Stats).
  */
 data class Game(
     val id: String = "",
@@ -54,4 +60,5 @@ data class Game(
     val coverUrl: String? = null,
     val completedAt: Long? = null,
     val abandonedAt: Long? = null,
+    val playedPlatforms: Set<String> = emptySet(),
 )

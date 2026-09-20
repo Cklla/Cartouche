@@ -23,7 +23,7 @@ service cloud.firestore {
                'title', 'platform', 'genre', 'status', 'rawgId', 'releaseYear',
                'userPlaytimeHours', 'estimatedPlaytimeHastilyHours',
                'estimatedPlaytimeNormallyHours', 'estimatedPlaytimeCompletelyHours',
-               'rating', 'notes', 'coverUrl', 'completedAt', 'abandonedAt'
+               'rating', 'notes', 'coverUrl', 'completedAt', 'abandonedAt', 'playedPlatforms'
              ])
              && game.keys().hasAll(['title', 'platform', 'genre', 'status'])
              && game.title is string && game.title.size() <= 300
@@ -42,7 +42,16 @@ service cloud.firestore {
              && isIntBetween(game, 'completedAt', 0, 32503680000000)
              && isIntBetween(game, 'abandonedAt', 0, 32503680000000)
              && isStringUpTo(game, 'notes', 5000)
-             && isStringUpTo(game, 'coverUrl', 2000);
+             && isStringUpTo(game, 'coverUrl', 2000)
+             && isValidPlayedPlatforms(game);
+    }
+
+    // Sous-ensemble des plateformes du jeu sur lesquelles l'utilisateur a joué : absent ou liste
+    // courte, bornée en taille pour empêcher un document anormalement gros (pas de vérification
+    // par élément, la syntaxe des règles Firestore n'a pas de "forall" simple sur une liste).
+    function isValidPlayedPlatforms(game) {
+      return !('playedPlatforms' in game)
+             || (game.playedPlatforms is list && game.playedPlatforms.size() <= 20);
     }
 
     // Champ optionnel : absent ou null est valide, une valeur présente doit respecter les bornes.

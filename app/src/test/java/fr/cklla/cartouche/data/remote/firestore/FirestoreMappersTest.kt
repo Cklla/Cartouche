@@ -26,6 +26,7 @@ class FirestoreMappersTest {
             notes = "Excellent",
             coverUrl = "https://example.com/cover.jpg",
             completedAt = 1_700_000_000_000L,
+            playedPlatforms = setOf("PC"),
         )
 
         val roundTripped = mapToGame(game.id, game.toFirestoreMap())
@@ -131,5 +132,23 @@ class FirestoreMappersTest {
         assertNull(game?.coverUrl)
         assertNull(game?.completedAt)
         assertNull(game?.abandonedAt)
+        assertEquals(emptySet<String>(), game?.playedPlatforms)
+    }
+
+    @Test
+    fun `playedPlatforms est stocke comme une liste et conserve au round-trip`() {
+        val game = Game(
+            id = "43",
+            title = "Trails in the Sky",
+            platform = "PC/PS5/Switch",
+            genre = "RPG",
+            status = GameStatus.EN_COURS,
+            playedPlatforms = setOf("Switch", "PC"),
+        )
+
+        val map = game.toFirestoreMap()
+
+        assertEquals(listOf("PC", "Switch"), map["playedPlatforms"])
+        assertEquals(game, mapToGame(game.id, map))
     }
 }
