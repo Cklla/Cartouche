@@ -2,6 +2,7 @@ package fr.cklla.cartouche.ui.stats
 
 import fr.cklla.cartouche.domain.model.Game
 import fr.cklla.cartouche.domain.model.GameStatus
+import fr.cklla.cartouche.domain.model.effectivePlayedPlatforms
 import fr.cklla.cartouche.ui.abandonedYear
 import fr.cklla.cartouche.ui.availableActivityYears
 import fr.cklla.cartouche.ui.completedYear
@@ -16,7 +17,7 @@ import fr.cklla.cartouche.ui.completedYear
  * `backlogSize`/`completionPercent` n'ont de sens qu'en vue "toutes années" — l'UI ne les affiche
  * pas quand [selectedYear] est renseigné (voir `StatsScreen`).
  *
- * `completedByPlatform` compte les jeux Terminé par plateforme jouée (voir [Game.playedPlatforms])
+ * `completedByPlatform` compte les jeux Terminé par plateforme jouée (voir `effectivePlayedPlatforms`)
  * — sur l'année sélectionnée si [selectedYear] est renseigné, sur tout le backlog sinon. Une
  * plateforme sans aucun jeu terminé n'apparaît pas dans la map (voir `platformCounts`), l'UI n'a
  * donc rien à filtrer côté affichage.
@@ -38,7 +39,7 @@ data class StatsData(
 
 /** Nombre de jeux par plateforme jouée, plateformes sans aucun jeu absentes du résultat. */
 private fun platformCounts(games: List<Game>): Map<String, Int> =
-    games.flatMap { it.playedPlatforms }.groupingBy { it }.eachCount().toSortedMap()
+    games.flatMap { effectivePlayedPlatforms(it) }.groupingBy { it }.eachCount().toSortedMap()
 
 /**
  * Logique de calcul extraite du ViewModel pour rester testable en pur Kotlin.

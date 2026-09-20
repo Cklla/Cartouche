@@ -151,6 +151,27 @@ class StatsCalculationsTest {
     }
 
     @Test
+    fun `inProgressByPlatform compte un jeu mono-plateforme meme si playedPlatforms est vide`() {
+        // Cas reel : jeu exclusif Switch (pas de case a cocher, voir DetailScreen) dont
+        // playedPlatforms n'a pas encore ete backfille localement (ancien document Firestore sans
+        // ce champ, voir GameRepositoryImpl.mirrorIntoRoom) — doit compter comme s'il etait coche.
+        val xenoblade = Game(title = "Xenoblade Chronicles 2", platform = "Switch", genre = "RPG", status = GameStatus.EN_COURS)
+
+        val stats = computeStats(listOf(xenoblade))
+
+        assertEquals(mapOf("Switch" to 1), stats.inProgressByPlatform)
+    }
+
+    @Test
+    fun `completedByPlatform compte un jeu mono-plateforme meme si playedPlatforms est vide`() {
+        val xenoblade = Game(title = "Xenoblade Chronicles 2", platform = "Switch", genre = "RPG", status = GameStatus.TERMINE)
+
+        val stats = computeStats(listOf(xenoblade))
+
+        assertEquals(mapOf("Switch" to 1), stats.completedByPlatform)
+    }
+
+    @Test
     fun `avec une annee selectionnee, completedByPlatform ne compte que les jeux termines cette annee-la`() {
         val hades = Game(title = "Hades", platform = "PC", genre = "Roguelike", status = GameStatus.TERMINE, playedPlatforms = setOf("PC"), completedAt = completedIn2024)
         val celeste = Game(title = "Celeste", platform = "Switch", genre = "Plateforme", status = GameStatus.TERMINE, playedPlatforms = setOf("Switch"), completedAt = completedIn2023)
