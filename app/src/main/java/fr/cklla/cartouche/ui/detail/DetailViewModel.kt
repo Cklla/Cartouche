@@ -71,13 +71,13 @@ class DetailViewModel @Inject constructor(
         }
     }
 
-    // Lookup IGDB déclenché une seule fois, seulement si aucun des trois temps de jeu estimés
-    // n'est déjà en cache (voir `Game.estimatedPlaytime*Hours`) — que la fiche soit déjà dans le
-    // backlog ou encore en aperçu, jamais pendant la recherche RAWG elle-même.
+    // Lookup IGDB déclenché une seule fois par jeu (voir `Game.igdbLookupAttempted`) — que la
+    // fiche soit déjà dans le backlog ou encore en aperçu, jamais pendant la recherche RAWG
+    // elle-même. Se fier à `igdbLookupAttempted` plutôt qu'à la nullité des `estimatedPlaytime*`
+    // (comme avant l'introduction de la correction de plateforme) : un jeu au temps de jeu
+    // partiellement en cache doit quand même pouvoir recevoir sa correction de plateforme.
     private fun fetchEstimatedPlaytimeIfMissing(game: Game) {
-        if (game.estimatedPlaytimeHastilyHours == null &&
-            game.estimatedPlaytimeNormallyHours == null && game.estimatedPlaytimeCompletelyHours == null
-        ) {
+        if (!game.igdbLookupAttempted) {
             fetchEstimatedPlaytime(game)
         }
     }
@@ -88,7 +88,7 @@ class DetailViewModel @Inject constructor(
                 title = game.title,
                 releaseYear = game.releaseYear,
                 rawgId = game.rawgId,
-            ) ?: return@launch
+            )
             // Le jeu affiché a pu changer entretemps (retiré du backlog) : `applyEdit` gère déjà
             // ce cas (no-op si `workingGame` est `null`), donc pas de vérification supplémentaire ici.
             applyEdit { applyIgdbMatch(it, match) }
@@ -100,17 +100,24 @@ class DetailViewModel @Inject constructor(
      * correction de `platform` si IGDB a une liste de plateformes et que ce remplacement ne casse
      * aucune entrée déjà cochée de `playedPlatforms` (voir `realignPlayedPlatformsOrNull` pour le
      * raisonnement détaillé — notamment le cas Switch/Switch 2 qui motive cette prudence).
+     *
+     * `igdbLookupAttempted` passe à `true` inconditionnellement, y compris si [match] est `null`
+     * (échec total de la correspondance IGDB) : conformément au fonctionnement "un seul essai"
+     * voulu pour cette recherche (voir `Game.igdbLookupAttempted`), un échec ponctuel (réseau,
+     * jeu introuvable sur IGDB) n'est pas retenté automatiquement aux ouvertures suivantes.
      */
-    private fun applyIgdbMatch(game: Game, match: IgdbGameMatch): Game {
-        val withPlaytime = match.playtimeEstimate?.let { estimate ->
-            game.copy(
+    private fun applyIgdbMatch(game: Game, match: IgdbGameMatch?): Game {
+        val attempted = game.copy(igdbLookupAttempted = true)
+
+        val withPlaytime = match?.playtimeEstimate?.let { estimate ->
+            attempted.copy(
                 estimatedPlaytimeHastilyHours = estimate.hastilyHours,
                 estimatedPlaytimeNormallyHours = estimate.normallyHours,
                 estimatedPlaytimeCompletelyHours = estimate.completelyHours,
             )
-        } ?: game
+        } ?: attempted
 
-        val newPlatform = match.platform ?: return withPlaytime
+        val newPlatform = match?.platform ?: return withPlaytime
         val realignedPlayedPlatforms = realignPlayedPlatformsOrNull(withPlaytime.playedPlatforms, newPlatform)
             ?: return withPlaytime
         return withPlaytime.copy(platform = newPlatform, playedPlatforms = realignedPlayedPlatforms)

@@ -42,6 +42,14 @@ package fr.cklla.cartouche.domain.model
  *   (voir `DetailScreen`) quand [platform] liste plusieurs plateformes ; pré-rempli automatiquement
  *   avec l'unique plateforme disponible sinon (voir `GameSearchResult.toGame`), aucune case à
  *   cocher n'ayant de sens dans ce cas. Sert aux statistiques par plateforme (Stats).
+ * @param igdbLookupAttempted `true` dès qu'une recherche IGDB (temps de jeu + correction de
+ *   `platform`, voir `IgdbGameMatch`) a été tentée pour ce jeu, succès ou échec confondus — signal
+ *   de déclenchement pour `DetailViewModel.fetchEstimatedPlaytimeIfMissing`, qui ne relance jamais
+ *   IGDB une fois ce champ à `true`. Champ dédié plutôt que déduit de la nullité des champs
+ *   `estimatedPlaytime*` (comme avant l'introduction de la correction de plateforme) : un jeu peut
+ *   avoir un temps de jeu partiel en cache (ex. seulement `normally`) sans que sa plateforme ait
+ *   jamais été vérifiée auprès d'IGDB, et se fier au temps de jeu comme seul signal bloquait alors
+ *   silencieusement et définitivement cette correction pour ce jeu.
  */
 data class Game(
     val id: String = "",
@@ -61,4 +69,5 @@ data class Game(
     val completedAt: Long? = null,
     val abandonedAt: Long? = null,
     val playedPlatforms: Set<String> = emptySet(),
+    val igdbLookupAttempted: Boolean = false,
 )

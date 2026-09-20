@@ -301,6 +301,7 @@ class DetailViewModelTest {
         assertEquals(20, game?.estimatedPlaytimeHastilyHours)
         assertEquals(25, game?.estimatedPlaytimeNormallyHours)
         assertEquals(40, game?.estimatedPlaytimeCompletelyHours)
+        assertTrue(game?.igdbLookupAttempted == true)
         collectorJob.cancel()
     }
 
@@ -327,7 +328,7 @@ class DetailViewModelTest {
     }
 
     @Test
-    fun `ouvrir la fiche ne redemande pas IGDB si un temps estime est deja en cache`() = runTest {
+    fun `ouvrir la fiche ne redemande pas IGDB si une tentative a deja ete enregistree`() = runTest {
         val dao = FakeGameDao()
         val repository = fakeGameRepository(dao)
         val result = repository.addGame(
@@ -337,6 +338,7 @@ class DetailViewModelTest {
                 genre = "Roguelike",
                 status = GameStatus.A_FAIRE,
                 estimatedPlaytimeNormallyHours = 20,
+                igdbLookupAttempted = true,
             ),
         )
         val gameId = (result as Resource.Success).data
@@ -356,7 +358,41 @@ class DetailViewModelTest {
     }
 
     @Test
-    fun `un echec IGDB laisse les temps de jeu estimes a null`() = runTest {
+    fun `ouvrir la fiche relance IGDB si un temps de jeu partiel est en cache mais qu'aucune tentative n'a ete enregistree`() = runTest {
+        // Cas réel ayant motivé l'introduction d'`igdbLookupAttempted` : un jeu ajouté avant la
+        // correction de plateforme peut déjà avoir un temps de jeu partiel en cache sans qu'IGDB
+        // ait jamais été interrogé pour sa plateforme — se fier au temps de jeu comme signal de
+        // déclenchement (ancien comportement) bloquait alors cette correction pour toujours.
+        val dao = FakeGameDao()
+        val repository = fakeGameRepository(dao)
+        val result = repository.addGame(
+            Game(
+                title = "Trails in the Sky 1st Chapter",
+                platform = "PC/PlayStation 5/Nintendo Switch",
+                genre = "RPG",
+                status = GameStatus.TERMINE,
+                estimatedPlaytimeNormallyHours = 57,
+                igdbLookupAttempted = false,
+            ),
+        )
+        val gameId = (result as Resource.Success).data
+        val igdbRepository = FakeIgdbPlaytimeRepository(
+            result = IgdbGameMatch(playtimeEstimate = null, platform = "Nintendo Switch/PC/PlayStation 5"),
+        )
+        val viewModel = viewModel(repository, gameId, igdbRepository)
+        val collectorJob = launch { viewModel.uiState.collect {} }
+        dispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals(1, igdbRepository.callCount)
+        val game = viewModel.uiState.value.game
+        assertEquals("Nintendo Switch/PC/PlayStation 5", game?.platform)
+        assertEquals(57, game?.estimatedPlaytimeNormallyHours)
+        assertTrue(game?.igdbLookupAttempted == true)
+        collectorJob.cancel()
+    }
+
+    @Test
+    fun `un echec IGDB laisse les temps de jeu estimes a null mais enregistre quand meme la tentative`() = runTest {
         val dao = FakeGameDao()
         val repository = fakeGameRepository(dao)
         val gameId = setUpGame(repository)
@@ -370,6 +406,7 @@ class DetailViewModelTest {
         assertNull(game?.estimatedPlaytimeHastilyHours)
         assertNull(game?.estimatedPlaytimeNormallyHours)
         assertNull(game?.estimatedPlaytimeCompletelyHours)
+        assertTrue(game?.igdbLookupAttempted == true)
         collectorJob.cancel()
     }
 

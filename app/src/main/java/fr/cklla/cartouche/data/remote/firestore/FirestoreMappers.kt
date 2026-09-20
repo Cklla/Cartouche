@@ -30,6 +30,7 @@ private const val FIELD_COVER_URL = "coverUrl"
 private const val FIELD_COMPLETED_AT = "completedAt"
 private const val FIELD_ABANDONED_AT = "abandonedAt"
 private const val FIELD_PLAYED_PLATFORMS = "playedPlatforms"
+private const val FIELD_IGDB_LOOKUP_ATTEMPTED = "igdbLookupAttempted"
 
 fun Game.toFirestoreMap(): Map<String, Any?> = mapOf(
     FIELD_TITLE to title,
@@ -50,6 +51,7 @@ fun Game.toFirestoreMap(): Map<String, Any?> = mapOf(
     // Firestore stocke nativement des listes : pas besoin de la joindre en chaîne comme côté Room
     // (voir `GameEntity.playedPlatforms`), qui n'a pas ce luxe.
     FIELD_PLAYED_PLATFORMS to playedPlatforms.sorted(),
+    FIELD_IGDB_LOOKUP_ATTEMPTED to igdbLookupAttempted,
 )
 
 // Firestore n'a pas de type `Int` natif (tout nombre entier remonte en `Long`) : cast via `Number`
@@ -88,5 +90,8 @@ fun mapToGame(id: String, data: Map<String, Any?>): Game? {
             ?.filterIsInstance<String>()
             ?.toSet()
             .orEmpty(),
+        // Absent d'un document créé avant l'introduction de ce champ : `false` (jamais tenté), pas
+        // différent d'un jeu tout juste ajouté au backlog.
+        igdbLookupAttempted = data[FIELD_IGDB_LOOKUP_ATTEMPTED] as? Boolean ?: false,
     )
 }

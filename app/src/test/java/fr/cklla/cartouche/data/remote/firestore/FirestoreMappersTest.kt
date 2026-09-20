@@ -27,6 +27,7 @@ class FirestoreMappersTest {
             coverUrl = "https://example.com/cover.jpg",
             completedAt = 1_700_000_000_000L,
             playedPlatforms = setOf("PC"),
+            igdbLookupAttempted = true,
         )
 
         val roundTripped = mapToGame(game.id, game.toFirestoreMap())
@@ -133,6 +134,7 @@ class FirestoreMappersTest {
         assertNull(game?.completedAt)
         assertNull(game?.abandonedAt)
         assertEquals(emptySet<String>(), game?.playedPlatforms)
+        assertEquals(false, game?.igdbLookupAttempted)
     }
 
     @Test
@@ -150,5 +152,18 @@ class FirestoreMappersTest {
 
         assertEquals(listOf("PC", "Switch"), map["playedPlatforms"])
         assertEquals(game, mapToGame(game.id, map))
+    }
+
+    @Test
+    fun `igdbLookupAttempted absent d'un document existant est traite comme jamais tente`() {
+        val data = mapOf(
+            "title" to "t",
+            "platform" to "p",
+            "genre" to "g",
+            "status" to GameStatus.A_FAIRE.name,
+            "estimatedPlaytimeNormallyHours" to 20L,
+        )
+
+        assertEquals(false, mapToGame("1", data)?.igdbLookupAttempted)
     }
 }

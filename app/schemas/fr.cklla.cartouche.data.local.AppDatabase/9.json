@@ -1,0 +1,124 @@
+{
+  "formatVersion": 1,
+  "database": {
+    "version": 9,
+    "identityHash": "df1d371dcbedcc237024f4a9a2d26c01",
+    "entities": [
+      {
+        "tableName": "games",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `title` TEXT NOT NULL, `platform` TEXT NOT NULL, `genre` TEXT NOT NULL, `status` TEXT NOT NULL, `rawgId` INTEGER, `releaseYear` INTEGER, `userPlaytimeHours` INTEGER NOT NULL, `estimatedPlaytimeHastilyHours` INTEGER, `estimatedPlaytimeNormallyHours` INTEGER, `estimatedPlaytimeCompletelyHours` INTEGER, `rating` INTEGER, `notes` TEXT NOT NULL, `coverUrl` TEXT, `completedAt` INTEGER, `abandonedAt` INTEGER, `playedPlatforms` TEXT NOT NULL, `igdbLookupAttempted` INTEGER NOT NULL, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "title",
+            "columnName": "title",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "platform",
+            "columnName": "platform",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "genre",
+            "columnName": "genre",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "status",
+            "columnName": "status",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "rawgId",
+            "columnName": "rawgId",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "releaseYear",
+            "columnName": "releaseYear",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "userPlaytimeHours",
+            "columnName": "userPlaytimeHours",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "estimatedPlaytimeHastilyHours",
+            "columnName": "estimatedPlaytimeHastilyHours",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "estimatedPlaytimeNormallyHours",
+            "columnName": "estimatedPlaytimeNormallyHours",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "estimatedPlaytimeCompletelyHours",
+            "columnName": "estimatedPlaytimeCompletelyHours",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "rating",
+            "columnName": "rating",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "notes",
+            "columnName": "notes",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "coverUrl",
+            "columnName": "coverUrl",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "completedAt",
+            "columnName": "completedAt",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "abandonedAt",
+            "columnName": "abandonedAt",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "playedPlatforms",
+            "columnName": "playedPlatforms",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "igdbLookupAttempted",
+            "columnName": "igdbLookupAttempted",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        }
+      }
+    ],
+    "setupQueries": [
+      "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'df1d371dcbedcc237024f4a9a2d26c01')"
+    ]
+  }
+}
