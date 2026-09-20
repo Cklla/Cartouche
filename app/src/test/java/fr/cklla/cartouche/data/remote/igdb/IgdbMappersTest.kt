@@ -25,6 +25,27 @@ class IgdbMappersTest {
         assertEquals(expected, buildSearchQuery(titleWithQuotes))
     }
 
+    // Cas réel : RAWG désambiguïse ce titre du *God of War* de 2005 en ajoutant l'année entre
+    // parenthèses ("God of War (2018)"), mais IGDB lui-même n'a que "God of War" — `search "God of
+    // War (2018)"` renvoie 0 résultat côté IGDB (confirmé par appel direct à l'API), il faut donc
+    // retirer ce suffixe avant d'envoyer la requête, pas seulement lors de la comparaison des
+    // candidats renvoyés (voir `findBestMatch`).
+    @Test
+    fun `buildSearchQuery retire le suffixe entre parentheses du titre avant de construire la requete`() {
+        assertEquals(
+            "search \"God of War\"; fields id,name,first_release_date,platforms.name; limit 30;",
+            buildSearchQuery("God of War (2018)"),
+        )
+    }
+
+    @Test
+    fun `buildSearchQuery retire le suffixe d'edition du titre avant de construire la requete`() {
+        assertEquals(
+            "search \"Hollow Knight\"; fields id,name,first_release_date,platforms.name; limit 30;",
+            buildSearchQuery("Hollow Knight: Definitive Edition"),
+        )
+    }
+
     @Test
     fun `buildTimeToBeatQuery filtre sur l'id du jeu IGDB trouve`() {
         assertEquals(
