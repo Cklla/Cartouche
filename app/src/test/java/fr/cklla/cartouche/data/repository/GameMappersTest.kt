@@ -28,6 +28,7 @@ class GameMappersTest {
             completedAt = 1_700_000_000_000L,
             abandonedAt = null,
             playedPlatforms = setOf("PC"),
+            igdbLookupAttempted = true,
         )
 
         val roundTripped = game.toEntity().toDomain()
@@ -69,6 +70,7 @@ class GameMappersTest {
             completedAt = null,
             abandonedAt = null,
             playedPlatforms = "",
+            igdbLookupAttempted = false,
         )
 
         assertEquals(GameStatus.ABANDONNE, entity.toDomain().status)

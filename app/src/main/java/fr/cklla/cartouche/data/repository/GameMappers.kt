@@ -30,6 +30,7 @@ fun GameEntity.toDomain(): Game = Game(
     completedAt = completedAt,
     abandonedAt = abandonedAt,
     playedPlatforms = parsePlatforms(playedPlatforms).toSet(),
+    igdbLookupAttempted = igdbLookupAttempted,
 )
 
 fun Game.toEntity(): GameEntity = GameEntity(
@@ -50,4 +51,5 @@ fun Game.toEntity(): GameEntity = GameEntity(
     completedAt = completedAt,
     abandonedAt = abandonedAt,
     playedPlatforms = playedPlatforms.sorted().joinToString("/"),
+    igdbLookupAttempted = igdbLookupAttempted,
 )

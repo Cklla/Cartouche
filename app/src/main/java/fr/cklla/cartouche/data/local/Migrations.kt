@@ -218,3 +218,22 @@ val MIGRATION_7_8 = object : Migration(7, 8) {
         )
     }
 }
+
+/**
+ * Ajoute `igdbLookupAttempted` (voir `Game.igdbLookupAttempted`), qui remplace la nullité des
+ * champs `estimatedPlaytime*` comme signal de déclenchement de la recherche IGDB côté
+ * `DetailViewModel` — voir ce champ pour le bug que ce changement corrige (un temps de jeu
+ * partiel déjà en cache empêchait silencieusement et définitivement la correction de `platform`
+ * introduite entretemps).
+ *
+ * `DEFAULT 0` (jamais tenté) pour tous les jeux déjà en backlog, y compris ceux qui ont déjà un
+ * temps de jeu en cache : à la différence de [MIGRATION_5_6]/[MIGRATION_6_7], ce n'est pas ici une
+ * simple limite assumée mais l'effet recherché par cette migration — chaque jeu déjà en backlog
+ * bénéficie ainsi d'une dernière tentative IGDB à la prochaine ouverture de sa fiche détail, pour
+ * que ceux ajoutés avant la correction de plateforme (ou avant IGDB tout court) en profitent aussi.
+ */
+val MIGRATION_8_9 = object : Migration(8, 9) {
+    override fun migrate(connection: SQLiteConnection) {
+        connection.execSQL("ALTER TABLE `games` ADD COLUMN `igdbLookupAttempted` INTEGER NOT NULL DEFAULT 0")
+    }
+}

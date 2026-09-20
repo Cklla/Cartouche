@@ -38,4 +38,5 @@ data class GameEntity(
     val completedAt: Long?,
     val abandonedAt: Long?,
     val playedPlatforms: String,
+    val igdbLookupAttempted: Boolean,
 )
