@@ -23,9 +23,11 @@ service cloud.firestore {
                'title', 'platform', 'genre', 'status', 'rawgId', 'releaseYear',
                'userPlaytimeHours', 'estimatedPlaytimeHastilyHours',
                'estimatedPlaytimeNormallyHours', 'estimatedPlaytimeCompletelyHours',
-               'rating', 'notes', 'coverUrl', 'completedAt', 'abandonedAt', 'playedPlatforms'
+               'rating', 'notes', 'coverUrl', 'completedAt', 'abandonedAt', 'playedPlatforms',
+               'igdbLookupAttempted'
              ])
-             && game.keys().hasAll(['title', 'platform', 'genre', 'status'])
+             && game.keys().hasAll(['title', 'platform', 'genre', 'status', 'igdbLookupAttempted'])
+             && game.igdbLookupAttempted is bool
              && game.title is string && game.title.size() <= 300
              && game.platform is string && game.platform.size() <= 200
              && game.genre is string && game.genre.size() <= 100
