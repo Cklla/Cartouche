@@ -28,3 +28,26 @@ fun effectivePlayedPlatforms(game: Game): Set<String> {
     val platforms = parsePlatforms(game.platform)
     return if (platforms.size == 1) platforms.toSet() else game.playedPlatforms
 }
+
+/**
+ * Ré-aligne [playedPlatforms] sur [newPlatform] (typiquement une correction IGDB, voir
+ * `IgdbGameMatch.platform`) en cas de remplacement de `Game.platform`, ou `null` si ce remplacement
+ * casserait une plateforme déjà cochée — signal à l'appelant (voir `DetailViewModel`) de ne pas
+ * remplacer `Game.platform` du tout, pour ne jamais perdre silencieusement un choix déjà fait.
+ *
+ * La correspondance entre l'ancien et le nouveau nom de plateforme n'est acceptée que si elle est
+ * exacte à la casse près (`"ps5"` ~ `"PS5"`), jamais approximative (ex. sous-chaîne) : le cas motivant
+ * cette fonction est justement Switch/Switch 2, où une différence de libellé entre RAWG et IGDB peut
+ * refléter une vraie différence de plateforme et pas seulement une reformulation (ex. "Nintendo
+ * Switch" contient "Switch" comme sous-chaîne, mais "Nintendo Switch 2" aussi — une correspondance
+ * approximative ferait glisser une case "joué sur Switch" vers "Switch 2" à tort). Sans
+ * correspondance exacte fiable pour une plateforme cochée, mieux vaut garder la donnée RAWG intacte
+ * que de la remplacer par une valeur qui casse ou fausse silencieusement ce choix.
+ */
+fun realignPlayedPlatformsOrNull(playedPlatforms: Set<String>, newPlatform: String): Set<String>? {
+    if (playedPlatforms.isEmpty()) return emptySet()
+    val newPlatforms = parsePlatforms(newPlatform)
+    return playedPlatforms.map { old ->
+        newPlatforms.firstOrNull { it.equals(old, ignoreCase = true) } ?: return null
+    }.toSet()
+}

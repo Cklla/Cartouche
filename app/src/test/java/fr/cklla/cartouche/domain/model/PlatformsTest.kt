@@ -1,6 +1,7 @@
 package fr.cklla.cartouche.domain.model
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Test
 
 class PlatformsTest {
@@ -70,5 +71,35 @@ class PlatformsTest {
         val game = Game(title = "Trails in the Sky First Chapter", platform = "PC/PS5/Switch", genre = "RPG", status = GameStatus.EN_COURS)
 
         assertEquals(emptySet<String>(), effectivePlayedPlatforms(game))
+    }
+
+    @Test
+    fun `realignPlayedPlatformsOrNull renvoie une liste vide sans rien casser quand playedPlatforms est vide`() {
+        assertEquals(emptySet<String>(), realignPlayedPlatformsOrNull(emptySet(), "PC/PlayStation 5"))
+    }
+
+    @Test
+    fun `realignPlayedPlatformsOrNull realigne une plateforme cochee sur la casse du nouveau nom`() {
+        assertEquals(
+            setOf("PlayStation 5"),
+            realignPlayedPlatformsOrNull(setOf("playstation 5"), "PC/PlayStation 5"),
+        )
+    }
+
+    @Test
+    fun `realignPlayedPlatformsOrNull realigne plusieurs plateformes cochees a la fois`() {
+        assertEquals(
+            setOf("PC", "PlayStation 5"),
+            realignPlayedPlatformsOrNull(setOf("PC", "PlayStation 5"), "Nintendo Switch/PC/PlayStation 5"),
+        )
+    }
+
+    @Test
+    fun `realignPlayedPlatformsOrNull renvoie null si une plateforme cochee n'a aucune correspondance exacte`() {
+        // Cas motivant cette fonction : RAWG "Switch" corrigé en IGDB "Nintendo Switch 2" — une
+        // vraie plateforme différente, pas juste un nom reformulé. Pas de correspondance exacte
+        // (même en ignorant la casse) : mieux vaut ne pas remplacer `platform` du tout que de
+        // faire glisser silencieusement la case cochée vers la mauvaise plateforme.
+        assertNull(realignPlayedPlatformsOrNull(setOf("Switch"), "Nintendo Switch 2"))
     }
 }

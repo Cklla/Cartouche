@@ -1,6 +1,7 @@
 package fr.cklla.cartouche.data.remote.igdb
 
 import fr.cklla.cartouche.data.remote.igdb.dto.IgdbGameDto
+import fr.cklla.cartouche.data.remote.igdb.dto.IgdbPlatformDto
 import java.time.Instant
 import java.time.ZoneOffset
 import java.util.Locale
@@ -17,12 +18,20 @@ import java.util.Locale
  * 2. Nom normalisé + année de sortie ([findBestMatch]) — utilisé seulement si l'étape 1 n'a rien
  *    donné (pas de fiche Steam RAWG, ou pas de correspondance côté IGDB).
  * 3. Aucun match fiable → "non disponible".
+ *
+ * Une fois l'id IGDB résolu (quelle que soit la branche), il sert à la fois à retrouver le temps de
+ * jeu estimé (`game_time_to_beats`) et, depuis l'ajout de [formatIgdbPlatforms], à fiabiliser
+ * `Game.platform` (utile notamment pour distinguer Switch/Switch 2, que RAWG ne différencie pas) —
+ * RAWG reste la seule source pour la recherche, l'ajout au backlog et les jaquettes.
  */
 
 /**
  * Requête de recherche par titre, jusqu'à 30 candidats. `first_release_date` est demandé en plus
  * de l'id/nom : c'est le signal utilisé par [findBestMatch] pour départager des candidats au nom
- * proche (ex. plusieurs éditions/remakes d'un même jeu).
+ * proche (ex. plusieurs éditions/remakes d'un même jeu). `platforms.name` est demandé dans ce même
+ * appel plutôt que dans un second : une fois le meilleur candidat retenu par [findBestMatch], sa
+ * liste de plateformes IGDB est déjà disponible sans requête supplémentaire (voir
+ * `IgdbPlaytimeRepositoryImpl`, branche nom+année de la cascade).
  *
  * Pas de filtre sur le champ `category` d'IGDB (DLC/bundle/mod...) : essayé, mais rejeté — de
  * nombreux jeux de base n'ont tout simplement pas ce champ renseigné côté IGDB (ex. *Persona 3
@@ -34,7 +43,7 @@ import java.util.Locale
  * avoir besoin de connaître leur catégorie.
  */
 fun buildSearchQuery(title: String): String =
-    "search \"${escapeQueryText(title)}\"; fields id,name,first_release_date; limit 30;"
+    "search \"${escapeQueryText(title)}\"; fields id,name,first_release_date,platforms.name; limit 30;"
 
 /** Requête de durée de vie pour un jeu IGDB déjà identifié. */
 fun buildTimeToBeatQuery(igdbGameId: Long): String =
@@ -47,6 +56,14 @@ fun buildTimeToBeatQuery(igdbGameId: Long): String =
  */
 fun buildSteamExternalGameQuery(steamAppId: Long): String =
     "fields game; where uid = \"$steamAppId\" & category = 1; limit 1;"
+
+/**
+ * Requête de suivi minimale pour récupérer les plateformes d'un jeu IGDB déjà identifié par App ID
+ * Steam (`external_games` ne renvoie que l'id, voir [buildSteamExternalGameQuery]) — contrairement
+ * à la branche nom+année, dont [buildSearchQuery] ramène déjà `platforms.name` dans le même appel.
+ */
+fun buildPlatformsQuery(igdbGameId: Long): String =
+    "fields platforms.name; where id = $igdbGameId; limit 1;"
 
 private fun escapeQueryText(text: String): String = text.replace("\\", "\\\\").replace("\"", "\\\"")
 
@@ -140,3 +157,20 @@ private fun levenshteinDistance(a: String, b: String): Int {
  * comme "0h".
  */
 fun toEstimatedHours(seconds: Int?): Int? = seconds?.takeIf { it > 0 }?.let { it / 3600 }
+
+/**
+ * Reformate les plateformes IGDB d'un jeu identifié au même format d'affichage que `Game.platform`
+ * (jointes par "/", voir `RawgMappers.formatPlatforms`), mais triées : contrairement à RAWG, l'ordre
+ * dans lequel IGDB renvoie ses plateformes n'est pas significatif, autant avoir un résultat
+ * déterministe. Renvoie `null` (jamais une chaîne vide) si IGDB n'a aucune plateforme pour ce jeu —
+ * `IgdbPlaytimeRepositoryImpl` s'en sert comme signal pour ne jamais écraser `Game.platform` avec
+ * une liste vide.
+ */
+fun formatIgdbPlatforms(platforms: List<IgdbPlatformDto>?): String? =
+    platforms.orEmpty()
+        .map { it.name.trim() }
+        .filter { it.isNotEmpty() }
+        .distinct()
+        .sorted()
+        .takeIf { it.isNotEmpty() }
+        ?.joinToString("/")

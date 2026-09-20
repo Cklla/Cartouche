@@ -10,14 +10,20 @@ import retrofit2.http.Headers
 import retrofit2.http.POST
 
 /**
- * API IGDB (https://api-docs.igdb.com), utilisée uniquement pour compléter le temps de jeu
- * estimé d'un jeu (`Game.estimatedPlaytime*Hours` : rapide/normal/complet) — RAWG reste la seule
- * source pour tout le reste (recherche, fiche jeu). Contrairement à RAWG, IGDB attend le corps de
- * chaque requête au format "Apicalypse" (texte brut, pas de JSON) : voir
- * `IgdbMappers.buildSearchQuery`/`buildTimeToBeatQuery` pour la construction de ces requêtes.
+ * API IGDB (https://api-docs.igdb.com), utilisée pour compléter deux informations d'un jeu déjà
+ * ajouté au backlog : le temps de jeu estimé (`Game.estimatedPlaytime*Hours` : rapide/normal/
+ * complet) et une liste de plateformes plus fiable que RAWG (`Game.platform`, voir
+ * `IgdbGameMatch`) — RAWG reste la seule source pour tout le reste (recherche, ajout au backlog,
+ * jaquette). Contrairement à RAWG, IGDB attend le corps de chaque requête au format "Apicalypse"
+ * (texte brut, pas de JSON) : voir `IgdbMappers` pour la construction de ces requêtes.
  */
 interface IgdbApi {
 
+    /**
+     * Endpoint `games`, utilisé à la fois pour la recherche par titre (`IgdbMappers.buildSearchQuery`)
+     * et pour la requête de suivi par id (`IgdbMappers.buildPlatformsQuery`) — même endpoint,
+     * requête Apicalypse différente selon le besoin de l'appelant.
+     */
     @Headers("Content-Type: text/plain")
     @POST("games")
     suspend fun searchGames(
