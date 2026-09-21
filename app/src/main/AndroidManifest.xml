@@ -34,6 +34,26 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!--
+            Désactive l'initialisation automatique de WorkManager (ContentProvider exécuté avant
+            même Application.onCreate) : sans ça, WorkManager s'initialise avec sa configuration
+            par défaut avant que CartoucheApplication ait pu lui fournir HiltWorkerFactory, et
+            RecapNotificationWorker échoue systématiquement (son constructeur généré par Hilt n'a
+            pas la signature (Context, WorkerParameters) attendue par la fabrique par réflexion
+            par défaut). En la désactivant ici, WorkManager s'initialise à la demande au premier
+            WorkManager.getInstance(), et respecte alors CartoucheApplication.Configuration.Provider.
+        -->
+        <provider
+            android:name="androidx.startup.InitializationProvider"
+            android:authorities="${applicationId}.androidx-startup"
+            android:exported="false"
+            tools:node="merge">
+            <meta-data
+                android:name="androidx.work.WorkManagerInitializer"
+                android:value="androidx.startup"
+                tools:node="remove" />
+        </provider>
     </application>
 
 </manifest>
