@@ -66,6 +66,12 @@
     <string name="recap_games_title_abandonne">Abandonnés en %1$d</string>
     <string name="recap_games_empty">Aucun jeu à afficher.</string>
 
+    <!-- Notification locale du récap annuel -->
+    <string name="recap_notification_channel_name">Récap annuel</string>
+    <string name="recap_notification_channel_description">Prévient quand le bilan de l\'année devient disponible.</string>
+    <string name="recap_notification_title">Ton récap %1$d est prêt</string>
+    <string name="recap_notification_text">Découvre le bilan de ton année de jeu.</string>
+
     <!-- Jaquette placeholder -->
     <string name="cover_placeholder_label">jaquette</string>
 

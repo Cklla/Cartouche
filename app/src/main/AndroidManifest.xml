@@ -3,6 +3,9 @@
     xmlns:tools="http://schemas.android.com/tools">
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Notification locale du récap annuel (Android 13+ uniquement, no-op avant) : voir
+         RecapNotificationWorker, demandée après connexion plutôt qu'au lancement du job. -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <!--
         allowBackup="false" : rien de ce que l'app stocke sur l'appareil ne part dans la sauvegarde
@@ -22,6 +25,7 @@
             android:name=".MainActivity"
             android:exported="true"
             android:label="@string/app_name"
+            android:launchMode="singleTask"
             android:theme="@style/Theme.Cartouche"
             android:windowSoftInputMode="adjustResize">
             <intent-filter>

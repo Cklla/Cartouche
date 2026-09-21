@@ -1,16 +1,27 @@
 package fr.cklla.cartouche
 
+import android.Manifest
+import android.content.Intent
+import android.content.pm.PackageManager
 import android.graphics.Color
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavType
@@ -20,6 +31,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import dagger.hilt.android.AndroidEntryPoint
+import fr.cklla.cartouche.notification.EXTRA_RECAP_NOTIFICATION_YEAR
 import fr.cklla.cartouche.ui.AppTab
 import fr.cklla.cartouche.ui.bibliotheque.BibliothequeScreen
 import fr.cklla.cartouche.ui.components.BottomNavBar
@@ -37,6 +49,13 @@ import fr.cklla.cartouche.ui.theme.CartoucheTheme
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
+
+    // Année à ouvrir directement dans le récap si l'activité a été lancée (ou ramenée au premier
+    // plan, voir onNewIntent) depuis la notification locale envoyée par RecapNotificationWorker —
+    // `mutableStateOf` pour que CartoucheApp puisse y réagir par recomposition, `null` sinon
+    // (lancement normal depuis le launcher).
+    private var pendingRecapYear by mutableStateOf<Int?>(null)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         // L'app n'a qu'un thème sombre définitif : les barres système doivent toujours
@@ -47,13 +66,28 @@ class MainActivity : ComponentActivity() {
             statusBarStyle = SystemBarStyle.dark(Color.TRANSPARENT),
             navigationBarStyle = SystemBarStyle.dark(Color.TRANSPARENT),
         )
+        pendingRecapYear = intent.recapNotificationYear()
         setContent {
             CartoucheTheme {
-                CartoucheApp()
+                CartoucheApp(
+                    pendingRecapYear = pendingRecapYear,
+                    onPendingRecapYearConsumed = { pendingRecapYear = null },
+                )
             }
         }
     }
+
+    // `launchMode="singleTask"` (voir le manifeste) : si l'app tourne déjà, taper la notification
+    // ramène cette même instance au premier plan via onNewIntent plutôt que d'en recréer une.
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        pendingRecapYear = intent.recapNotificationYear()
+    }
 }
+
+private fun Intent.recapNotificationYear(): Int? =
+    getIntExtra(EXTRA_RECAP_NOTIFICATION_YEAR, -1).takeIf { it != -1 }
 
 // Navigation Compose : les 3 onglets sont des destinations de premier niveau
 // (une seule instance de chacune, état conservé via saveState/restoreState),
@@ -66,16 +100,34 @@ class MainActivity : ComponentActivity() {
 // la recomposition bascule automatiquement sur le NavHost normal, qui démarre toujours sur la
 // Bibliothèque.
 @Composable
-fun CartoucheApp(authGateViewModel: AuthGateViewModel = hiltViewModel()) {
+fun CartoucheApp(
+    authGateViewModel: AuthGateViewModel = hiltViewModel(),
+    pendingRecapYear: Int? = null,
+    onPendingRecapYearConsumed: () -> Unit = {},
+) {
     val currentUser by authGateViewModel.currentUser.collectAsStateWithLifecycle()
     if (currentUser == null) {
         LoginScreen()
         return
     }
 
+    // Point d'entrée le plus proche d'un "onboarding" existant dans cette app (pas d'écran
+    // Réglages dédié, voir StatsViewModel) : demandée une fois la connexion établie, jamais à un
+    // moment arbitraire comme le premier déclenchement du job en arrière-plan.
+    RequestNotificationPermissionEffect()
+
     val navController = rememberNavController()
     val currentRoute = navController.currentBackStackEntryAsState().value?.destination?.route
     val selectedTab = AppTab.entries.find { it.route == currentRoute }
+
+    // Notification tapée (app déjà lancée ou relancée depuis elle, voir MainActivity) : ouvre le
+    // récap directement, puis se déclare consommée pour ne pas re-naviguer à chaque recomposition.
+    LaunchedEffect(pendingRecapYear) {
+        pendingRecapYear?.let { year ->
+            navController.navigate(CartoucheDestinations.recapRoute(year))
+            onPendingRecapYearConsumed()
+        }
+    }
 
     Scaffold(
         containerColor = BackgroundDark,
@@ -179,6 +231,26 @@ fun CartoucheApp(authGateViewModel: AuthGateViewModel = hiltViewModel()) {
             ) {
                 DetailScreen(onBackClick = { navController.popBackStack() })
             }
+        }
+    }
+}
+
+/**
+ * Demande la permission `POST_NOTIFICATIONS` une seule fois par composition de [CartoucheApp]
+ * (`LaunchedEffect(Unit)`), uniquement là où elle a un sens (Android 13+, pas déjà accordée). Si
+ * l'utilisateur refuse, rien ne redemande tant que l'activité n'est pas relancée : la carte récap
+ * de l'écran Stats continue de fonctionner normalement dans tous les cas, la notification n'est
+ * qu'un plus, jamais un prérequis pour la voir.
+ */
+@Composable
+private fun RequestNotificationPermissionEffect() {
+    val context = LocalContext.current
+    val permissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {}
+    LaunchedEffect(Unit) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+        ) {
+            permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
         }
     }
 }

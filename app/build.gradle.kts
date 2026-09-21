@@ -143,6 +143,12 @@ dependencies {
     ksp(libs.hilt.android.compiler)
     implementation(libs.androidx.hilt.navigation.compose)
 
+    // Notification locale du récap annuel : job périodique (voir RecapNotificationWorker),
+    // sans lien avec Firebase Cloud Messaging (condition purement locale, basée sur la date).
+    implementation(libs.androidx.work.runtime.ktx)
+    implementation(libs.androidx.hilt.work)
+    ksp(libs.androidx.hilt.compiler)
+
     // Réseau : recherche de jeux via l'API RAWG (seul usage de Retrofit/Moshi,
     // le backlog lui-même reste stocké via Room/Firestore).
     implementation(libs.retrofit.core)
