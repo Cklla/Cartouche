@@ -29,6 +29,7 @@ import fr.cklla.cartouche.ui.login.LoginScreen
 import fr.cklla.cartouche.ui.navigation.CartoucheDestinations
 import fr.cklla.cartouche.ui.navigation.route
 import fr.cklla.cartouche.ui.recherche.RechercheScreen
+import fr.cklla.cartouche.ui.stats.RecapScreen
 import fr.cklla.cartouche.ui.stats.StatsScreen
 import fr.cklla.cartouche.ui.theme.BackgroundDark
 import fr.cklla.cartouche.ui.theme.CartoucheTheme
@@ -113,7 +114,15 @@ fun CartoucheApp(authGateViewModel: AuthGateViewModel = hiltViewModel()) {
                 )
             }
             composable(CartoucheDestinations.STATS) {
-                StatsScreen()
+                StatsScreen(
+                    onRecapClick = { year -> navController.navigate(CartoucheDestinations.recapRoute(year)) },
+                )
+            }
+            composable(
+                route = CartoucheDestinations.RECAP,
+                arguments = listOf(navArgument(CartoucheDestinations.RECAP_ARG_YEAR) { type = NavType.IntType }),
+            ) {
+                RecapScreen(onBackClick = { navController.popBackStack() })
             }
             composable(
                 route = CartoucheDestinations.DETAIL,

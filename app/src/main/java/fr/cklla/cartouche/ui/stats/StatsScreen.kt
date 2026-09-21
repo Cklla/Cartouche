@@ -19,6 +19,9 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -56,15 +59,20 @@ import java.util.Locale
 @Composable
 fun StatsScreen(
     modifier: Modifier = Modifier,
+    onRecapClick: (Int) -> Unit,
     viewModel: StatsViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val currentUser by viewModel.currentUser.collectAsStateWithLifecycle()
+    val recapStats by viewModel.recapStats.collectAsStateWithLifecycle()
     StatsContent(
         stats = uiState,
         signedInAs = currentUser?.displayName,
         onSignOutClick = viewModel::onSignOutClicked,
         onYearSelected = viewModel::onYearSelected,
+        recapYear = viewModel.recapYear,
+        recapStats = recapStats,
+        onRecapClick = onRecapClick,
         modifier = modifier,
     )
 }
@@ -75,6 +83,9 @@ private fun StatsContent(
     signedInAs: String?,
     onSignOutClick: () -> Unit,
     onYearSelected: (Int?) -> Unit,
+    recapYear: Int?,
+    recapStats: StatsData,
+    onRecapClick: (Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -97,6 +108,12 @@ private fun StatsContent(
                 .padding(horizontal = 20.dp, vertical = 16.dp),
             verticalArrangement = Arrangement.spacedBy(24.dp),
         ) {
+            // Carte "Récap" : uniquement dans la fenêtre calculée par `recapTargetYear` (fin
+            // décembre / tout janvier, voir StatsViewModel.recapYear), quelle que soit l'année
+            // sélectionnée par ailleurs sur cet écran via les chips (les deux sont indépendants).
+            if (recapYear != null) {
+                RecapCard(year = recapYear, stats = recapStats, onClick = { onRecapClick(recapYear) })
+            }
             StatCardsGrid(stats = stats)
             DonutSection(stats = stats)
             PlatformBreakdownSection(
@@ -149,6 +166,60 @@ private fun Header(signedInAs: String?, onSignOutClick: () -> Unit) {
                     modifier = Modifier.clickable(onClick = onSignOutClick),
                 )
             }
+        }
+    }
+}
+
+/**
+ * Carte "Récap" de l'année ciblée (voir `StatsViewModel.recapYear`/[recapTargetYear]) — mise en
+ * avant par une bordure et un fond teintés [AccentPurple] pour se distinguer des cartes-chiffres
+ * neutres de [StatCardsGrid] en dessous, puisqu'elle est cliquable et n'apparaît que quelques
+ * semaines par an. Les deux chiffres affichés (jeux terminés, heures de jeu) viennent de [stats],
+ * déjà calculées en direct sur l'année ciblée par `StatsViewModel` — aucune métrique inédite.
+ */
+@Composable
+private fun RecapCard(year: Int, stats: StatsData, onClick: () -> Unit) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(8.dp))
+            .background(AccentPurple.copy(alpha = 0.14f))
+            .border(BorderStroke(1.dp, AccentPurple.copy(alpha = 0.5f)), RoundedCornerShape(8.dp))
+            .clickable(onClick = onClick)
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        Text(
+            text = stringResource(R.string.stats_recap_card_kicker),
+            style = CartoucheTextStyles.kicker,
+            color = AccentPurpleLight,
+        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Column {
+                Text(
+                    text = stringResource(R.string.stats_recap_card_title, year),
+                    style = CartoucheTextStyles.statValueMedium,
+                    color = TextPrimary,
+                )
+                Text(
+                    text = stringResource(
+                        R.string.stats_recap_card_subtitle,
+                        stats.completedCount,
+                        stats.totalHoursPlayed,
+                    ),
+                    style = CartoucheTextStyles.cardSubtitle,
+                    color = TextSecondary,
+                )
+            }
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                contentDescription = null,
+                tint = AccentPurpleLight,
+            )
         }
     }
 }
@@ -377,9 +448,11 @@ private fun LegendRow(status: GameStatus, count: Int) {
  * et une fois pour les jeux En cours (toujours toutes années, voir `StatsData.inProgressByPlatform`).
  * Masquée entièrement quand `counts` est vide — aucune plateforme à zéro n'y figure jamais (voir
  * `platformCounts`, qui les exclut à la source), inutile d'afficher un titre de section sans lignes.
+ *
+ * `internal` plutôt que `private` : réutilisée telle quelle par `RecapScreen`.
  */
 @Composable
-private fun PlatformBreakdownSection(titleRes: Int, counts: Map<String, Int>, dotColor: Color) {
+internal fun PlatformBreakdownSection(titleRes: Int, counts: Map<String, Int>, dotColor: Color) {
     if (counts.isEmpty()) return
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Text(
@@ -439,7 +512,15 @@ private fun StatsContentPreview() {
         )
     }
     CartoucheTheme {
-        StatsContent(stats = computeStats(games), signedInAs = "Joueur Test", onSignOutClick = {}, onYearSelected = {})
+        StatsContent(
+            stats = computeStats(games),
+            signedInAs = "Joueur Test",
+            onSignOutClick = {},
+            onYearSelected = {},
+            recapYear = 2026,
+            recapStats = computeStats(games, selectedYear = 2026),
+            onRecapClick = {},
+        )
     }
 }
 
@@ -447,6 +528,14 @@ private fun StatsContentPreview() {
 @Composable
 private fun StatsContentEmptyPreview() {
     CartoucheTheme {
-        StatsContent(stats = StatsData(), signedInAs = null, onSignOutClick = {}, onYearSelected = {})
+        StatsContent(
+            stats = StatsData(),
+            signedInAs = null,
+            onSignOutClick = {},
+            onYearSelected = {},
+            recapYear = null,
+            recapStats = StatsData(),
+            onRecapClick = {},
+        )
     }
 }

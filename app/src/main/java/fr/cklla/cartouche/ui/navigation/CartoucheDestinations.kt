@@ -17,6 +17,11 @@ object CartoucheDestinations {
     const val RECHERCHE = "recherche"
     const val STATS = "stats"
 
+    const val RECAP_ARG_YEAR = "year"
+    const val RECAP = "recap/{$RECAP_ARG_YEAR}"
+
+    fun recapRoute(year: Int) = "recap/$year"
+
     const val DETAIL_ARG_GAME_ID = "gameId"
     const val DETAIL = "detail/{$DETAIL_ARG_GAME_ID}"
 

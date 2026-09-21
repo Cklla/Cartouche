@@ -6,13 +6,15 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import fr.cklla.cartouche.domain.model.AuthUser
 import fr.cklla.cartouche.domain.repository.AuthRepository
 import fr.cklla.cartouche.domain.repository.GameRepository
+import java.time.LocalDate
+import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import javax.inject.Inject
 
 /**
  * Le compte connecté et la déconnexion vivent ici plutôt que dans un ViewModel dédié : Stats est
@@ -37,6 +39,29 @@ class StatsViewModel @Inject constructor(
             started = SharingStarted.WhileSubscribed(5_000),
             initialValue = StatsData(),
         )
+
+    /**
+     * Année ciblée par la carte "Récap" (voir [recapTargetYear]), `null` la majeure partie de
+     * l'année : pas de `StateFlow`, cette valeur ne change pas en cours de vie du ViewModel
+     * (l'app n'est pas censée rester ouverte à cheval sur minuit le jour où la fenêtre bascule).
+     */
+    val recapYear: Int? = recapTargetYear(LocalDate.now())
+
+    /**
+     * Stats de la carte "Récap", calculées en direct sur [recapYear] via [computeStats] — jamais
+     * de snapshot ni de valeur mise en cache, les jeux terminés/abandonnés jusqu'au dernier jour de
+     * l'année ciblée comptent normalement. Ne s'abonne au backlog que si [recapYear] est renseigné,
+     * pour ne pas payer une collecte inutile le reste de l'année.
+     */
+    val recapStats: StateFlow<StatsData> = recapYear?.let { year ->
+        gameRepository.observeGames()
+            .map { games -> computeStats(games, year) }
+            .stateIn(
+                scope = viewModelScope,
+                started = SharingStarted.WhileSubscribed(5_000),
+                initialValue = StatsData(selectedYear = year),
+            )
+    } ?: MutableStateFlow(StatsData())
 
     val currentUser: StateFlow<AuthUser?> = authRepository.currentUser
 

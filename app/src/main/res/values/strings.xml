@@ -48,6 +48,17 @@
     <string name="stats_sign_out">Se déconnecter</string>
     <string name="stats_completed_by_platform_label">Terminés par plateforme</string>
     <string name="stats_in_progress_by_platform_label">En cours par plateforme</string>
+    <string name="stats_recap_card_kicker">bilan de l\'année</string>
+    <string name="stats_recap_card_title">Récap %1$d</string>
+    <string name="stats_recap_card_subtitle">%1$d jeux terminés · %2$dh de jeu</string>
+
+    <!-- Récap annuel -->
+    <string name="recap_back">Retour aux statistiques</string>
+    <string name="recap_kicker">bilan de l\'année</string>
+    <string name="recap_title">Récap %1$d</string>
+    <string name="recap_completed_label">jeux terminés cette année</string>
+    <string name="recap_abandoned_label">jeux abandonnés cette année</string>
+    <string name="recap_hours_label">heures de jeu cette année</string>
 
     <!-- Jaquette placeholder -->
     <string name="cover_placeholder_label">jaquette</string>
