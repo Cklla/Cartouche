@@ -57,13 +57,18 @@ fun BottomNavBar(selectedTab: AppTab, onTabSelected: (AppTab) -> Unit, modifier:
                 // navigation système (gestes ou boutons).
                 .navigationBarsPadding()
                 .padding(top = 10.dp, bottom = 14.dp),
-            horizontalArrangement = Arrangement.SpaceEvenly,
         ) {
             tabs.forEach { spec ->
                 val selected = spec.tab == selectedTab
                 val tint = if (selected) AccentPurpleLight else TextMuted
                 Column(
+                    // `weight(1f)` plutôt que `Arrangement.SpaceEvenly` : les 3 labels n'ont pas la
+                    // même largeur ("Bibliothèque" vs "Stats"), donc SpaceEvenly (qui égalise les
+                    // espaces entre les bords des colonnes, pas leurs centres) décalait visuellement
+                    // le groupe d'icônes — chaque onglet occupe maintenant un tiers identique de la
+                    // barre, avec son icône centrée dedans.
                     modifier = Modifier
+                        .weight(1f)
                         .heightIn(min = 48.dp)
                         .clickable { onTabSelected(spec.tab) },
                     horizontalAlignment = Alignment.CenterHorizontally,
