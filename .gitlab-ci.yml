@@ -72,7 +72,7 @@ dependency_scan:
     - cp "$GOOGLE_SERVICES_JSON" app/google-services.json
     - chmod +x ./gradlew
   script:
-    - ./gradlew dependencyCheckAnalyze --no-daemon --stacktrace
+    - ./gradlew dependencyCheckAnalyze --no-daemon --stacktrace --no-configuration-cache
   artifacts:
     when: always
     paths:
@@ -84,4 +84,3 @@ dependency_scan:
       - .gradle/
       - .gradle/caches/
       - .gradle/wrapper/
-      - .gradle/dependency-check-data/
