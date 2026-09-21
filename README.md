@@ -55,11 +55,11 @@ synchronisé automatiquement entre tous vos appareils grâce à Firebase.
 
 | Bibliothèque | Recherche | Détail |
 |:---:|:---:|:---:|
-| ![Bibliothèque](screenshots/bibliotheque.png) | ![Recherche](screenshots/recherche.png) | ![Détail](screenshots/detail.png) |
+| <img src="screenshots/bibliotheque.png" width="220" alt="Bibliothèque"> | <img src="screenshots/recherche.png" width="220" alt="Recherche"> | <img src="screenshots/detail.png" width="220" alt="Détail"> |
 
 | Statistiques | Récap annuel |
 |:---:|:---:|
-| ![Statistiques](screenshots/stats.png) | ![Récap annuel](screenshots/recap.png) |
+| <img src="screenshots/stats.png" width="220" alt="Statistiques"> | <img src="screenshots/recap.png" width="220" alt="Récap annuel"> |
 
 ## Stack technique
 
