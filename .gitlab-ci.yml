@@ -39,7 +39,9 @@ secret_scan:
   stage: test
   tags:
     - linux-docker
-  image: zricethezav/gitleaks:latest
+  image:
+    name: zricethezav/gitleaks:latest
+    entrypoint: [""]
   variables:
     GIT_DEPTH: "0"
   script:
