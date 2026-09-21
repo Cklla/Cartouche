@@ -39,6 +39,11 @@ synchronisé automatiquement entre tous vos appareils grâce à Firebase.
 - **Statistiques** : vue d'ensemble de la progression du backlog (répartition par statut, temps de
   jeu cumulé, filtre par année pour les jeux terminés/abandonnés, répartition des jeux terminés et
   en cours par plateforme, etc.).
+- **Récap annuel** : du 25 au 31 décembre, puis tout le mois de janvier suivant, une carte met en
+  avant le bilan de l'année (jeux terminés, heures de jeu) sur l'écran Statistiques, avec accès à la
+  liste détaillée des jeux terminés/abandonnés en un tap. Une notification locale (aucun serveur
+  impliqué, condition basée uniquement sur la date de l'appareil) prévient une fois par an quand ce
+  récap devient disponible.
 - **Connexion Google** : authentification obligatoire (Firebase Auth) pour identifier
   l'utilisateur et sécuriser ses données côté cloud.
 - **Synchronisation multi-appareils** : le backlog est mirroré en continu entre l'appareil (Room)
@@ -48,13 +53,13 @@ synchronisé automatiquement entre tous vos appareils grâce à Firebase.
 
 ## Captures d'écran
 
-| Connexion | Bibliothèque | Recherche |
+| Bibliothèque | Recherche | Détail |
 |:---:|:---:|:---:|
-| ![Connexion](screenshots/login.png) | ![Bibliothèque](screenshots/bibliotheque.png) | ![Recherche](screenshots/recherche.png) |
+| ![Bibliothèque](screenshots/bibliotheque.png) | ![Recherche](screenshots/recherche.png) | ![Détail](screenshots/detail.png) |
 
-| Détail | Statistiques |
+| Statistiques | Récap annuel |
 |:---:|:---:|
-| ![Détail](screenshots/detail.png) | ![Statistiques](screenshots/stats.png) |
+| ![Statistiques](screenshots/stats.png) | ![Récap annuel](screenshots/recap.png) |
 
 ## Stack technique
 
@@ -68,6 +73,7 @@ synchronisé automatiquement entre tous vos appareils grâce à Firebase.
 | Injection de dépendances | Hilt |
 | Cloud | Firebase Firestore (données) + Firebase Auth (Google Sign-In) |
 | Chargement d'images | Coil |
+| Tâches en arrière-plan | WorkManager (+ Hilt pour l'injection dans les `Worker`) — notification locale du récap annuel |
 | Tests | JUnit4 + kotlinx-coroutines-test, tests unitaires basés sur des fakes (pas de mock ni Robolectric) |
 
 ## Architecture
@@ -202,12 +208,13 @@ app/src/main/java/fr/cklla/cartouche/
 ├── domain/
 │   ├── model/           # Modèles métier (Game, GameStatus, Resource, AuthUser…)
 │   └── repository/      # Interfaces de repository
+├── notification/        # Notification locale du récap annuel (Worker, canal, flag SharedPreferences)
 └── ui/
     ├── bibliotheque/    # Écran Bibliothèque
     ├── detail/          # Écran Détail d'un jeu
     ├── login/           # Écran de connexion Google
     ├── recherche/       # Écran Recherche RAWG
-    ├── stats/           # Écran Statistiques
+    ├── stats/           # Écran Statistiques (dont le récap annuel)
     ├── navigation/       # Routes Navigation Compose
     └── theme/            # Thème Compose (couleurs, typographie)
 ```
@@ -224,6 +231,9 @@ app/src/main/java/fr/cklla/cartouche/
   un fonctionnement hors-ligne complet, Firestore ne faisant que mirrorer en arrière-plan.
 - **Connexion Google obligatoire** dès le lancement : simplifie les règles de sécurité Firestore
   (un utilisateur = un espace de données) sans avoir à gérer de mot de passe dédié.
+- **Notification locale (WorkManager) plutôt que push serveur (FCM)** pour le récap annuel : la
+  condition de déclenchement ne dépend que de la date de l'appareil, aucune infrastructure serveur
+  n'est nécessaire pour un événement purement local et prévisible à l'avance.
 
 ## Confidentialité
 
