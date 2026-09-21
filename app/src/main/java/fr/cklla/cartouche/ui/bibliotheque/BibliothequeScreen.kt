@@ -30,7 +30,6 @@ import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -38,8 +37,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import fr.cklla.cartouche.R
 import fr.cklla.cartouche.domain.model.Game
 import fr.cklla.cartouche.domain.model.GameStatus
-import fr.cklla.cartouche.ui.components.GameCoverPlaceholder
-import fr.cklla.cartouche.ui.components.StatusBadge
+import fr.cklla.cartouche.ui.components.GameCard
 import fr.cklla.cartouche.ui.components.YearChipsRow
 import fr.cklla.cartouche.ui.theme.AccentPurple
 import fr.cklla.cartouche.ui.theme.AccentPurpleLight
@@ -48,7 +46,6 @@ import fr.cklla.cartouche.ui.theme.BackgroundDark
 import fr.cklla.cartouche.ui.theme.BorderHairline
 import fr.cklla.cartouche.ui.theme.CartoucheTextStyles
 import fr.cklla.cartouche.ui.theme.CartoucheTheme
-import fr.cklla.cartouche.ui.theme.SurfaceCard
 import fr.cklla.cartouche.ui.theme.TextMuted
 import fr.cklla.cartouche.ui.theme.TextPrimary
 import fr.cklla.cartouche.ui.theme.TextSecondary
@@ -176,44 +173,6 @@ private fun FilterChip(filter: BacklogFilter, count: Int, selected: Boolean, onC
             color = if (selected) TextPrimary else TextTertiary,
             modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
         )
-    }
-}
-
-@Composable
-private fun GameCard(game: Game, onClick: () -> Unit) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(8.dp))
-            .background(SurfaceCard)
-            .border(BorderStroke(0.5.dp, BorderHairline.copy(alpha = 0.4f)), RoundedCornerShape(8.dp))
-            .clickable(onClick = onClick)
-            .padding(10.dp),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        GameCoverPlaceholder(
-            title = game.title,
-            width = 56.dp,
-            height = 76.dp,
-            coverUrl = game.coverUrl,
-            letterStyle = CartoucheTextStyles.coverLetterListCard,
-        )
-        Column {
-            Text(
-                text = game.title,
-                style = CartoucheTextStyles.cardTitle,
-                color = TextPrimary,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-            )
-            Text(
-                text = stringResource(R.string.game_card_platform_genre, game.platform, game.genre),
-                style = CartoucheTextStyles.cardSubtitle,
-                color = TextMuted,
-            )
-            Spacer(modifier = Modifier.height(6.dp))
-            StatusBadge(status = game.status)
-        }
     }
 }
 

@@ -3,6 +3,7 @@ package fr.cklla.cartouche.ui.navigation
 import android.net.Uri
 import fr.cklla.cartouche.domain.model.GameSearchResult
 import fr.cklla.cartouche.ui.AppTab
+import fr.cklla.cartouche.ui.bibliotheque.BacklogFilter
 
 /**
  * Routes de navigation de l'app (Navigation Compose).
@@ -21,6 +22,14 @@ object CartoucheDestinations {
     const val RECAP = "recap/{$RECAP_ARG_YEAR}"
 
     fun recapRoute(year: Int) = "recap/$year"
+
+    // Liste des jeux terminés/abandonnés d'une année, ouverte depuis RecapScreen en tapant sur le
+    // nombre de jeux terminés ou abandonnés — réutilise `BacklogFilter`/`filterGames` de la
+    // Bibliothèque plutôt qu'une nouvelle logique de filtrage.
+    const val RECAP_GAMES_ARG_FILTER = "filter"
+    const val RECAP_GAMES = "recap/{$RECAP_ARG_YEAR}/games/{$RECAP_GAMES_ARG_FILTER}"
+
+    fun recapGamesRoute(year: Int, filter: BacklogFilter) = "recap/$year/games/${filter.name}"
 
     const val DETAIL_ARG_GAME_ID = "gameId"
     const val DETAIL = "detail/{$DETAIL_ARG_GAME_ID}"

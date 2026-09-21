@@ -34,6 +34,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import fr.cklla.cartouche.R
 import fr.cklla.cartouche.domain.model.GameStatus
+import fr.cklla.cartouche.ui.bibliotheque.BacklogFilter
 import fr.cklla.cartouche.ui.theme.AccentPurple
 import fr.cklla.cartouche.ui.theme.AccentPurpleLight
 import fr.cklla.cartouche.ui.theme.BackgroundDark
@@ -55,21 +56,34 @@ import fr.cklla.cartouche.ui.theme.palette
 @Composable
 fun RecapScreen(
     onBackClick: () -> Unit,
+    onGamesClick: (Int, BacklogFilter) -> Unit,
     modifier: Modifier = Modifier,
     viewModel: RecapViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    RecapContent(year = viewModel.year, stats = uiState, onBackClick = onBackClick, modifier = modifier)
+    RecapContent(
+        year = viewModel.year,
+        stats = uiState,
+        onBackClick = onBackClick,
+        onGamesClick = { filter -> onGamesClick(viewModel.year, filter) },
+        modifier = modifier,
+    )
 }
 
 @Composable
-private fun RecapContent(year: Int, stats: StatsData, onBackClick: () -> Unit, modifier: Modifier = Modifier) {
+private fun RecapContent(
+    year: Int,
+    stats: StatsData,
+    onBackClick: () -> Unit,
+    onGamesClick: (BacklogFilter) -> Unit,
+    modifier: Modifier = Modifier,
+) {
     Column(
         modifier = modifier
             .fillMaxSize()
             .background(BackgroundDark),
     ) {
-        RecapBackHeader(onBackClick = onBackClick)
+        StatsBackHeader(label = stringResource(R.string.recap_back), onBackClick = onBackClick)
         Column(
             modifier = Modifier
                 .weight(1f)
@@ -78,7 +92,7 @@ private fun RecapContent(year: Int, stats: StatsData, onBackClick: () -> Unit, m
             verticalArrangement = Arrangement.spacedBy(28.dp),
         ) {
             RecapKicker(year = year)
-            RecapHeroCard(stats = stats)
+            RecapHeroCard(stats = stats, onGamesClick = onGamesClick)
             PlatformBreakdownSection(
                 titleRes = R.string.stats_completed_by_platform_label,
                 counts = stats.completedByPlatform,
@@ -88,8 +102,13 @@ private fun RecapContent(year: Int, stats: StatsData, onBackClick: () -> Unit, m
     }
 }
 
+/**
+ * En-tête "retour" partagé par `RecapScreen` et `RecapGamesScreen` (même style que
+ * `DetailScreen.BackHeader`, dupliqué ici plutôt que remonté en composant global pour ne pas
+ * toucher un écran déjà en production pour ce correctif).
+ */
 @Composable
-private fun RecapBackHeader(onBackClick: () -> Unit) {
+internal fun StatsBackHeader(label: String, onBackClick: () -> Unit) {
     Column {
         Row(
             modifier = Modifier
@@ -106,7 +125,7 @@ private fun RecapBackHeader(onBackClick: () -> Unit) {
                 tint = TextPrimary,
             )
             Text(
-                text = stringResource(R.string.recap_back),
+                text = label,
                 style = CartoucheTextStyles.backLabel,
                 color = TextTertiary,
             )
@@ -134,10 +153,14 @@ private fun RecapKicker(year: Int) {
 /**
  * Nombre de jeux terminés mis en avant (gros chiffre central), heures de jeu et jeux abandonnés
  * en secondaire — les trois valeurs viennent telles quelles de [stats] (année déjà ciblée par
- * `RecapViewModel`), aucun nouveau calcul ici.
+ * `RecapViewModel`), aucun nouveau calcul ici. Le nombre de jeux terminés et celui de jeux
+ * abandonnés sont cliquables (pas les heures, qui ne correspondent à aucune liste de jeux à part
+ * entière) et ouvrent la liste des jeux concernés via [onGamesClick] — désactivés à 0, inutile de
+ * naviguer vers une liste qu'on sait vide.
  */
 @Composable
-private fun RecapHeroCard(stats: StatsData) {
+private fun RecapHeroCard(stats: StatsData, onGamesClick: (BacklogFilter) -> Unit) {
+    val abandonedCount = stats.countsByStatus[GameStatus.ABANDONNE] ?: 0
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -148,15 +171,23 @@ private fun RecapHeroCard(stats: StatsData) {
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
-        Text(text = stats.completedCount.toString(), style = CartoucheTextStyles.donutPercent, color = SuccessGreen)
-        Text(
-            text = stringResource(R.string.recap_completed_label),
-            style = CartoucheTextStyles.cardSubtitle,
-            color = TextTertiary,
-        )
-        Spacer(modifier = Modifier.height(16.dp))
+        Column(
+            modifier = Modifier
+                .clip(RoundedCornerShape(8.dp))
+                .clickable(enabled = stats.completedCount > 0) { onGamesClick(BacklogFilter.TERMINE) }
+                .padding(8.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Text(text = stats.completedCount.toString(), style = CartoucheTextStyles.donutPercent, color = SuccessGreen)
+            Text(
+                text = stringResource(R.string.recap_completed_label),
+                style = CartoucheTextStyles.cardSubtitle,
+                color = TextTertiary,
+            )
+        }
+        Spacer(modifier = Modifier.height(8.dp))
         HorizontalDivider(color = BorderHairline.copy(alpha = 0.5f), thickness = 0.5.dp)
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(8.dp))
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceEvenly,
@@ -167,17 +198,24 @@ private fun RecapHeroCard(stats: StatsData) {
                 valueColor = AccentPurple,
             )
             RecapSecondaryStat(
-                value = (stats.countsByStatus[GameStatus.ABANDONNE] ?: 0).toString(),
+                value = abandonedCount.toString(),
                 label = stringResource(R.string.recap_abandoned_label),
                 valueColor = GameStatus.ABANDONNE.palette().color,
+                onClick = if (abandonedCount > 0) ({ onGamesClick(BacklogFilter.ABANDONNE) }) else null,
             )
         }
     }
 }
 
 @Composable
-private fun RecapSecondaryStat(value: String, label: String, valueColor: Color) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+private fun RecapSecondaryStat(value: String, label: String, valueColor: Color, onClick: (() -> Unit)? = null) {
+    Column(
+        modifier = Modifier
+            .clip(RoundedCornerShape(8.dp))
+            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
+            .padding(8.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
         Text(text = value, style = CartoucheTextStyles.statValueMedium, color = valueColor)
         Text(text = label, style = CartoucheTextStyles.cardSubtitle, color = TextTertiary)
     }
@@ -203,6 +241,11 @@ private fun RecapContentPreview() {
         )
     }
     CartoucheTheme {
-        RecapContent(year = 2026, stats = computeStats(games, selectedYear = 2026), onBackClick = {})
+        RecapContent(
+            year = 2026,
+            stats = computeStats(games, selectedYear = 2026),
+            onBackClick = {},
+            onGamesClick = {},
+        )
     }
 }

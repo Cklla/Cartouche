@@ -29,6 +29,7 @@ import fr.cklla.cartouche.ui.login.LoginScreen
 import fr.cklla.cartouche.ui.navigation.CartoucheDestinations
 import fr.cklla.cartouche.ui.navigation.route
 import fr.cklla.cartouche.ui.recherche.RechercheScreen
+import fr.cklla.cartouche.ui.stats.RecapGamesScreen
 import fr.cklla.cartouche.ui.stats.RecapScreen
 import fr.cklla.cartouche.ui.stats.StatsScreen
 import fr.cklla.cartouche.ui.theme.BackgroundDark
@@ -122,7 +123,24 @@ fun CartoucheApp(authGateViewModel: AuthGateViewModel = hiltViewModel()) {
                 route = CartoucheDestinations.RECAP,
                 arguments = listOf(navArgument(CartoucheDestinations.RECAP_ARG_YEAR) { type = NavType.IntType }),
             ) {
-                RecapScreen(onBackClick = { navController.popBackStack() })
+                RecapScreen(
+                    onBackClick = { navController.popBackStack() },
+                    onGamesClick = { year, filter ->
+                        navController.navigate(CartoucheDestinations.recapGamesRoute(year, filter))
+                    },
+                )
+            }
+            composable(
+                route = CartoucheDestinations.RECAP_GAMES,
+                arguments = listOf(
+                    navArgument(CartoucheDestinations.RECAP_ARG_YEAR) { type = NavType.IntType },
+                    navArgument(CartoucheDestinations.RECAP_GAMES_ARG_FILTER) { type = NavType.StringType },
+                ),
+            ) {
+                RecapGamesScreen(
+                    onBackClick = { navController.popBackStack() },
+                    onGameClick = { gameId -> navController.navigate(CartoucheDestinations.detailRoute(gameId)) },
+                )
             }
             composable(
                 route = CartoucheDestinations.DETAIL,
