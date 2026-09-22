@@ -55,9 +55,8 @@ secret_scan:
 # Scan des dépendances Gradle pour des CVE connues (OWASP Dependency-Check).
 # Hebdomadaire uniquement.
 #
-# Prérequis avant que ce job fonctionne :
-#   1. Ajouter le plugin org.owasp.dependencycheck à build.gradle.kts
-#   2. Une variable CI/CD masquée NVD_API_KEY (clé gratuite sur nvd.nist.gov)
+# Prérequis :
+#   - Une variable CI/CD masquée NVD_API_KEY (clé gratuite sur nvd.nist.gov)
 dependency_scan:
   stage: test
   tags:
@@ -77,12 +76,20 @@ dependency_scan:
   artifacts:
     when: always
     paths:
-      - "**/build/reports/dependency-check-report.html"
+      # Le plugin écrit dans reports/dependency-check/, pas directement dans reports/.
+      - "**/build/reports/dependency-check/dependency-check-report.html"
     expire_in: 1 week
+  # Deux caches distincts, et surtout des clés différentes de celle de unit_tests :
+  # avec une clé commune, le job qui se termine en dernier écrase le cache de l'autre
+  # avec ses propres chemins, et la base NVD était retéléchargée à chaque exécution.
   cache:
-    key: gradle-${CI_COMMIT_REF_SLUG}
-    paths:
-      - .gradle/
-      - .gradle/caches/
-      - .gradle/wrapper/
-      - .dependency-check-data/
+    - key: gradle-dependency-scan-${CI_COMMIT_REF_SLUG}
+      paths:
+        - .gradle/caches/
+        - .gradle/wrapper/
+    # La base NVD ne dépend ni de la branche ni du code : clé stable.
+    # Chemin par défaut du plugin : <GRADLE_USER_HOME>/dependency-check-data, et
+    # GRADLE_USER_HOME est défini plus haut sur $CI_PROJECT_DIR/.gradle.
+    - key: nvd-data
+      paths:
+        - .gradle/dependency-check-data/
