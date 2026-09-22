@@ -34,6 +34,7 @@ val keystoreProperties = Properties().apply {
 }
 
 dependencyCheck {
+    data.directory = "$rootDir/.dependency-check-data"
     formats = listOf("HTML")
     nvd {
         apiKey = System.getenv("NVD_API_KEY")

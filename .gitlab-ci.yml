@@ -65,6 +65,7 @@ dependency_scan:
   image: ghcr.io/cirruslabs/android-sdk:36
   rules:
     - if: '$CI_PIPELINE_SOURCE == "schedule"'
+  timeout: 2h
   variables:
     GRADLE_USER_HOME: "$CI_PROJECT_DIR/.gradle"
     GRADLE_OPTS: "-Dorg.gradle.jvmargs=-Xmx4g -XX:MaxMetaspaceSize=512m -Dfile.encoding=UTF-8"
@@ -84,3 +85,4 @@ dependency_scan:
       - .gradle/
       - .gradle/caches/
       - .gradle/wrapper/
+      - .dependency-check-data/
