@@ -200,9 +200,14 @@ dependencies {
         // org.owasp.dependencycheck a besoin d'au moins cette version de jackson —
         // d'autres plugins tirent une version plus ancienne
         add("implementation", "com.fasterxml.jackson:jackson-bom:2.21.2")
-        // org.owasp.dependencycheck a besoin de ces versions —
-        // d'autres plugins tirent des versions plus anciennes
-        add("implementation", "org.apache.commons:commons-lang3:3.20.0")
-        add("implementation", "org.apache.commons:commons-text:1.15.0")
+    }
+
+    configurations.all {
+        resolutionStrategy {
+            force(
+                "org.apache.commons:commons-lang3:3.20.0",
+                "org.apache.commons:commons-text:1.15.0"
+            )
+        }
     }
 }
