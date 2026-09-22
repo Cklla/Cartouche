@@ -34,10 +34,18 @@ val keystoreProperties = Properties().apply {
 }
 
 dependencyCheck {
-    data.directory = "$rootDir/.dependency-check-data"
+    // Pas de data.directory ici : mesuré sans effet sur le plugin 13.0.0, la base NVD
+    // atterrit de toute façon dans <GRADLE_USER_HOME>/dependency-check-data/11.0
+    // (valeur par défaut de DataExtension). La CI définissant GRADLE_USER_HOME dans le
+    // répertoire du projet, elle est mise en cache via .gradle/dependency-check-data/.
     formats = listOf("HTML")
     nvd {
         apiKey = System.getenv("NVD_API_KEY")
+    }
+    analyzers {
+        // Aucun binaire .NET dans un projet Android : sans ce réglage, l'analyseur
+        // se plaint de ne pas trouver l'exécutable `dotnet` sur chaque exécution.
+        assemblyEnabled = false
     }
 }
 
@@ -195,10 +203,4 @@ dependencies {
     androidTestImplementation(libs.androidx.junit)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
     debugImplementation(libs.androidx.compose.ui.tooling)
-
-    constraints {
-        // org.owasp.dependencycheck a besoin d'au moins cette version de jackson —
-        // d'autres plugins tirent une version plus ancienne
-        add("implementation", "com.fasterxml.jackson:jackson-bom:2.21.2")
-    }
 }
