@@ -201,13 +201,4 @@ dependencies {
         // d'autres plugins tirent une version plus ancienne
         add("implementation", "com.fasterxml.jackson:jackson-bom:2.21.2")
     }
-
-    configurations.all {
-        resolutionStrategy {
-            force(
-                "org.apache.commons:commons-lang3:3.20.0",
-                "org.apache.commons:commons-text:1.15.0"
-            )
-        }
-    }
 }
