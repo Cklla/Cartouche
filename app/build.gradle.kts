@@ -41,7 +41,7 @@ android {
         applicationId = "fr.cklla.cartouche"
         minSdk = 24
         targetSdk = 37
-        versionCode = 11
+        versionCode = 12
         versionName = "1.1.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
