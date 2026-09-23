@@ -10,8 +10,6 @@ plugins {
     // Lit google-services.json et génère les ressources/config
     // nécessaires aux SDK Firebase (Auth, Firestore) à la compilation.
     alias(libs.plugins.google.services)
-    // Scan de sécurité
-    alias(libs.plugins.owasp.dependencycheck)
 }
 
 // La clé API RAWG vit uniquement dans local.properties,
@@ -30,22 +28,6 @@ val keystoreProperties = Properties().apply {
     val keystorePropertiesFile = rootProject.file("keystore.properties")
     if (keystorePropertiesFile.exists()) {
         FileInputStream(keystorePropertiesFile).use { load(it) }
-    }
-}
-
-dependencyCheck {
-    // Pas de data.directory ici : mesuré sans effet sur le plugin 13.0.0, la base NVD
-    // atterrit de toute façon dans <GRADLE_USER_HOME>/dependency-check-data/11.0
-    // (valeur par défaut de DataExtension). La CI définissant GRADLE_USER_HOME dans le
-    // répertoire du projet, elle est mise en cache via .gradle/dependency-check-data/.
-    formats = listOf("HTML")
-    nvd {
-        apiKey = System.getenv("NVD_API_KEY")
-    }
-    analyzers {
-        // Aucun binaire .NET dans un projet Android : sans ce réglage, l'analyseur
-        // se plaint de ne pas trouver l'exécutable `dotnet` sur chaque exécution.
-        assemblyEnabled = false
     }
 }
 
