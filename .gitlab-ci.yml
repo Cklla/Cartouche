@@ -14,7 +14,7 @@
 
 include:
   - project: 'Cklla/ci-templates'
-    ref: 'v1.2.0'
+    ref: 'v1.2.1'
     file:
       # unit_tests
       - '/templates/gradle-tests.gitlab-ci.yml'
