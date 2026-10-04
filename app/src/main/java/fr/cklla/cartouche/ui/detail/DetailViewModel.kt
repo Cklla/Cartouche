@@ -13,7 +13,9 @@ import fr.cklla.cartouche.domain.model.realignPlayedPlatformsOrNull
 import fr.cklla.cartouche.domain.model.toGame
 import fr.cklla.cartouche.domain.repository.GameRepository
 import fr.cklla.cartouche.domain.repository.IgdbPlaytimeRepository
+import fr.cklla.cartouche.domain.util.selectablePlayedYears
 import fr.cklla.cartouche.ui.navigation.CartoucheDestinations
+import java.time.ZoneId
 import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -21,6 +23,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 /**
@@ -124,7 +127,16 @@ class DetailViewModel @Inject constructor(
     }
 
     val uiState: StateFlow<DetailUiState> = combine(isLoading, workingGame) { loading, game ->
-        DetailUiState(isLoading = loading, game = game)
+        DetailUiState(
+            isLoading = loading,
+            game = game,
+            // L'instant présent et le fuseau sont lus ici, au point d'usage : la fonction de calcul
+            // reste pure (voir `selectablePlayedYears`).
+            statusYearChoices = game
+                ?.takeIf { it.canEditStatusYear() }
+                ?.let { selectablePlayedYears(it.releaseYear, System.currentTimeMillis(), ZoneId.systemDefault()) }
+                .orEmpty(),
+        )
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5_000),
@@ -132,6 +144,34 @@ class DetailViewModel @Inject constructor(
     )
 
     fun onStatusSelected(status: GameStatus) = applyEdit { it.copy(status = status) }
+
+    /**
+     * Classe le jeu dans l'année de fin ou d'abandon [year]. L'écriture et le calcul de
+     * l'horodatage sont ceux du repository ([GameRepository.setStatusYear]) ; la copie de travail
+     * reprend ensuite les dates réellement persistées, pour que l'affichage et les éditions
+     * suivantes (note, statut) partent de la bonne valeur.
+     */
+    fun onStatusYearSelected(year: Int) {
+        val game = workingGame.value?.takeIf { it.canEditStatusYear() } ?: return
+        viewModelScope.launch {
+            gameRepository.setStatusYear(game.id, year)
+            refreshStatusDates(game.id)
+        }
+    }
+
+    // `completedAt` / `abandonedAt` sont posés par le repository (transition de statut, choix d'une
+    // année), jamais par la copie de travail : sans cette relecture, la fiche afficherait l'état
+    // d'avant l'écriture (« année inconnue » juste après être passé à Terminé, ancienne année après
+    // un choix). Ignorée si le statut persisté diffère déjà de la copie de travail (une autre
+    // édition est en cours) : la relecture de cette édition-là prendra le relais.
+    private suspend fun refreshStatusDates(id: String) {
+        val persisted = gameRepository.observeGame(id).first() ?: return
+        workingGame.update { current ->
+            current?.takeIf { it.id == persisted.id && it.status == persisted.status }
+                ?.copy(completedAt = persisted.completedAt, abandonedAt = persisted.abandonedAt)
+                ?: current
+        }
+    }
 
     // `rating = null` correspond à "aucune note" : cliquer sur l'étoile qui représente déjà la
     // note actuelle (voir `RatingSection`) doit pouvoir revenir à cet état, pas seulement en
@@ -168,6 +208,7 @@ class DetailViewModel @Inject constructor(
             val result = gameRepository.addGame(current)
             if (result is Resource.Success) {
                 workingGame.value = current.copy(id = result.data)
+                refreshStatusDates(result.data)
             }
         }
     }
@@ -187,7 +228,10 @@ class DetailViewModel @Inject constructor(
         // Pas encore ajouté au backlog : rien à persister, seule la copie de travail locale
         // change (voir `onAddGame`, qui écrit pour la première fois).
         if (updated.id.isEmpty()) return
-        viewModelScope.launch { gameRepository.updateGame(updated) }
+        viewModelScope.launch {
+            gameRepository.updateGame(updated)
+            refreshStatusDates(updated.id)
+        }
     }
 
     private fun SavedStateHandle.toPreviewResult(): GameSearchResult? {

@@ -32,8 +32,9 @@ package fr.cklla.cartouche.domain.model
  * @param rating note personnelle de 1 à 5, ou null si le jeu n'est pas encore noté.
  * @param completedAt date (epoch millis) à laquelle le jeu est passé au statut [GameStatus.TERMINE],
  *   ou `null` si le jeu n'est pas terminé (ou l'était déjà avant l'introduction de ce champ).
- *   Dérivé automatiquement par le Repository à chaque transition de statut, jamais renseigné par
- *   l'UI — sert au filtre par année de complétion (Bibliothèque et Stats).
+ *   Dérivé automatiquement par le Repository à chaque transition de statut (instant présent) ; seule
+ *   l'année peut ensuite être choisie à la main depuis la fiche, via `GameRepository.setStatusYear`.
+ *   Sert au filtre par année de complétion (Bibliothèque et Stats).
  * @param abandonedAt même mécanique que [completedAt], mais pour le passage au statut
  *   [GameStatus.ABANDONNE] — sert au filtre par année d'abandon (Bibliothèque et Stats).
  * @param playedPlatforms sous-ensemble de [parsePlatforms] de [platform] sur le(s)quel(les)
