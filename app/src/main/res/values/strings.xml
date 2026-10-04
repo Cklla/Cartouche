@@ -60,6 +60,54 @@
     <string name="recap_abandoned_label">jeux abandonnés cette année</string>
     <string name="recap_hours_label">heures de jeu cette année</string>
 
+    <string name="recap_story_button">Voir mon récap en images</string>
+
+    <!-- Récap en images -->
+    <string name="recap_story_close">Fermer le récap en images</string>
+    <string name="recap_story_progress">Slide %1$d sur %2$d</string>
+    <string name="recap_story_empty">Aucun jeu terminé en %1$d pour le moment.</string>
+    <string name="recap_story_open_game">Ouvrir la fiche</string>
+    <string name="recap_story_rating_content_description">Note : %1$d sur 5</string>
+    <!-- Langue des dates (noms de mois) du récap en images -->
+    <string name="recap_date_locale" translatable="false">fr</string>
+    <string name="recap_story_total_kicker">ton année en un coup d\'œil</string>
+    <plurals name="recap_story_total_title">
+        <item quantity="one">jeu terminé en %1$d</item>
+        <item quantity="other">jeux terminés en %1$d</item>
+    </plurals>
+    <string name="recap_story_total_hours">%1$d h jouées</string>
+    <plurals name="recap_story_total_abandoned">
+        <item quantity="one">%1$d abandonné</item>
+        <item quantity="other">%1$d abandonnés</item>
+    </plurals>
+    <string name="recap_story_favorites_kicker">ta sélection</string>
+    <string name="recap_story_favorites_title">Tes coups de cœur</string>
+    <string name="recap_story_longest_kicker">au long cours</string>
+    <string name="recap_story_longest_title">Tes plus longues parties</string>
+    <string name="recap_story_longest_rank">%1$d</string>
+    <string name="recap_story_longest_duration">%1$d h</string>
+    <string name="recap_story_platforms_kicker">sur quoi</string>
+    <string name="recap_story_platforms_title">Où tu as joué</string>
+    <plurals name="recap_story_platforms_count">
+        <item quantity="one">%1$d jeu</item>
+        <item quantity="other">%1$d jeux</item>
+    </plurals>
+    <string name="recap_story_facts_title">Les faits de l\'année</string>
+    <string name="recap_story_fact_first">Premier jeu terminé</string>
+    <string name="recap_story_fact_last">Dernier jeu terminé</string>
+    <string name="recap_story_fact_busiest_month">Mois le plus chargé</string>
+    <string name="recap_story_fact_oldest">Le plus ancien</string>
+    <string name="recap_story_fact_oldest_released">sorti en %1$d</string>
+    <plurals name="recap_story_fact_month_count">
+        <item quantity="one">%1$d jeu terminé</item>
+        <item quantity="other">%1$d jeux terminés</item>
+    </plurals>
+    <string name="recap_story_mosaic_title">Tout ce que tu as terminé</string>
+    <plurals name="recap_story_mosaic_subtitle">
+        <item quantity="one">%1$d jeu en %2$d, dans l\'ordre où tu les as terminés</item>
+        <item quantity="other">%1$d jeux en %2$d, dans l\'ordre où tu les as terminés</item>
+    </plurals>
+
     <!-- Liste des jeux terminés/abandonnés d'une année (ouverte depuis le Récap) -->
     <string name="recap_games_back">Retour au récap</string>
     <string name="recap_games_title_termine">Terminés en %1$d</string>

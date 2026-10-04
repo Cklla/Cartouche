@@ -18,6 +18,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -57,6 +59,7 @@ import fr.cklla.cartouche.ui.theme.palette
 fun RecapScreen(
     onBackClick: () -> Unit,
     onGamesClick: (Int, BacklogFilter) -> Unit,
+    onStoryClick: (Int) -> Unit,
     modifier: Modifier = Modifier,
     viewModel: RecapViewModel = hiltViewModel(),
 ) {
@@ -66,6 +69,7 @@ fun RecapScreen(
         stats = uiState,
         onBackClick = onBackClick,
         onGamesClick = { filter -> onGamesClick(viewModel.year, filter) },
+        onStoryClick = { onStoryClick(viewModel.year) },
         modifier = modifier,
     )
 }
@@ -76,6 +80,7 @@ private fun RecapContent(
     stats: StatsData,
     onBackClick: () -> Unit,
     onGamesClick: (BacklogFilter) -> Unit,
+    onStoryClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -92,6 +97,17 @@ private fun RecapContent(
             verticalArrangement = Arrangement.spacedBy(28.dp),
         ) {
             RecapKicker(year = year)
+            Button(
+                onClick = onStoryClick,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = 52.dp),
+                shape = RoundedCornerShape(12.dp),
+                // Blanc pur plutôt que TextPrimary : seul assez contrasté sur le violet du bouton.
+                colors = ButtonDefaults.buttonColors(containerColor = AccentPurple, contentColor = Color.White),
+            ) {
+                Text(text = stringResource(R.string.recap_story_button), style = CartoucheTextStyles.statusPillLabel)
+            }
             RecapHeroCard(stats = stats, onGamesClick = onGamesClick)
             PlatformBreakdownSection(
                 titleRes = R.string.stats_completed_by_platform_label,
@@ -246,6 +262,7 @@ private fun RecapContentPreview() {
             stats = computeStats(games, selectedYear = 2026),
             onBackClick = {},
             onGamesClick = {},
+            onStoryClick = {},
         )
     }
 }

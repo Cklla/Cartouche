@@ -23,6 +23,11 @@ object CartoucheDestinations {
 
     fun recapRoute(year: Int) = "recap/$year"
 
+    // Récap en images (suite de slides plein écran), ouvert depuis le bouton de RecapScreen.
+    const val RECAP_STORY = "recap/{$RECAP_ARG_YEAR}/story"
+
+    fun recapStoryRoute(year: Int) = "recap/$year/story"
+
     // Liste des jeux terminés/abandonnés d'une année, ouverte depuis RecapScreen en tapant sur le
     // nombre de jeux terminés ou abandonnés — réutilise `BacklogFilter`/`filterGames` de la
     // Bibliothèque plutôt qu'une nouvelle logique de filtrage.

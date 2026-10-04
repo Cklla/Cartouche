@@ -214,4 +214,14 @@ object CartoucheTextStyles {
         fontWeight = FontWeight.SemiBold,
         fontSize = 13.sp,
     )
+
+    // --- Récap en images ---
+
+    // Gros chiffre de la slide « Total ».
+    val recapHero = TextStyle(
+        fontFamily = FrauncesItalic,
+        fontWeight = FontWeight.SemiBold,
+        fontStyle = FontStyle.Italic,
+        fontSize = 88.sp,
+    )
 }

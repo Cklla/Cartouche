@@ -43,6 +43,7 @@ import fr.cklla.cartouche.ui.navigation.route
 import fr.cklla.cartouche.ui.recherche.RechercheScreen
 import fr.cklla.cartouche.ui.stats.RecapGamesScreen
 import fr.cklla.cartouche.ui.stats.RecapScreen
+import fr.cklla.cartouche.ui.stats.RecapStoryScreen
 import fr.cklla.cartouche.ui.stats.StatsScreen
 import fr.cklla.cartouche.ui.theme.BackgroundDark
 import fr.cklla.cartouche.ui.theme.CartoucheTheme
@@ -180,6 +181,16 @@ fun CartoucheApp(
                     onGamesClick = { year, filter ->
                         navController.navigate(CartoucheDestinations.recapGamesRoute(year, filter))
                     },
+                    onStoryClick = { year -> navController.navigate(CartoucheDestinations.recapStoryRoute(year)) },
+                )
+            }
+            composable(
+                route = CartoucheDestinations.RECAP_STORY,
+                arguments = listOf(navArgument(CartoucheDestinations.RECAP_ARG_YEAR) { type = NavType.IntType }),
+            ) {
+                RecapStoryScreen(
+                    onCloseClick = { navController.popBackStack() },
+                    onGameClick = { gameId -> navController.navigate(CartoucheDestinations.detailRoute(gameId)) },
                 )
             }
             composable(
