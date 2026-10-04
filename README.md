@@ -44,6 +44,12 @@ synchronisé automatiquement entre tous vos appareils grâce à Firebase.
   liste détaillée des jeux terminés/abandonnés en un tap. Une notification locale (aucun serveur
   impliqué, condition basée uniquement sur la date de l'appareil) prévient une fois par an quand ce
   récap devient disponible.
+- **Récap en images** : depuis le récap annuel, une suite de slides plein écran façon « Wrapped »
+  met en avant les jaquettes des jeux terminés de l'année : total (heures jouées, abandons), coups
+  de cœur, plus longues parties, plateformes, faits de l'année (premier et dernier jeu terminé,
+  mois le plus chargé, jeu le plus ancien) et mosaïque finale de tous les jeux terminés. Tout est
+  calculé à partir des données existantes, sans appel réseau supplémentaire ; un tap sur une
+  jaquette ouvre la fiche du jeu.
 - **Connexion Google** : authentification obligatoire (Firebase Auth) pour identifier
   l'utilisateur et sécuriser ses données côté cloud.
 - **Synchronisation multi-appareils** : le backlog est mirroré en continu entre l'appareil (Room)
@@ -60,6 +66,10 @@ synchronisé automatiquement entre tous vos appareils grâce à Firebase.
 | Statistiques | Récap annuel |
 |:---:|:---:|
 | <img src="screenshots/stats.png" width="220" alt="Statistiques"> | <img src="screenshots/recap.png" width="220" alt="Récap annuel"> |
+
+| Récap en images | Les jeux les plus longs | Mosaïque |
+|:---:|:---:|:---:|
+| <img src="screenshots/recap-images.png" width="220" alt="Récap en images"> | <img src="screenshots/recap-faits.png" width="220" alt="Faits de l'année"> | <img src="screenshots/recap-mosaique.png" width="220" alt="Mosaïque"> |
 
 ## Stack technique
 
@@ -214,7 +224,7 @@ app/src/main/java/fr/cklla/cartouche/
     ├── detail/          # Écran Détail d'un jeu
     ├── login/           # Écran de connexion Google
     ├── recherche/       # Écran Recherche RAWG
-    ├── stats/           # Écran Statistiques (dont le récap annuel)
+    ├── stats/           # Écran Statistiques (dont le récap annuel et le récap en images)
     ├── navigation/       # Routes Navigation Compose
     └── theme/            # Thème Compose (couleurs, typographie)
 ```
