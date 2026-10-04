@@ -9,6 +9,8 @@ import fr.cklla.cartouche.domain.model.GameStatus
 import fr.cklla.cartouche.domain.model.Resource
 import fr.cklla.cartouche.domain.repository.AuthRepository
 import fr.cklla.cartouche.domain.repository.GameRepository
+import fr.cklla.cartouche.domain.util.timestampForYear
+import java.time.ZoneId
 import java.util.UUID
 import javax.inject.Inject
 import kotlinx.coroutines.CoroutineScope
@@ -23,6 +25,8 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.retryWhen
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 /**
  * Implémentation Room + Firestore du [GameRepository].
@@ -38,6 +42,11 @@ class GameRepositoryImpl @Inject constructor(
     private val authRepository: AuthRepository,
     @ApplicationScope private val repositoryScope: CoroutineScope,
 ) : GameRepository {
+
+    // Sérialise les écritures Room de la ligne d'un jeu (`addGame`, `updateGame`, `setStatusYear`) :
+    // les deux dernières lisent l'état persisté avant d'écrire, et deux écritures concurrentes sur
+    // le même état écraseraient l'une la date posée par l'autre.
+    private val writeMutex = Mutex()
 
     init {
         // `collectLatest` : un changement d'utilisateur (déconnexion, ou reconnexion avec un autre
@@ -73,7 +82,7 @@ class GameRepositoryImpl @Inject constructor(
             completedAt = resolveCompletedAt(previous = null, newStatus = game.status),
             abandonedAt = resolveAbandonedAt(previous = null, newStatus = game.status),
         )
-        gameDao.insert(gameWithId.toEntity())
+        writeMutex.withLock { gameDao.insert(gameWithId.toEntity()) }
         pushToFirestore { uid -> firestoreDataSource.upsertGame(uid, gameWithId) }
         id
     }.fold(
@@ -82,22 +91,63 @@ class GameRepositoryImpl @Inject constructor(
     )
 
     override suspend fun updateGame(game: Game): Resource<Unit> = runCatching {
-        val previous = gameDao.getByIdOnce(game.id)
-        val gameToPersist = game.copy(
-            completedAt = resolveCompletedAt(previous, game.status),
-            abandonedAt = resolveAbandonedAt(previous, game.status),
-        )
-        gameDao.update(gameToPersist.toEntity())
+        val gameToPersist = writeMutex.withLock {
+            val previous = gameDao.getByIdOnce(game.id)
+            game.copy(
+                completedAt = resolveCompletedAt(previous, game.status),
+                abandonedAt = resolveAbandonedAt(previous, game.status),
+            ).also { gameDao.update(it.toEntity()) }
+        }
         pushToFirestore { uid -> firestoreDataSource.upsertGame(uid, gameToPersist) }
     }.fold(
         onSuccess = { Resource.Success(Unit) },
         onFailure = { Resource.Error("Impossible de mettre à jour le jeu.", it) },
     )
 
+    // Année choisie à la main sur la fiche : écrit `completedAt` (TERMINE) ou `abandonedAt`
+    // (ABANDONNE), jamais l'autre. Ne contourne pas [resolveCompletedAt] / [resolveAbandonedAt], qui
+    // gardent leur rôle de dérivation aux transitions de statut et qui reprennent ensuite, tant que
+    // le statut ne change pas, la valeur écrite ici.
+    //
+    // L'instant présent et le fuseau sont lus ici, au point d'appel, comme le fait déjà
+    // [resolveCompletedAt] : le calcul lui-même est pur (voir `timestampForYear`).
+    //
+    // Lecture de l'état Room puis écriture sous le même verrou : sans lui, ce choix d'année et une
+    // édition de note lancés coup sur coup pourraient lire le même état, et la seconde écriture
+    // restaurerait l'ancienne date.
+    override suspend fun setStatusYear(gameId: String, year: Int): Resource<Unit> = runCatching {
+        val updated = writeMutex.withLock {
+            val entity = gameDao.getByIdOnce(gameId) ?: return@runCatching
+            val status = runCatching { GameStatus.valueOf(entity.status) }.getOrNull()
+            val currentTimestamp = when (status) {
+                GameStatus.TERMINE -> entity.completedAt
+                GameStatus.ABANDONNE -> entity.abandonedAt
+                else -> return@runCatching
+            }
+            val timestamp = timestampForYear(
+                year = year,
+                currentTimestamp = currentTimestamp,
+                releaseYear = entity.releaseYear,
+                nowMillis = System.currentTimeMillis(),
+                zone = ZoneId.systemDefault(),
+            )?.takeIf { it != currentTimestamp } ?: return@runCatching
+            val changed = if (status == GameStatus.TERMINE) {
+                entity.copy(completedAt = timestamp)
+            } else {
+                entity.copy(abandonedAt = timestamp)
+            }
+            changed.also { gameDao.update(it) }
+        }
+        pushToFirestore { uid -> firestoreDataSource.upsertGame(uid, updated.toDomain()) }
+    }.fold(
+        onSuccess = { Resource.Success(Unit) },
+        onFailure = { Resource.Error("Impossible de modifier l'année du jeu.", it) },
+    )
+
     // Dérive automatiquement la date de complétion à chaque transition de statut, plutôt que de
-    // laisser l'UI la renseigner à la main : un seul point de vérité pour "quand un jeu est-il
-    // devenu Terminé", que le changement vienne d'une sélection manuelle sur la fiche Détail ou
-    // d'ailleurs à l'avenir.
+    // laisser l'UI la renseigner : un seul point de vérité pour "quand un jeu est-il devenu
+    // Terminé", que le changement vienne d'une sélection manuelle sur la fiche Détail ou d'ailleurs
+    // à l'avenir. Seule l'année peut ensuite être ajustée, par [setStatusYear].
     //
     // Se base sur l'état déjà persisté en Room ([previous]), jamais sur `game.completedAt` tel que
     // fourni par l'appelant : `DetailViewModel.workingGame` ne relit jamais Room après son
