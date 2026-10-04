@@ -101,6 +101,16 @@
     <string name="detail_remove_confirm_message">Cette action est définitive : le jeu et toutes ses informations (note, temps de jeu, notes) seront supprimés.</string>
     <string name="detail_remove_confirm_confirm">Retirer</string>
     <string name="detail_remove_confirm_cancel">Annuler</string>
+    <string name="detail_status_year_completed_known">Terminé en %1$d</string>
+    <string name="detail_status_year_completed_unknown">Année de fin inconnue</string>
+    <string name="detail_status_year_abandoned_known">Abandonné en %1$d</string>
+    <string name="detail_status_year_abandoned_unknown">Année d\'abandon inconnue</string>
+    <string name="detail_status_year_edit">Modifier</string>
+    <string name="detail_status_year_define">Définir</string>
+    <string name="detail_status_year_action_label">Choisir l\'année</string>
+    <string name="detail_status_year_completed_dialog_title">Année de fin</string>
+    <string name="detail_status_year_abandoned_dialog_title">Année d\'abandon</string>
+    <string name="detail_status_year_dialog_cancel">Annuler</string>
 
     <!-- Recherche / ajout de jeu (RAWG) -->
     <string name="recherche_kicker">base de données</string>

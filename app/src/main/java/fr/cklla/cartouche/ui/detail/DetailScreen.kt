@@ -22,6 +22,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.wrapContentHeight
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
@@ -114,8 +117,12 @@ fun DetailScreen(
     DetailContent(
         game = game,
         isInBacklog = uiState.isInBacklog,
+        canEditStatusYear = uiState.canEditStatusYear,
+        statusYear = uiState.statusYear,
+        statusYearChoices = uiState.statusYearChoices,
         onBackClick = onBackClick,
         onStatusSelected = viewModel::onStatusSelected,
+        onStatusYearSelected = viewModel::onStatusYearSelected,
         onRatingSelected = viewModel::onRatingSelected,
         onHoursIncrement = viewModel::onHoursIncrement,
         onHoursDecrement = viewModel::onHoursDecrement,
@@ -132,8 +139,12 @@ fun DetailScreen(
 private fun DetailContent(
     game: Game,
     isInBacklog: Boolean,
+    canEditStatusYear: Boolean,
+    statusYear: Int?,
+    statusYearChoices: List<Int>,
     onBackClick: () -> Unit,
     onStatusSelected: (GameStatus) -> Unit,
+    onStatusYearSelected: (Int) -> Unit,
     onRatingSelected: (Int?) -> Unit,
     onHoursIncrement: () -> Unit,
     onHoursDecrement: () -> Unit,
@@ -145,6 +156,7 @@ private fun DetailContent(
     modifier: Modifier = Modifier,
 ) {
     var showRemoveConfirm by rememberSaveable { mutableStateOf(false) }
+    var showStatusYearDialog by rememberSaveable { mutableStateOf(false) }
 
     Column(
         modifier = modifier
@@ -175,7 +187,13 @@ private fun DetailContent(
             // jeu réellement possédé : masqués tant que la fiche n'est qu'un aperçu ouvert depuis
             // la Recherche (voir `DetailUiState.isInBacklog`).
             if (isInBacklog) {
-                StatusSection(selected = game.status, onStatusSelected = onStatusSelected)
+                StatusSection(
+                    selected = game.status,
+                    showStatusYear = canEditStatusYear,
+                    statusYear = statusYear,
+                    onStatusYearClick = { showStatusYearDialog = true },
+                    onStatusSelected = onStatusSelected,
+                )
                 RatingSection(rating = game.rating, onRatingSelected = onRatingSelected)
             }
             EstimatedPlaytimeSection(
@@ -210,6 +228,19 @@ private fun DetailContent(
                 onRemoveGame()
             },
             onDismiss = { showRemoveConfirm = false },
+        )
+    }
+
+    if (showStatusYearDialog && canEditStatusYear) {
+        StatusYearDialog(
+            status = game.status,
+            years = statusYearChoices,
+            selectedYear = statusYear,
+            onYearSelected = { year ->
+                showStatusYearDialog = false
+                onStatusYearSelected(year)
+            },
+            onDismiss = { showStatusYearDialog = false },
         )
     }
 }
@@ -260,7 +291,13 @@ private fun SectionLabel(text: String) {
 }
 
 @Composable
-private fun StatusSection(selected: GameStatus, onStatusSelected: (GameStatus) -> Unit) {
+private fun StatusSection(
+    selected: GameStatus,
+    showStatusYear: Boolean,
+    statusYear: Int?,
+    onStatusYearClick: () -> Unit,
+    onStatusSelected: (GameStatus) -> Unit,
+) {
     Column {
         SectionLabel(stringResource(R.string.detail_status_label))
         Spacer(modifier = Modifier.height(10.dp))
@@ -272,6 +309,52 @@ private fun StatusSection(selected: GameStatus, onStatusSelected: (GameStatus) -
             GameStatus.entries.forEach { status ->
                 StatusPill(status = status, selected = status == selected, onClick = { onStatusSelected(status) })
             }
+        }
+        // Année de fin (Terminé) ou d'abandon (Abandonné) : rien pour À faire / En cours, ni pour
+        // l'aperçu d'un jeu pas encore dans le backlog (cette section n'y est de toute façon pas affichée).
+        if (showStatusYear) {
+            StatusYearRow(status = selected, statusYear = statusYear, onClick = onStatusYearClick)
+        }
+    }
+}
+
+@Composable
+private fun StatusYearRow(status: GameStatus, statusYear: Int?, onClick: () -> Unit) {
+    val abandoned = status == GameStatus.ABANDONNE
+    val text = when {
+        statusYear == null && abandoned -> stringResource(R.string.detail_status_year_abandoned_unknown)
+        statusYear == null -> stringResource(R.string.detail_status_year_completed_unknown)
+        abandoned -> stringResource(R.string.detail_status_year_abandoned_known, statusYear)
+        else -> stringResource(R.string.detail_status_year_completed_known, statusYear)
+    }
+    val actionLabel = stringResource(R.string.detail_status_year_action_label)
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween,
+    ) {
+        Text(
+            text = text,
+            style = CartoucheTextStyles.cardTitle,
+            color = if (statusYear != null) TextPrimary else TextMuted,
+            modifier = Modifier.weight(1f),
+        )
+        Box(
+            modifier = Modifier
+                .heightIn(min = 48.dp)
+                .clickable(onClickLabel = actionLabel, role = Role.Button, onClick = onClick)
+                .padding(start = 16.dp),
+            contentAlignment = Alignment.CenterEnd,
+        ) {
+            Text(
+                text = stringResource(
+                    if (statusYear != null) R.string.detail_status_year_edit else R.string.detail_status_year_define,
+                ),
+                style = CartoucheTextStyles.linkLabel.copy(textDecoration = TextDecoration.Underline),
+                color = TextTertiary,
+            )
         }
     }
 }
@@ -698,6 +781,75 @@ private fun RemoveConfirmDialog(onConfirm: () -> Unit, onDismiss: () -> Unit) {
     )
 }
 
+/**
+ * Choix de l'année de fin ou d'abandon. Une liste défilante plutôt qu'un menu déroulant : elle peut
+ * dépasser 50 entrées (de l'année en cours jusqu'à 1970 pour un jeu sans année de sortie).
+ */
+@Composable
+private fun StatusYearDialog(
+    status: GameStatus,
+    years: List<Int>,
+    selectedYear: Int?,
+    onYearSelected: (Int) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    // La liste s'ouvre sur l'année enregistrée (avec deux années au-dessus pour le contexte) plutôt
+    // qu'en haut : pour un jeu fini en 2012, il ne faut pas avoir à faire défiler depuis aujourd'hui.
+    val listState = rememberLazyListState(
+        initialFirstVisibleItemIndex = (years.indexOf(selectedYear) - 2).coerceAtLeast(0),
+    )
+    val titleRes = if (status == GameStatus.ABANDONNE) {
+        R.string.detail_status_year_abandoned_dialog_title
+    } else {
+        R.string.detail_status_year_completed_dialog_title
+    }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = SurfaceCard,
+        titleContentColor = TextPrimary,
+        textContentColor = TextTertiary,
+        title = { Text(stringResource(titleRes)) },
+        text = {
+            LazyColumn(
+                state = listState,
+                modifier = Modifier
+                    .heightIn(max = 320.dp)
+                    .selectableGroup(),
+            ) {
+                items(years, key = { it }) { year ->
+                    StatusYearItem(year = year, selected = year == selectedYear, onClick = { onYearSelected(year) })
+                }
+            }
+        },
+        confirmButton = {},
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(text = stringResource(R.string.detail_status_year_dialog_cancel), color = TextTertiary)
+            }
+        },
+    )
+}
+
+@Composable
+private fun StatusYearItem(year: Int, selected: Boolean, onClick: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = 48.dp)
+            .clip(RoundedCornerShape(8.dp))
+            .then(if (selected) Modifier.background(AccentPurpleMuted) else Modifier)
+            .selectable(selected = selected, onClick = onClick, role = Role.RadioButton)
+            .padding(horizontal = 16.dp),
+        contentAlignment = Alignment.CenterStart,
+    ) {
+        Text(
+            text = year.toString(),
+            style = CartoucheTextStyles.cardTitle,
+            color = if (selected) TextPrimary else TextTertiary,
+        )
+    }
+}
+
 @Preview(showBackground = true, backgroundColor = 0xFF0A0812)
 @Composable
 private fun DetailContentPreview() {
@@ -719,8 +871,12 @@ private fun DetailContentPreview() {
         DetailContent(
             game = game,
             isInBacklog = true,
+            canEditStatusYear = false,
+            statusYear = null,
+            statusYearChoices = emptyList(),
             onBackClick = {},
             onStatusSelected = {},
+            onStatusYearSelected = {},
             onRatingSelected = {},
             onHoursIncrement = {},
             onHoursDecrement = {},
@@ -747,8 +903,12 @@ private fun DetailContentApercuPreview() {
         DetailContent(
             game = game,
             isInBacklog = false,
+            canEditStatusYear = false,
+            statusYear = null,
+            statusYearChoices = emptyList(),
             onBackClick = {},
             onStatusSelected = {},
+            onStatusYearSelected = {},
             onRatingSelected = {},
             onHoursIncrement = {},
             onHoursDecrement = {},
