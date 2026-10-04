@@ -4,58 +4,27 @@ Application Android personnelle de gestion de backlog de jeux vidéo : suivez le
 cours, terminés ou abandonnés, recherchez-en de nouveaux via l'API RAWG, et retrouvez votre backlog
 synchronisé automatiquement entre tous vos appareils grâce à Firebase.
 
-<!-- Bannière/logo optionnel :
-![Icône Cartouche](screenshots/icon.png)
--->
-
-## Sommaire
-
-- [Fonctionnalités](#fonctionnalités)
-- [Captures d'écran](#captures-décran)
-- [Stack technique](#stack-technique)
-- [Architecture](#architecture)
-- [Installation](#installation)
-- [Configuration des règles Firestore](#configuration-des-règles-firestore)
-- [Sécurité](#sécurité)
-- [Tests](#tests)
-- [Structure du projet](#structure-du-projet)
-- [Choix techniques notables](#choix-techniques-notables)
-- [Confidentialité](#confidentialité)
-- [Licence](#licence)
-
 ## Fonctionnalités
 
 - **Bibliothèque** : liste du backlog avec statut visuel (À faire / En cours / Terminé /
   Abandonné), tri et filtrage.
-- **Recherche** : recherche de jeux via l'[API RAWG](https://rawg.io/apidocs) (titre, jaquette,
-  année de sortie) et ajout en un tap au backlog.
-- **Fiche détail** : édition du statut, de la note personnelle, du temps de jeu personnel et de
-  notes libres ; affichage du temps de jeu estimé (rapide / normal / complet) récupéré
-  automatiquement depuis [IGDB](https://www.igdb.com/api) ; pour un jeu multi-plateforme, cases à
-  cocher « Joué sur » pour préciser sur quelle(s) plateforme(s) il a été fait.
-- **Plateforme fiabilisée via IGDB** : la plateforme d'un jeu ajouté depuis RAWG est recoupée avec
-  IGDB pour distinguer Switch et Switch 2 (RAWG ne les différencie pas) ; les OS PC
-  (Windows/Mac/Linux) sont regroupés sous un seul « PC ».
-- **Statistiques** : vue d'ensemble de la progression du backlog (répartition par statut, temps de
-  jeu cumulé, filtre par année pour les jeux terminés/abandonnés, répartition des jeux terminés et
-  en cours par plateforme, etc.).
-- **Récap annuel** : du 25 au 31 décembre, puis tout le mois de janvier suivant, une carte met en
-  avant le bilan de l'année (jeux terminés, heures de jeu) sur l'écran Statistiques, avec accès à la
-  liste détaillée des jeux terminés/abandonnés en un tap. Une notification locale (aucun serveur
-  impliqué, condition basée uniquement sur la date de l'appareil) prévient une fois par an quand ce
-  récap devient disponible.
-- **Récap en images** : depuis le récap annuel, une suite de slides plein écran façon « Wrapped »
-  met en avant les jaquettes des jeux terminés de l'année : total (heures jouées, abandons), coups
-  de cœur, plus longues parties, plateformes, faits de l'année (premier et dernier jeu terminé,
-  mois le plus chargé, jeu le plus ancien) et mosaïque finale de tous les jeux terminés. Tout est
-  calculé à partir des données existantes, sans appel réseau supplémentaire ; un tap sur une
-  jaquette ouvre la fiche du jeu.
-- **Connexion Google** : authentification obligatoire (Firebase Auth) pour identifier
-  l'utilisateur et sécuriser ses données côté cloud.
-- **Synchronisation multi-appareils** : le backlog est mirroré en continu entre l'appareil (Room)
-  et Firebase Firestore. Un backlog local déjà existant est automatiquement uploadé lors de la
-  toute première connexion. L'application reste utilisable hors-ligne : Room fait toujours foi
-  pour l'affichage, Firestore synchronise en arrière-plan dès que le réseau est disponible.
+- **Recherche** : recherche de jeux via l'[API RAWG](https://rawg.io/apidocs), ajout en un tap au
+  backlog.
+- **Fiche détail** : statut, note personnelle, temps de jeu personnel, notes libres, temps de jeu
+  estimé via [IGDB](https://www.igdb.com/api), et plateformes « Joué sur » pour un jeu
+  multi-plateforme.
+- **Plateforme fiabilisée via IGDB** : distingue Switch et Switch 2, regroupe Windows/Mac/Linux sous
+  « PC ».
+- **Année de fin ou d'abandon** : depuis la fiche d'un jeu Terminé ou Abandonné, on choisit l'année,
+  y compris pour un jeu qui n'en avait aucune.
+- **Statistiques** : progression du backlog par statut, temps de jeu cumulé, répartition par
+  plateforme, filtre par année pour les jeux terminés et abandonnés.
+- **Récap annuel** : bilan de l'année (jeux terminés, heures de jeu) du 25 décembre au 31 janvier,
+  avec une notification locale une fois par an.
+- **Récap en images** : suite de slides façon *Wrapped* (total, coups de cœur, plus longues parties,
+  plateformes, faits de l'année, mosaïque des jaquettes).
+- **Connexion Google et synchronisation** : backlog synchronisé entre appareils via Firestore,
+  utilisable hors ligne.
 
 ## Captures d'écran
 
@@ -75,123 +44,57 @@ synchronisé automatiquement entre tous vos appareils grâce à Firebase.
 
 | Domaine | Choix |
 |---|---|
-| Langage | Kotlin 2.2 |
-| UI | Jetpack Compose (BOM 2026.02.01) |
-| Navigation | Navigation Compose |
-| Persistance locale | Room 2.8 |
+| Langage / UI | Kotlin 2.2, Jetpack Compose, Navigation Compose |
+| Persistance locale | Room |
 | Réseau | Retrofit 3 + Moshi (RAWG, IGDB) |
 | Injection de dépendances | Hilt |
-| Cloud | Firebase Firestore (données) + Firebase Auth (Google Sign-In) |
-| Chargement d'images | Coil |
-| Tâches en arrière-plan | WorkManager (+ Hilt pour l'injection dans les `Worker`) — notification locale du récap annuel |
-| Tests | JUnit4 + kotlinx-coroutines-test, tests unitaires basés sur des fakes (pas de mock ni Robolectric) |
+| Arrière-plan | WorkManager (notification du récap annuel) |
+| Cloud | Firebase Firestore + Auth (Google Sign-In) |
+| Images | Coil |
+| Tests | JUnit4 + kotlinx-coroutines-test, avec des fakes (ni mock ni Robolectric) |
 
 ## Architecture
 
-Architecture **MVVM**, avec le Repository comme unique source de vérité orchestrant Room et
-Firebase :
+MVVM, avec le Repository comme source de vérité unique :
 
 ```
-UI (Compose)
-   ↕ StateFlow / UiState
-ViewModel
-   ↕
-Repository (source de vérité unique)
-   ↙                              ↘
-Room (cache local, offline)      Firebase Firestore/Auth (sync distante)
-                                  Retrofit/Moshi (recherche RAWG, temps de jeu IGDB)
+UI (Compose) ↔ ViewModel ↔ Repository ─┬─ Room (cache local, hors ligne)
+                                       ├─ Firestore / Auth (synchro distante)
+                                       └─ Retrofit (recherche RAWG, temps de jeu IGDB)
 ```
 
-- Les ViewModels n'accèdent jamais directement à Retrofit, Room ou Firebase — toujours via une
-  interface de repository (`domain/repository/`), injectée par Hilt.
-- **Room** reste la seule source lue par l'UI (`observeGames()`), même en ligne : ça garantit un
-  affichage instantané et un fonctionnement hors-ligne complet.
-- **Firestore** fait autorité sur le contenu du backlog dès qu'un compte est connecté : il est
-  écouté en temps réel et mirroré dans Room (ajouts/suppressions distants répercutés localement).
-  Les écritures locales (ajout/modification/suppression) sont appliquées à Room en premier, puis
-  répercutées vers Firestore en best-effort (un échec réseau n'empêche jamais l'écriture locale ;
-  le SDK Firestore gère lui-même la persistance et la synchronisation différée hors-ligne).
-- **Bootstrap** : à la toute première connexion d'un utilisateur dont la collection Firestore est
-  vide, le backlog local existant est uploadé automatiquement — utile pour ne pas perdre les
-  données d'un utilisateur qui utilisait déjà l'app avant l'introduction de la synchro.
-- Erreurs réseau/Firebase remontées du Repository sous forme d'erreurs structurées
-  (`Resource.Success` / `Resource.Error`), traduites en message utilisateur côté UI.
+- Les ViewModels passent toujours par une interface de repository (`domain/repository/`), injectée
+  par Hilt.
+- **Room est la seule source lue par l'UI**, même en ligne : affichage instantané et usage hors
+  ligne complet.
+- Les écritures vont d'abord dans Room, puis vers Firestore en best-effort ; Firestore fait autorité
+  sur le contenu dès qu'un compte est connecté et est mirroré dans Room.
+- Les erreurs réseau et Firebase remontent sous forme de `Resource` structuré, traduit en message
+  côté UI.
 
 ## Installation
 
-### Prérequis
+**Prérequis** : Android Studio avec JDK 17+, un appareil ou émulateur en API 24 ou plus, une clé API
+[RAWG](https://rawg.io/apidocs), une application [Twitch Developer](https://dev.twitch.tv/console/apps)
+(authentification IGDB), un projet [Firebase](https://console.firebase.google.com/) avec Firestore
+et Google Sign-In activés.
 
-- Android Studio (dernière version stable) avec JDK 17+.
-- Un appareil ou émulateur Android en API 24 (Android 7.0) ou supérieur.
-- Un compte [RAWG](https://rawg.io/apidocs) (clé API gratuite).
-- Un compte [Twitch Developer](https://dev.twitch.tv/console/apps) (pour l'authentification à
-  l'API IGDB).
-- Un projet [Firebase](https://console.firebase.google.com/) avec Firestore et l'authentification
-  Google Sign-In activés.
-
-### 1. Cloner le projet
-
-```bash
-git clone https://github.com/Cklla/Cartouche
-cd Cartouche
-```
-
-### 2. Configurer les clés API
-
-Créer un fichier `local.properties` à la racine du projet (ignoré par git) avec :
-
-```properties
-sdk.dir=/chemin/vers/le/sdk/android
-
-RAWG_API_KEY=votre_clé_rawg
-IGDB_CLIENT_ID=votre_client_id_twitch
-IGDB_CLIENT_SECRET=votre_client_secret_twitch
-```
-
-### 3. Configurer Firebase
-
-1. Dans la [console Firebase](https://console.firebase.google.com/), créer un projet et y ajouter
-   une application Android avec le package `fr.cklla.cartouche`.
-2. Activer **Firestore Database** et le fournisseur **Google** dans **Authentication**.
-3. Renseigner l'empreinte SHA-1 du keystore de debug (`./gradlew signingReport`) dans les
-   paramètres de l'application Android sur la console Firebase — requis par Google Sign-In.
-4. Télécharger le fichier `google-services.json` généré et le placer dans `app/` (ignoré par git).
-5. Activer **App Check** (onglet dédié de la console Firebase), enregistrer l'app avec le
-   fournisseur **Play Integrity**. Au premier lancement en debug, un jeton s'affiche dans logcat :
-   à déclarer dans App Check → l'app Android → menu **⋮** → *Gérer les jetons de débogage*, sans
-   quoi les builds de debug seront rejetés dès qu'App Check passera en mode appliqué.
-
-### 4. Compiler et lancer
-
-```bash
-./gradlew assembleDebug
-```
-
-ou directement depuis Android Studio (Run ▶).
-
-## Configuration des règles Firestore
-
-Les règles de sécurité (`firestore.rules`, versionnées dans ce dépôt) restreignent chaque
-utilisateur à ses propres données et valident la forme de chaque document écrit (champs
-autorisés, types, bornes numériques) — voir le fichier pour le détail, il fait foi.
-
-À publier depuis l'onglet **Firestore Database → Règles** de la console Firebase (copier/coller le
-contenu du fichier, puis **Publier**).
-
-## Sécurité
-
-- **Règles Firestore** : accès restreint à `users/{uid}/...` où `uid` est celui de l'utilisateur
-  authentifié, et validation stricte des documents écrits (voir ci-dessus).
-- **Firebase App Check** : chaque appel à Firestore/Auth est accompagné d'un jeton attestant que la
-  requête vient bien de cette app installée sur un appareil légitime (fournisseur **Play Integrity**
-  en release, fournisseur de debug en développement) — empêche l'utilisation du projet Firebase
-  depuis un script ou une app reconstruite à partir du binaire.
-- **`allowBackup="false"`** : aucune donnée locale (base Room, session Firebase, jeton IGDB) ne part
-  dans une sauvegarde Google Drive ni un transfert d'appareil.
-- **R8 + shrinking des ressources en release** : code réduit et obfusqué, ressources inutilisées
-  retirées.
-- **Jaquettes en HTTPS uniquement** : toute URL d'image reçue d'une API externe est vérifiée avant
-  affichage.
+1. **Cloner** : `git clone https://github.com/Cklla/Cartouche`
+2. **Clés API** : dans `local.properties` (ignoré par git) :
+   ```properties
+   sdk.dir=/chemin/vers/le/sdk/android
+   RAWG_API_KEY=votre_clé_rawg
+   IGDB_CLIENT_ID=votre_client_id_twitch
+   IGDB_CLIENT_SECRET=votre_client_secret_twitch
+   ```
+3. **Firebase** : créer une application Android `fr.cklla.cartouche`, activer Firestore et le
+   fournisseur Google d'Authentication, déclarer le SHA-1 du keystore de debug
+   (`./gradlew signingReport`), puis placer `google-services.json` dans `app/` (ignoré par git).
+4. **App Check** : enregistrer l'app avec **Play Integrity**. En debug, le jeton affiché dans logcat
+   se déclare dans *App Check → l'app → ⋮ → Gérer les jetons de débogage*.
+5. **Règles Firestore** : copier `firestore.rules` dans *Firestore Database → Règles* et publier.
+   Chaque utilisateur n'accède qu'à ses données, et la forme de chaque document est validée.
+6. **Lancer** : `./gradlew assembleDebug`, ou Run ▶ dans Android Studio.
 
 ## Tests
 
@@ -199,56 +102,33 @@ contenu du fichier, puis **Publier**).
 ./gradlew testDebugUnitTest
 ```
 
-Les tests unitaires couvrent les ViewModels et le Repository (logique de synchro Firestore ↔ Room,
-mapping Firestore, gestion d'erreurs) via des implémentations *fake* des dépendances (pas de
-mocking ni de Robolectric), pour des tests rapides et déterministes.
+Les tests couvrent les ViewModels, les repositories (synchro Firestore ↔ Room, mapping, erreurs) et
+la logique pure (récaps, années), avec des fakes pour rester rapides et déterministes.
 
 ## Structure du projet
 
 ```
 app/src/main/java/fr/cklla/cartouche/
-├── data/
-│   ├── local/          # Room : entités, DAO, base de données
-│   ├── remote/
-│   │   ├── dto/        # Réponses API RAWG
-│   │   ├── firestore/  # Source de données Firestore + mapping
-│   │   └── igdb/       # Client IGDB (auth Twitch, temps de jeu estimé)
-│   └── repository/     # Implémentations concrètes des repositories
-├── di/                  # Modules Hilt
-├── domain/
-│   ├── model/           # Modèles métier (Game, GameStatus, Resource, AuthUser…)
-│   └── repository/      # Interfaces de repository
-├── notification/        # Notification locale du récap annuel (Worker, canal, flag SharedPreferences)
-└── ui/
-    ├── bibliotheque/    # Écran Bibliothèque
-    ├── detail/          # Écran Détail d'un jeu
-    ├── login/           # Écran de connexion Google
-    ├── recherche/       # Écran Recherche RAWG
-    ├── stats/           # Écran Statistiques (dont le récap annuel et le récap en images)
-    ├── navigation/       # Routes Navigation Compose
-    └── theme/            # Thème Compose (couleurs, typographie)
+├── data/           # Room, clients distants (RAWG, IGDB, Firestore), repositories
+├── di/             # Modules Hilt
+├── domain/         # Modèles, interfaces de repository, logique pure
+├── notification/   # Notification locale du récap annuel
+└── ui/             # Écrans Compose, navigation, thème
 ```
 
 ## Choix techniques notables
 
-- **RAWG plutôt qu'IGDB** pour la recherche de jeux : clé API simple, pas d'OAuth, suffisant pour
-  un usage personnel. IGDB est utilisé en complément pour le temps de jeu estimé et pour fiabiliser
-  la plateforme d'un jeu (données plus fiables sur ces deux points précis), en réutilisant la même
-  correspondance IGDB résolue une seule fois par jeu.
-- **UUID plutôt qu'identifiant auto-incrémenté** pour `Game.id` : le même identifiant désigne le
-  même jeu sur Room et sur Firestore, sans table de correspondance séparée.
-- **Room comme unique source lue par l'UI**, même en ligne : garantit un affichage instantané et
-  un fonctionnement hors-ligne complet, Firestore ne faisant que mirrorer en arrière-plan.
-- **Connexion Google obligatoire** dès le lancement : simplifie les règles de sécurité Firestore
-  (un utilisateur = un espace de données) sans avoir à gérer de mot de passe dédié.
-- **Notification locale (WorkManager) plutôt que push serveur (FCM)** pour le récap annuel : la
-  condition de déclenchement ne dépend que de la date de l'appareil, aucune infrastructure serveur
-  n'est nécessaire pour un événement purement local et prévisible à l'avance.
+- **RAWG pour la recherche, IGDB en complément** : RAWG est simple (clé API, pas d'OAuth) ; IGDB est
+  plus fiable pour le temps de jeu estimé et la plateforme.
+- **UUID pour `Game.id`** : le même identifiant côté Room et Firestore, sans table de correspondance.
+- **Connexion Google obligatoire** : un utilisateur = un espace de données, sans mot de passe dédié.
+- **Notification locale, sans FCM** : un job WorkManager décide d'après la date de l'appareil.
+- **Statistiques et récaps calculés en direct** à partir des données déjà stockées, par des
+  fonctions pures : rien de plus à synchroniser.
 
 ## Confidentialité
 
-Voir [PRIVACY.md](PRIVACY.md) pour le détail des données traitées (compte Google, backlog) et de
-leur usage.
+Voir [PRIVACY.md](PRIVACY.md).
 
 ## Licence
 
