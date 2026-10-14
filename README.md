@@ -78,7 +78,8 @@ UI (Compose) ↔ ViewModel ↔ Repository ─┬─ Room (cache local, hors lign
 **Prérequis** : Android Studio avec JDK 17+, un appareil ou émulateur en API 24 ou plus, une clé API
 [RAWG](https://rawg.io/apidocs), une application [Twitch Developer](https://dev.twitch.tv/console/apps)
 (authentification IGDB), un projet [Supabase](https://supabase.com/) avec le
-fournisseur Google activé.
+fournisseur Google activé. Le projet peut être partagé avec une autre application : celle de Cartouche
+vit dans son propre schéma.
 
 1. **Cloner** : `git clone https://github.com/Cklla/Cartouche`
 2. **Clés API** : dans `local.properties` (ignoré par git) :
@@ -92,13 +93,22 @@ fournisseur Google activé.
    GOOGLE_WEB_CLIENT_ID=identifiant_client_web_google
    ```
 3. **Supabase** : appliquer `supabase/migrations/` dans l'éditeur SQL du tableau de bord. La migration
-   crée le schéma `cartouche` et la table `game` (isolation par compte via RLS, contraintes sur
-   chaque champ, Realtime). Ajouter `cartouche` aux schémas exposés de la Data API. Le projet peut
-   être partagé avec une autre application : les tables de Cartouche vivent dans leur propre schéma.
-4. **Google Cloud** : un client OAuth *Web* (celui déclaré dans le fournisseur Google de Supabase,
-   et dont l'identifiant va dans `GOOGLE_WEB_CLIENT_ID`) et un client *Android* avec le SHA-1 du
-   keystore (`./gradlew signingReport`).
+   crée le schéma `cartouche` et la table `game` (isolation par compte via RLS, droits minimaux,
+   contraintes sur chaque champ, publication Realtime). Ajouter `cartouche` aux schémas exposés de la
+   Data API (Settings → API) et activer le fournisseur Google avec l'identifiant client Web.
+4. **Google Cloud** : un client OAuth *Web* (celui déclaré dans Supabase, et dont l'identifiant va
+   dans `GOOGLE_WEB_CLIENT_ID`) et un client *Android* portant le SHA-1 du keystore utilisé
+   (`./gradlew signingReport`, plus celui de Play App Signing pour un build du Play Store).
 5. **Lancer** : `./gradlew assembleDebug`, ou Run ▶ dans Android Studio.
+
+## Sauvegarde et restauration
+
+Le plan gratuit de Supabase n'a pas de sauvegarde automatique. Quand le projet est partagé avec
+Pellicule, c'est le job planifié `sauvegarde_supabase` de son dépôt qui exporte les schémas `public` et
+`cartouche` dans un artefact `sauvegarde.sql`, conservé 30 jours. Le dump ne contient pas les comptes
+(`auth.users`) : la procédure de restauration, y compris le remappage des identifiants de compte, est
+décrite dans le dépôt Pellicule (`supabase/RESTAURATION.md`). Un fichier `sauvegarde*.sql` contient des
+adresses e-mail et ne se commite jamais.
 
 ## Tests
 
@@ -108,6 +118,9 @@ fournisseur Google activé.
 
 Les tests couvrent les ViewModels, les repositories (synchro Supabase ↔ Room, file d'envoi, mapping, erreurs) et
 la logique pure (récaps, années), avec des fakes pour rester rapides et déterministes.
+
+L'isolation entre comptes du schéma (RLS, droits, contraintes) se vérifie sur un Postgres jetable avec
+Docker : `supabase/tests/lancer.sh`.
 
 ## Structure du projet
 
@@ -125,6 +138,10 @@ app/src/main/java/fr/cklla/cartouche/
 - **RAWG pour la recherche, IGDB en complément** : RAWG est simple (clé API, pas d'OAuth) ; IGDB est
   plus fiable pour le temps de jeu estimé et la plateforme.
 - **UUID pour `Game.id`** : le même identifiant côté Room et Supabase, sans table de correspondance.
+- **Schéma Postgres dédié `cartouche`** : migrations, droits et sauvegarde séparables d'une autre
+  application hébergée dans le même projet.
+- **Écritures par file d'envoi** : une écriture hors ligne n'est jamais perdue par la synchro suivante,
+  elle est rejouée dès que le réseau revient.
 - **Connexion Google obligatoire** : un utilisateur = un espace de données, sans mot de passe dédié.
 - **Notification locale, sans FCM** : un job WorkManager décide d'après la date de l'appareil.
 - **Statistiques et récaps calculés en direct** à partir des données déjà stockées, par des
