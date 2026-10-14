@@ -6,6 +6,7 @@ import fr.cklla.cartouche.domain.model.Game
 import fr.cklla.cartouche.domain.model.GameStatus
 import fr.cklla.cartouche.domain.model.Resource
 import fr.cklla.cartouche.domain.repository.GameRepository
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
@@ -127,6 +128,48 @@ class GameRepositoryImplTest {
 
         authRepository.signOut()
 
+        assertEquals(1, firestoreDataSource.clearLocalCacheCallCount)
+    }
+
+    @Test
+    fun `un lancement sans session ne vide pas le backlog local`() = runTest {
+        // Au lancement, `currentUser` vaut `null` le temps que la session enregistrée soit connue :
+        // ce n'est pas une déconnexion et rien ne doit être effacé.
+        authRepository = FakeAuthRepository(user = null)
+        dao.insert(hades.copy(id = "local-1").toEntity())
+
+        buildRepository()
+
+        assertEquals(1, repository.observeGames().first().size)
+        assertEquals(0, firestoreDataSource.clearLocalCacheCallCount)
+    }
+
+    @Test
+    fun `une session absente sans deconnexion ne vide rien`() = runTest {
+        repository.addGame(hades)
+
+        authRepository.dropSessionWithoutSignOut()
+
+        assertEquals(1, repository.observeGames().first().size)
+        assertEquals(0, firestoreDataSource.clearLocalCacheCallCount)
+    }
+
+    @Test
+    fun `la purge n'est pas annulee par la session qui passe a null apres le signal de deconnexion`() = runTest {
+        val gate = CompletableDeferred<Unit>()
+        // Compte neuf : le repository de `setUp`, abonné à l'ancien, purgerait les mêmes fakes de son côté.
+        authRepository = FakeAuthRepository()
+        firestoreDataSource = FakeFirestoreGameDataSource().apply { clearLocalCacheGate = gate }
+        buildRepository()
+        repository.addGame(hades)
+
+        // Ordre de production : le signal part avant que `currentUser` ne repasse à `null`, ce qui
+        // fait annuler par `collectLatest` la purge qui vient de démarrer (suspendue sur `gate`).
+        authRepository.emitSignedOutBeforeSessionUpdate()
+        authRepository.dropSessionWithoutSignOut()
+        gate.complete(Unit)
+
+        assertTrue(repository.observeGames().first().isEmpty())
         assertEquals(1, firestoreDataSource.clearLocalCacheCallCount)
     }
 

@@ -1,6 +1,7 @@
 package fr.cklla.cartouche.data.remote.firestore
 
 import fr.cklla.cartouche.domain.model.Game
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.emitAll
@@ -24,6 +25,12 @@ class FakeFirestoreGameDataSource : FirestoreGameDataSource {
      * vérifier que le repository réessaye au lieu d'abandonner la synchro définitivement.
      */
     var failedObserveAttempts = 0
+
+    /**
+     * Si renseigné, [clearLocalCache] attend sa complétion avant de compter l'appel : permet de
+     * suspendre une purge en plein milieu pour vérifier qu'elle va jusqu'au bout.
+     */
+    var clearLocalCacheGate: CompletableDeferred<Unit>? = null
 
     val upsertedGames = mutableListOf<Game>()
     val deletedGameIds = mutableListOf<String>()
@@ -63,6 +70,7 @@ class FakeFirestoreGameDataSource : FirestoreGameDataSource {
     }
 
     override suspend fun clearLocalCache() {
+        clearLocalCacheGate?.await()
         clearLocalCacheCallCount++
     }
 }

@@ -4,6 +4,7 @@ import fr.cklla.cartouche.data.local.GameDao
 import fr.cklla.cartouche.data.local.entity.GameEntity
 import fr.cklla.cartouche.data.remote.firestore.FirestoreGameDataSource
 import fr.cklla.cartouche.di.ApplicationScope
+import fr.cklla.cartouche.domain.model.AuthUser
 import fr.cklla.cartouche.domain.model.Game
 import fr.cklla.cartouche.domain.model.GameStatus
 import fr.cklla.cartouche.domain.model.Resource
@@ -13,7 +14,9 @@ import fr.cklla.cartouche.domain.util.timestampForYear
 import java.time.ZoneId
 import java.util.UUID
 import javax.inject.Inject
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
@@ -22,11 +25,13 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.retryWhen
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 
 /**
  * Implémentation Room + Firestore du [GameRepository].
@@ -51,12 +56,18 @@ class GameRepositoryImpl @Inject constructor(
     init {
         // `collectLatest` : un changement d'utilisateur (déconnexion, ou reconnexion avec un autre
         // compte) annule proprement l'écoute Firestore précédente avant d'en démarrer une nouvelle.
+        // La purge passe par le même collecteur pour ne jamais tourner en même temps qu'une synchro
+        // en cours. Elle n'est déclenchée que par la déconnexion demandée : un `currentUser` à
+        // `null` est aussi l'état avant que la session enregistrée soit connue, et effacerait
+        // Room (donc tout le backlog local) à chaque lancement.
         repositoryScope.launch {
-            authRepository.currentUser.collectLatest { user ->
-                if (user == null) {
-                    clearLocalData()
-                } else {
-                    syncWith(user.uid)
+            merge(
+                authRepository.currentUser.map { AuthEvent.UserChanged(it) },
+                authRepository.signedOut.map { AuthEvent.SignedOut },
+            ).collectLatest { event ->
+                when (event) {
+                    AuthEvent.SignedOut -> clearLocalData()
+                    is AuthEvent.UserChanged -> if (event.user != null) syncWith(event.user.uid)
                 }
             }
         }
@@ -187,13 +198,23 @@ class GameRepositoryImpl @Inject constructor(
     )
 
     // Ne laisse rien du compte précédent sur l'appareil : la base Room, mais aussi le cache que
-    // le SDK Firestore tient de son côté. Enveloppé dans un runCatching parce qu'une exception
-    // ici (base verrouillée, purge Firestore refusée) annulerait le collecteur de `currentUser`
-    // et couperait la synchro pour tout le reste de la vie du process.
+    // le SDK Firestore tient de son côté. Les erreurs sont avalées parce qu'une exception ici
+    // (base verrouillée, purge Firestore refusée) annulerait le collecteur d'événements de
+    // connexion et couperait la synchro pour tout le reste de la vie du process.
+    //
+    // Non annulable : le passage de `currentUser` à `null` qui accompagne la déconnexion peut
+    // arriver juste après le signal de déconnexion, et `collectLatest` annulerait alors la purge en
+    // cours, laissant le backlog du compte précédent sur l'appareil. Une annulation reçue pendant
+    // la purge est relancée une fois celle-ci terminée, pas avalée avec les erreurs de base.
     private suspend fun clearLocalData() {
-        runCatching {
-            gameDao.clearAll()
-            firestoreDataSource.clearLocalCache()
+        try {
+            withContext(NonCancellable) {
+                gameDao.clearAll()
+                firestoreDataSource.clearLocalCache()
+            }
+        } catch (cancellation: CancellationException) {
+            throw cancellation
+        } catch (_: Exception) {
         }
     }
 
@@ -252,6 +273,12 @@ class GameRepositoryImpl @Inject constructor(
     private suspend fun pushToFirestore(action: suspend (uid: String) -> Unit) {
         val uid = authRepository.currentUser.value?.uid ?: return
         runCatching { action(uid) }
+    }
+
+    // Ce qui peut faire bouger la synchro : un changement d'utilisateur, ou une déconnexion demandée.
+    private sealed interface AuthEvent {
+        data class UserChanged(val user: AuthUser?) : AuthEvent
+        data object SignedOut : AuthEvent
     }
 
     private companion object {
