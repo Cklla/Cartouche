@@ -4,12 +4,16 @@ import dagger.Binds
 import dagger.Module
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
-import fr.cklla.cartouche.data.remote.firestore.FirestoreGameDataSource
-import fr.cklla.cartouche.data.remote.firestore.FirestoreGameDataSourceImpl
+import fr.cklla.cartouche.data.remote.RemoteGameDataSource
+import fr.cklla.cartouche.data.remote.supabase.SupabaseGameDataSource
 import fr.cklla.cartouche.data.repository.AuthRepositoryImpl
 import fr.cklla.cartouche.data.repository.GameRepositoryImpl
 import fr.cklla.cartouche.data.repository.GameSearchRepositoryImpl
 import fr.cklla.cartouche.data.repository.IgdbPlaytimeRepositoryImpl
+import fr.cklla.cartouche.data.sync.InitialUploadPrefs
+import fr.cklla.cartouche.data.sync.InitialUploadStore
+import fr.cklla.cartouche.data.sync.OutboxScheduler
+import fr.cklla.cartouche.data.sync.WorkManagerOutboxScheduler
 import fr.cklla.cartouche.domain.repository.AuthRepository
 import fr.cklla.cartouche.domain.repository.GameRepository
 import fr.cklla.cartouche.domain.repository.GameSearchRepository
@@ -40,5 +44,11 @@ abstract class RepositoryModule {
 
     @Binds
     @Singleton
-    abstract fun bindFirestoreGameDataSource(impl: FirestoreGameDataSourceImpl): FirestoreGameDataSource
+    abstract fun bindRemoteGameDataSource(impl: SupabaseGameDataSource): RemoteGameDataSource
+
+    @Binds
+    abstract fun bindOutboxScheduler(impl: WorkManagerOutboxScheduler): OutboxScheduler
+
+    @Binds
+    abstract fun bindInitialUploadStore(impl: InitialUploadPrefs): InitialUploadStore
 }

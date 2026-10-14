@@ -36,7 +36,7 @@ fun GameSearchResult.toGame(): Game = Game(
     genre = genre,
     status = GameStatus.A_FAIRE,
     rawgId = rawgId,
-    releaseYear = year.toIntOrNull(),
+    releaseYear = releaseYearOrNull(year.toIntOrNull()),
     coverUrl = coverUrl,
     playedPlatforms = parsePlatforms(platform).singleOrNull()?.let(::setOf).orEmpty(),
 )

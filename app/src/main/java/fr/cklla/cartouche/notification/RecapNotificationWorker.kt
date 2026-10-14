@@ -21,7 +21,7 @@ import java.time.LocalDate
 /**
  * Job périodique (une fois par jour, voir `CartoucheApplication`) qui envoie la notification locale
  * du récap annuel — condition purement basée sur la date de l'appareil ([recapYearToNotify]), sans
- * lien avec Firebase Cloud Messaging ni aucun événement serveur.
+ * lien avec une notification poussée ni aucun événement serveur.
  *
  * `@HiltWorker`/`@AssistedInject` : seul moyen d'injecter des dépendances (ici [RecapNotificationPrefs])
  * dans un `Worker`, WorkManager instanciant lui-même la classe via son propre `WorkerFactory`

@@ -1,15 +1,12 @@
 # =============================================================================
 # CI Cartouche — les jobs proviennent du socle partage Cklla/ci-templates.
 #
-# Ce fichier ne contient QUE ce qui est propre a Cartouche : le stage, la
-# reference au socle, et la preparation Firebase. Toute correction apportee
-# aux jobs eux-memes se fait dans ci-templates puis se recupere ici en
-# changeant `ref`.
+# Ce fichier ne contient QUE ce qui est propre a Cartouche : le stage et la
+# reference au socle. Toute correction apportee aux jobs eux-memes se fait
+# dans ci-templates puis se recupere ici en changeant `ref`.
 #
-# Prerequis cote GitLab (Settings > CI/CD > Variables) :
-#   GOOGLE_SERVICES_JSON  fichier, le google-services.json du projet Firebase
-# La variable NVD_API_KEY n'est plus utilisee : le scan de vulnerabilites ne
-# s'appuie plus sur la base NVD.
+# Aucune variable CI n'est requise : les valeurs Supabase, RAWG et IGDB vivent
+# dans local.properties et restent vides en CI (build non signe, tests seuls).
 # =============================================================================
 
 include:
@@ -25,22 +22,3 @@ include:
 
 stages:
   - test
-
-# -----------------------------------------------------------------------------
-# Surcharges propres au projet.
-#
-# Les plugins Firebase (google-services) lisent google-services.json des la
-# phase de CONFIGURATION Gradle : sans ce fichier, meme une simple resolution
-# de dependances echoue. Les deux jobs qui invoquent Gradle en ont donc besoin.
-#
-# Attention : en GitLab CI une surcharge REMPLACE la cle, elle ne s'y ajoute
-# pas. Les templates laissent `before_script` vide a dessein pour que ces
-# blocs ne fassent rien perdre.
-# -----------------------------------------------------------------------------
-unit_tests:
-  before_script:
-    - cp "$GOOGLE_SERVICES_JSON" app/google-services.json
-
-dependency_inventory:
-  before_script:
-    - cp "$GOOGLE_SERVICES_JSON" app/google-services.json

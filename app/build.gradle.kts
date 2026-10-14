@@ -4,12 +4,10 @@ import java.util.Properties
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.ksp)
     alias(libs.plugins.hilt)
     alias(libs.plugins.androidx.room)
-    // Lit google-services.json et génère les ressources/config
-    // nécessaires aux SDK Firebase (Auth, Firestore) à la compilation.
-    alias(libs.plugins.google.services)
 }
 
 // La clé API RAWG vit uniquement dans local.properties,
@@ -41,8 +39,8 @@ android {
         applicationId = "fr.cklla.cartouche"
         minSdk = 24
         targetSdk = 37
-        versionCode = 13
-        versionName = "1.2.0"
+        versionCode = 14
+        versionName = "2.0.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
@@ -63,6 +61,25 @@ android {
             "String",
             "IGDB_CLIENT_SECRET",
             "\"${localProperties.getProperty("IGDB_CLIENT_SECRET", "")}\"",
+        )
+        // Configuration Supabase, injectée comme la clé RAWG : jamais dans le code source. La clé
+        // publishable est publique par conception (la sécurité repose sur le RLS), mais reste
+        // propre à ce projet Supabase ; l'identifiant client Web est celui déclaré côté Supabase
+        // pour la connexion par jeton Google.
+        buildConfigField(
+            "String",
+            "SUPABASE_URL",
+            "\"${localProperties.getProperty("SUPABASE_URL", "")}\"",
+        )
+        buildConfigField(
+            "String",
+            "SUPABASE_PUBLISHABLE_KEY",
+            "\"${localProperties.getProperty("SUPABASE_PUBLISHABLE_KEY", "")}\"",
+        )
+        buildConfigField(
+            "String",
+            "GOOGLE_WEB_CLIENT_ID",
+            "\"${localProperties.getProperty("GOOGLE_WEB_CLIENT_ID", "")}\"",
         )
     }
 
@@ -110,6 +127,28 @@ android {
     }
 }
 
+// Un build de release signé est un build publiable : sans ces valeurs, il s'installerait mais ne
+// pourrait ni se connecter ni rien synchroniser. Le build non signé (CI) reste possible sans elles.
+// Toute tâche de la variante release dépend de `preReleaseBuild` : avec keystore.properties
+// présent, `test` ou `check` exigent donc aussi ces valeurs.
+if (keystoreProperties.isNotEmpty()) {
+    val missing = listOf(
+        "RAWG_API_KEY",
+        "IGDB_CLIENT_ID",
+        "IGDB_CLIENT_SECRET",
+        "SUPABASE_URL",
+        "SUPABASE_PUBLISHABLE_KEY",
+        "GOOGLE_WEB_CLIENT_ID",
+    ).filter { localProperties.getProperty(it).isNullOrBlank() }
+    if (missing.isNotEmpty()) {
+        tasks.matching { it.name == "preReleaseBuild" }.configureEach {
+            doFirst {
+                throw GradleException("Valeurs absentes de local.properties pour un build signé : ${missing.joinToString()}")
+            }
+        }
+    }
+}
+
 // Room génère le schéma de la base dans ce dossier à chaque compilation :
 // permet de suivre les migrations de schéma dans le temps (utile dès qu'on
 // changera la structure des tables après la v1).
@@ -133,9 +172,6 @@ dependencies {
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.kotlinx.coroutines.android)
-    // Pont .await() entre les Task Google Play Services (FirebaseAuth.signInWithCredential...)
-    // et les coroutines, pour éviter les callbacks imbriqués dans AuthRepositoryImpl.
-    implementation(libs.kotlinx.coroutines.play.services)
     implementation(libs.androidx.navigation.compose)
 
     // Persistance locale (cache offline)
@@ -149,13 +185,13 @@ dependencies {
     implementation(libs.androidx.hilt.navigation.compose)
 
     // Notification locale du récap annuel : job périodique (voir RecapNotificationWorker),
-    // sans lien avec Firebase Cloud Messaging (condition purement locale, basée sur la date).
+    // sans serveur de notifications (condition purement locale, basée sur la date).
     implementation(libs.androidx.work.runtime.ktx)
     implementation(libs.androidx.hilt.work)
     ksp(libs.androidx.hilt.compiler)
 
     // Réseau : recherche de jeux via l'API RAWG (seul usage de Retrofit/Moshi,
-    // le backlog lui-même reste stocké via Room/Firestore).
+    // le backlog lui-même est stocké via Room et synchronisé avec Supabase).
     implementation(libs.retrofit.core)
     implementation(libs.retrofit.converter.moshi)
     implementation(libs.moshi.kotlin)
@@ -164,18 +200,19 @@ dependencies {
     // Chargement des jaquettes réelles renvoyées par RAWG
     implementation(libs.coil.compose)
 
-    // Firebase : Firestore (source de vérité distante du backlog) + Auth (identifie
-    // l'utilisateur, nécessaire aux règles de sécurité Firestore). Le BoM aligne les versions
-    // des différents modules Firebase entre eux, pas besoin de préciser de version sur chacun.
-    implementation(platform(libs.firebase.bom))
-    implementation(libs.firebase.auth)
-    implementation(libs.firebase.firestore)
-    // App Check : atteste que les appels à Firestore/Auth viennent bien de cette app installée
-    // depuis le Play Store, et pas d'un script ou d'une app reconstruite à partir du binaire.
-    implementation(libs.firebase.appcheck.playintegrity)
-    // Le fournisseur Play Integrity ne peut rien attester sur un émulateur ou un build local :
-    // en debug, App Check s'appuie sur un jeton à déclarer dans la console Firebase.
-    debugImplementation(libs.firebase.appcheck.debug)
+    // Stockage chiffré de la session Supabase : les jetons d'accès et de renouvellement donnent
+    // accès au backlog du compte, ils ne doivent pas rester en clair dans les préférences.
+    implementation(libs.androidx.security.crypto)
+
+    // Supabase : authentification (connexion par jeton Google), puis données et Realtime à
+    // l'étape suivante. Le moteur HTTP OkHttp est celui qu'utilise déjà le reste de l'app ; sans
+    // lui, Ktor n'aurait aucun moteur sur Android.
+    implementation(platform(libs.supabase.bom))
+    implementation(libs.supabase.auth)
+    implementation(libs.supabase.postgrest)
+    implementation(libs.supabase.realtime)
+    implementation(libs.kotlinx.serialization.json)
+    implementation(libs.ktor.client.okhttp)
 
     // Connexion Google (Credential Manager)
     implementation(libs.androidx.credentials)
@@ -188,6 +225,7 @@ dependencies {
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(libs.androidx.junit)
+    androidTestImplementation(libs.androidx.room.testing)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
     debugImplementation(libs.androidx.compose.ui.tooling)
 }

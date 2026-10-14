@@ -38,6 +38,8 @@ class FakeGameDao : GameDao {
         games.update { list -> list.filterNot { it.id == id } }
     }
 
+    override suspend fun getAllOnce(): List<GameEntity> = games.value
+
     override suspend fun getAllIds(): List<String> = games.value.map { it.id }
 
     override suspend fun clearAll() {

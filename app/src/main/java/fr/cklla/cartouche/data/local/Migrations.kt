@@ -125,7 +125,7 @@ val MIGRATION_3_4 = object : Migration(3, 4) {
 
 /**
  * `id` passe d'un entier auto-incrémenté à un UUID (`TEXT`) : préparation de la synchro
- * Firestore, où l'id d'un jeu doit être stable et unique sur tous les appareils (deux téléphones
+ * multi-appareils, où l'id d'un jeu doit être stable et unique sur tous les appareils (deux téléphones
  * généreraient tous les deux un jeu n°1 avec un simple compteur local, voir `GameEntity`).
  *
  * SQLite n'a pas de fonction UUID native : `lower(hex(randomblob(4)) || '-' || ...)` génère une
@@ -235,5 +235,21 @@ val MIGRATION_7_8 = object : Migration(7, 8) {
 val MIGRATION_8_9 = object : Migration(8, 9) {
     override fun migrate(connection: SQLiteConnection) {
         connection.execSQL("ALTER TABLE `games` ADD COLUMN `igdbLookupAttempted` INTEGER NOT NULL DEFAULT 0")
+    }
+}
+
+/**
+ * Ajoute `pending_operation`, la file des écritures pas encore envoyées au serveur (voir
+ * `PendingOperationEntity`). Nouvelle table sans lien avec `games` : migration purement additive,
+ * aucune donnée existante n'est touchée, et la file démarre vide.
+ */
+val MIGRATION_9_10 = object : Migration(9, 10) {
+    override fun migrate(connection: SQLiteConnection) {
+        connection.execSQL(
+            "CREATE TABLE IF NOT EXISTS `pending_operation` (" +
+                "`seq` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+                "`kind` TEXT NOT NULL, " +
+                "`gameId` TEXT NOT NULL)",
+        )
     }
 }

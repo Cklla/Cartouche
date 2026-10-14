@@ -10,8 +10,8 @@
     <!--
         allowBackup="false" : rien de ce que l'app stocke sur l'appareil ne part dans la sauvegarde
         Google Drive ni dans un transfert d'appareil — ni la base Room, ni le jeton d'accès IGDB,
-        ni la session Firebase. Aucune perte pour l'utilisateur : le backlog est déjà répliqué dans
-        Firestore et revient à la reconnexion.
+        ni la session Supabase. Aucune perte pour l'utilisateur : le backlog est déjà répliqué dans
+        Supabase et revient à la reconnexion.
     -->
     <application
         android:name=".CartoucheApplication"

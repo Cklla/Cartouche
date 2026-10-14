@@ -7,11 +7,15 @@ import fr.cklla.cartouche.domain.model.Game
 import fr.cklla.cartouche.domain.model.GameStatus
 import fr.cklla.cartouche.domain.model.IgdbGameMatch
 import fr.cklla.cartouche.domain.model.IgdbPlaytimeEstimate
+import fr.cklla.cartouche.domain.model.MAX_HOURS
+import fr.cklla.cartouche.domain.model.MAX_NOTES_LENGTH
+import fr.cklla.cartouche.domain.model.MAX_PLAYED_PLATFORMS
 import fr.cklla.cartouche.domain.model.Resource
 import fr.cklla.cartouche.domain.repository.GameRepository
 import fr.cklla.cartouche.ui.navigation.CartoucheDestinations
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.resetMain
@@ -90,6 +94,59 @@ class DetailViewModelTest {
         dispatcher.scheduler.advanceUntilIdle()
 
         assertEquals(GameStatus.TERMINE, viewModel.uiState.value.game?.status)
+        collectorJob.cancel()
+    }
+
+    @Test
+    fun `les notes sont coupees a la borne du serveur`() = runTest {
+        val repository = fakeGameRepository(FakeGameDao())
+        val gameId = setUpGame(repository)
+        val viewModel = viewModel(repository, gameId)
+        val collectorJob = launch { viewModel.uiState.collect {} }
+        dispatcher.scheduler.advanceUntilIdle()
+
+        viewModel.onNotesChanged("n".repeat(MAX_NOTES_LENGTH + 100))
+        dispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals(MAX_NOTES_LENGTH, viewModel.uiState.value.game?.notes?.length)
+        assertEquals(MAX_NOTES_LENGTH, repository.observeGame(gameId).first()?.notes?.length)
+        collectorJob.cancel()
+    }
+
+    @Test
+    fun `le temps de jeu ne depasse jamais la borne du serveur`() = runTest {
+        val repository = fakeGameRepository(FakeGameDao())
+        val gameId = setUpGame(repository)
+        val viewModel = viewModel(repository, gameId)
+        val collectorJob = launch { viewModel.uiState.collect {} }
+        dispatcher.scheduler.advanceUntilIdle()
+
+        viewModel.onHoursSet(MAX_HOURS + 500)
+        dispatcher.scheduler.advanceUntilIdle()
+        assertEquals(MAX_HOURS, viewModel.uiState.value.game?.userPlaytimeHours)
+
+        viewModel.onHoursIncrement()
+        dispatcher.scheduler.advanceUntilIdle()
+        assertEquals(MAX_HOURS, viewModel.uiState.value.game?.userPlaytimeHours)
+        collectorJob.cancel()
+    }
+
+    @Test
+    fun `on ne peut pas cocher plus de plateformes jouees que la borne du serveur`() = runTest {
+        val repository = fakeGameRepository(FakeGameDao())
+        val gameId = setUpGame(repository)
+        val viewModel = viewModel(repository, gameId)
+        val collectorJob = launch { viewModel.uiState.collect {} }
+        dispatcher.scheduler.advanceUntilIdle()
+
+        repeat(MAX_PLAYED_PLATFORMS + 3) { viewModel.onPlayedPlatformToggled("P$it") }
+        dispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals(MAX_PLAYED_PLATFORMS, viewModel.uiState.value.game?.playedPlatforms?.size)
+        // Décocher reste possible une fois la borne atteinte.
+        viewModel.onPlayedPlatformToggled("P0")
+        dispatcher.scheduler.advanceUntilIdle()
+        assertEquals(MAX_PLAYED_PLATFORMS - 1, viewModel.uiState.value.game?.playedPlatforms?.size)
         collectorJob.cancel()
     }
 

@@ -30,12 +30,6 @@ class CartoucheApplication : Application(), Configuration.Provider {
 
     override fun onCreate() {
         super.onCreate()
-        // App Check doit être installé avant le premier appel à Firestore ou à Auth, sans quoi
-        // les requêtes partiraient sans jeton d'attestation. `installAppCheck` a une implémentation
-        // par type de build (voir src/debug et src/release) : Play Integrity en release, jeton de
-        // debug sinon.
-        installAppCheck(this)
-
         createRecapNotificationChannel(this)
         // Vérifie une fois par jour si le récap annuel vient de devenir visible (voir
         // RecapNotificationWorker) — largement suffisant, la fenêtre dure plusieurs jours à chaque

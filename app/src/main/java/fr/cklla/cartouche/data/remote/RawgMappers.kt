@@ -5,6 +5,9 @@ import fr.cklla.cartouche.data.remote.dto.RawgGenreDto
 import fr.cklla.cartouche.data.remote.dto.RawgPlatformWrapperDto
 import fr.cklla.cartouche.data.remote.dto.RawgStoreLinkDto
 import fr.cklla.cartouche.domain.model.GameSearchResult
+import fr.cklla.cartouche.domain.model.MAX_GENRE_LENGTH
+import fr.cklla.cartouche.domain.model.MAX_TITLE_LENGTH
+import fr.cklla.cartouche.domain.model.joinPlatformsWithinLimit
 
 /**
  * Conversions entre les DTO RAWG et le modèle métier [GameSearchResult].
@@ -15,7 +18,7 @@ import fr.cklla.cartouche.domain.model.GameSearchResult
 
 fun RawgGameDto.toDomain(): GameSearchResult = GameSearchResult(
     rawgId = id,
-    title = name,
+    title = name.take(MAX_TITLE_LENGTH),
     platform = formatPlatforms(platforms),
     genre = firstGenre(genres),
     year = extractYear(released),
@@ -25,12 +28,17 @@ fun RawgGameDto.toDomain(): GameSearchResult = GameSearchResult(
 /** RAWG renvoie une date complète ("2023-05-12") ou `null` pour un jeu sans date connue. */
 fun extractYear(released: String?): String = released?.take(4) ?: ""
 
-/** Les plateformes d'un jeu RAWG sont jointes en une seule chaîne d'affichage ("Switch/PC"). */
+/**
+ * Les plateformes d'un jeu RAWG sont jointes en une seule chaîne d'affichage ("Switch/PC"). Limitée à
+ * la borne du serveur (voir `joinPlatformsWithinLimit`) : les cases « joué sur » de la fiche sont
+ * ainsi toujours celles qui seront réellement enregistrées.
+ */
 fun formatPlatforms(platforms: List<RawgPlatformWrapperDto>?): String =
-    platforms.orEmpty().joinToString("/") { it.platform.name }
+    joinPlatformsWithinLimit(platforms.orEmpty().map { it.platform.name })
 
 /** Un seul genre est affiché dans l'app (voir [GameSearchResult]) : le premier renvoyé par RAWG. */
-fun firstGenre(genres: List<RawgGenreDto>?): String = genres.orEmpty().firstOrNull()?.name ?: ""
+fun firstGenre(genres: List<RawgGenreDto>?): String =
+    genres.orEmpty().firstOrNull()?.name?.take(MAX_GENRE_LENGTH) ?: ""
 
 /** Identifiant de la boutique Steam dans l'ensemble fixe de boutiques RAWG. */
 private const val RAWG_STEAM_STORE_ID = 1L
