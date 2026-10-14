@@ -68,7 +68,8 @@ class GameRepositoryImpl @Inject constructor(
     init {
         // `collectLatest` : un changement d'utilisateur (déconnexion, ou reconnexion avec un autre
         // compte) annule proprement la synchro précédente avant d'en démarrer une nouvelle. La purge
-        // passe par le même collecteur pour ne jamais tourner en même temps qu'un miroir en cours. Elle n'est déclenchée que par la déconnexion demandée : un `currentUser` à
+        // passe par le même collecteur pour ne jamais tourner en même temps qu'un miroir en cours.
+        // Elle n'est déclenchée que par la déconnexion demandée : un `currentUser` à
         // `null` est aussi l'état avant que la session enregistrée soit connue, et effacerait
         // Room (donc tout le backlog local) à chaque lancement.
         repositoryScope.launch {
