@@ -4,11 +4,11 @@ package fr.cklla.cartouche.domain.model
  * Représente un jeu du backlog, tel que manipulé par l'UI et les ViewModels.
  *
  * C'est le modèle "métier" : il ne dépend ni de Room (entité base de données)
- * ni de Firestore, ni de RAWG (réponse API). Le Repository fait la conversion
+ * ni du serveur, ni de RAWG (réponse API). Le Repository fait la conversion
  * entre ces représentations et ce modèle.
  *
  * @param id identifiant du jeu (UUID généré à la création) — chaîne vide si pas encore persisté.
- *   Sert aussi d'identifiant de document Firestore, pour que le même id désigne le même jeu sur
+ *   Sert aussi de clé primaire côté serveur, pour que le même id désigne le même jeu sur
  *   Room et sur le cloud sans table de correspondance séparée.
  * @param rawgId identifiant RAWG du jeu, ou `null` pour un jeu ajouté avant l'introduction de ce
  *   champ. Sert uniquement à retrouver la fiche Steam du jeu (voir `IgdbPlaytimeRepository`,

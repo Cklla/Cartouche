@@ -86,7 +86,7 @@ class PlayedYearTest {
 
     @Test
     fun `une sortie anterieure a 1970 ne descend jamais sous 1970`() {
-        // Un horodatage de 1962 serait négatif, donc refusé par les règles Firestore.
+        // Un horodatage de 1962 serait négatif, donc refusé par le serveur.
         assertNull(yearFor(1962, releaseYear = 1962))
         assertEquals(1970, selectablePlayedYears(releaseYear = 1962, nowMillis = now, zone = utc).last())
     }
@@ -156,7 +156,7 @@ class PlayedYearTest {
 
     @Test
     fun `l horodatage de 1970 reste positif dans tous les fuseaux`() {
-        // Les règles Firestore refusent un completedAt / abandonedAt négatif.
+        // Le serveur refuse un completedAt / abandonedAt négatif.
         (-12..14).forEach { hours ->
             val timestamp = yearFor(1970, zone = ZoneOffset.ofHours(hours))!!
             assertTrue("UTC$hours", timestamp > 0)

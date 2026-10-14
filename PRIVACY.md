@@ -6,9 +6,9 @@ tout à partir des sources de ce dépôt.
 
 ## Données collectées
 
-- **Compte Google** (via Firebase Auth / Google Sign-In) : identifiant de compte, adresse e-mail,
+- **Compte Google** (via Supabase Auth / Google Sign-In) : identifiant de compte, adresse e-mail,
   nom et photo de profil éventuels. Sert uniquement à identifier l'utilisateur et à cloisonner ses
-  données dans Firestore — aucun autre usage.
+  données dans Supabase — aucun autre usage.
 - **Backlog de jeux** : titres, plateformes, genres, statuts, notes personnelles, temps de jeu et
   notes libres saisis par l'utilisateur, ainsi que les métadonnées récupérées automatiquement
   (jaquette, temps de jeu estimé) via les API RAWG et IGDB.
@@ -20,11 +20,10 @@ publicitaire.
 
 ## Stockage et accès
 
-- Le backlog est stocké localement sur l'appareil (base Room) et synchronisé sur Firebase
-  Firestore, dans un espace propre à chaque compte (`users/{uid}/...`). Les règles de sécurité
-  Firestore (`firestore.rules`) empêchent un utilisateur d'accéder aux données d'un autre.
-- Firebase App Check garantit que seule l'application elle-même peut appeler Firestore et Auth
-  (voir le README, section Sécurité).
+- Le backlog est stocké localement sur l'appareil (base Room) et synchronisé sur Supabase
+  (base Postgres hébergée en Union européenne), dans une table liée à l'identifiant de chaque
+  compte. Des règles de sécurité au niveau des lignes (RLS) empêchent un utilisateur d'accéder aux
+  données d'un autre, et seules les adresses autorisées peuvent créer un compte.
 - Aucune donnée locale n'est incluse dans les sauvegardes automatiques Android
   (`allowBackup="false"`).
 
@@ -32,13 +31,14 @@ publicitaire.
 
 - **RAWG** et **IGDB** reçoivent les requêtes nécessaires à la recherche de jeux et à l'estimation
   du temps de jeu (titre recherché, identifiant du jeu) — aucune donnée de compte n'est transmise.
-- **Google** (Firebase) héberge l'authentification et les données du backlog.
+- **Supabase** héberge l'authentification et les données du backlog ; **Google** fournit la
+  connexion (Google Sign-In).
 - Aucune vente, aucun partage à des fins publicitaires, aucun tracking tiers.
 
 ## Conservation et suppression
 
 Les données sont conservées tant que le compte est utilisé. Pour une suppression complète
-(compte Firebase et données Firestore associées), contacter l'adresse ci-dessous.
+(compte et données du backlog associées), contacter l'adresse ci-dessous.
 
 ## Contact
 

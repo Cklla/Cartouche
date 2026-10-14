@@ -295,14 +295,14 @@ class GameRepositoryImplTest {
     }
 
     @Test
-    fun `mirrorIntoRoom reflete un ajout distant`() = runTest {
+    fun `le miroir reflete un ajout distant`() = runTest {
         remote.games.value = listOf(hades.copy(id = "distant-1"))
 
         assertEquals(listOf("distant-1"), repository.observeGames().first().map { it.id })
     }
 
     @Test
-    fun `mirrorIntoRoom supprime localement un jeu retire du serveur`() = runTest {
+    fun `le miroir supprime localement un jeu retire du serveur`() = runTest {
         remote.games.value = listOf(hades.copy(id = "distant-1"))
         assertEquals(1, repository.observeGames().first().size)
 

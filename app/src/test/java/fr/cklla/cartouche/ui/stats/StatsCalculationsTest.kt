@@ -153,8 +153,8 @@ class StatsCalculationsTest {
     @Test
     fun `inProgressByPlatform compte un jeu mono-plateforme meme si playedPlatforms est vide`() {
         // Cas reel : jeu exclusif Switch (pas de case a cocher, voir DetailScreen) dont
-        // playedPlatforms n'a pas encore ete backfille localement (ancien document Firestore sans
-        // ce champ, voir GameRepositoryImpl.mirrorIntoRoom) — doit compter comme s'il etait coche.
+        // playedPlatforms n'a pas encore ete backfille localement (ancien jeu sans
+        // ce champ, voir GameSyncer.mirror) — doit compter comme s'il etait coche.
         val xenoblade = Game(title = "Xenoblade Chronicles 2", platform = "Switch", genre = "RPG", status = GameStatus.EN_COURS)
 
         val stats = computeStats(listOf(xenoblade))

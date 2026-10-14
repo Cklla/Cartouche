@@ -125,7 +125,7 @@ val MIGRATION_3_4 = object : Migration(3, 4) {
 
 /**
  * `id` passe d'un entier auto-incrémenté à un UUID (`TEXT`) : préparation de la synchro
- * Firestore, où l'id d'un jeu doit être stable et unique sur tous les appareils (deux téléphones
+ * multi-appareils, où l'id d'un jeu doit être stable et unique sur tous les appareils (deux téléphones
  * généreraient tous les deux un jeu n°1 avec un simple compteur local, voir `GameEntity`).
  *
  * SQLite n'a pas de fonction UUID native : `lower(hex(randomblob(4)) || '-' || ...)` génère une

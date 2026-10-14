@@ -2,7 +2,7 @@
 
 Application Android personnelle de gestion de backlog de jeux vidéo : suivez les jeux à faire, en
 cours, terminés ou abandonnés, recherchez-en de nouveaux via l'API RAWG, et retrouvez votre backlog
-synchronisé automatiquement entre tous vos appareils grâce à Firebase.
+synchronisé automatiquement entre tous vos appareils grâce à Supabase.
 
 ## Fonctionnalités
 
@@ -23,7 +23,7 @@ synchronisé automatiquement entre tous vos appareils grâce à Firebase.
   avec une notification locale une fois par an.
 - **Récap en images** : suite de slides façon *Wrapped* (total, coups de cœur, plus longues parties,
   plateformes, faits de l'année, mosaïque des jaquettes).
-- **Connexion Google et synchronisation** : backlog synchronisé entre appareils via Firestore,
+- **Connexion Google et synchronisation** : backlog synchronisé entre appareils via Supabase,
   utilisable hors ligne.
 
 ## Captures d'écran
@@ -49,7 +49,7 @@ synchronisé automatiquement entre tous vos appareils grâce à Firebase.
 | Réseau | Retrofit 3 + Moshi (RAWG, IGDB) |
 | Injection de dépendances | Hilt |
 | Arrière-plan | WorkManager (notification du récap annuel) |
-| Cloud | Firebase Firestore + Auth (Google Sign-In) |
+| Cloud | Supabase (Postgres + Auth par jeton Google + Realtime), via supabase-kt |
 | Images | Coil |
 | Tests | JUnit4 + kotlinx-coroutines-test, avec des fakes (ni mock ni Robolectric) |
 
@@ -59,7 +59,7 @@ MVVM, avec le Repository comme source de vérité unique :
 
 ```
 UI (Compose) ↔ ViewModel ↔ Repository ─┬─ Room (cache local, hors ligne)
-                                       ├─ Firestore / Auth (synchro distante)
+                                       ├─ Supabase (synchro distante)
                                        └─ Retrofit (recherche RAWG, temps de jeu IGDB)
 ```
 
@@ -67,17 +67,18 @@ UI (Compose) ↔ ViewModel ↔ Repository ─┬─ Room (cache local, hors lign
   par Hilt.
 - **Room est la seule source lue par l'UI**, même en ligne : affichage instantané et usage hors
   ligne complet.
-- Les écritures vont d'abord dans Room, puis vers Firestore en best-effort ; Firestore fait autorité
-  sur le contenu dès qu'un compte est connecté et est mirroré dans Room.
-- Les erreurs réseau et Firebase remontent sous forme de `Resource` structuré, traduit en message
+- Les écritures vont d'abord dans Room avec une file d'envoi (outbox), rejouée dès que le réseau
+  revient ; Supabase fait autorité sur le contenu dès qu'un compte est connecté et est mirroré dans
+  Room.
+- Les erreurs réseau et Supabase remontent sous forme de `Resource` structuré, traduit en message
   côté UI.
 
 ## Installation
 
 **Prérequis** : Android Studio avec JDK 17+, un appareil ou émulateur en API 24 ou plus, une clé API
 [RAWG](https://rawg.io/apidocs), une application [Twitch Developer](https://dev.twitch.tv/console/apps)
-(authentification IGDB), un projet [Firebase](https://console.firebase.google.com/) avec Firestore
-et Google Sign-In activés.
+(authentification IGDB), un projet [Supabase](https://supabase.com/) avec le
+fournisseur Google activé.
 
 1. **Cloner** : `git clone https://github.com/Cklla/Cartouche`
 2. **Clés API** : dans `local.properties` (ignoré par git) :
@@ -86,15 +87,18 @@ et Google Sign-In activés.
    RAWG_API_KEY=votre_clé_rawg
    IGDB_CLIENT_ID=votre_client_id_twitch
    IGDB_CLIENT_SECRET=votre_client_secret_twitch
+   SUPABASE_URL=https://votre-projet.supabase.co
+   SUPABASE_PUBLISHABLE_KEY=sb_publishable_...
+   GOOGLE_WEB_CLIENT_ID=identifiant_client_web_google
    ```
-3. **Firebase** : créer une application Android `fr.cklla.cartouche`, activer Firestore et le
-   fournisseur Google d'Authentication, déclarer le SHA-1 du keystore de debug
-   (`./gradlew signingReport`), puis placer `google-services.json` dans `app/` (ignoré par git).
-4. **App Check** : enregistrer l'app avec **Play Integrity**. En debug, le jeton affiché dans logcat
-   se déclare dans *App Check → l'app → ⋮ → Gérer les jetons de débogage*.
-5. **Règles Firestore** : copier `firestore.rules` dans *Firestore Database → Règles* et publier.
-   Chaque utilisateur n'accède qu'à ses données, et la forme de chaque document est validée.
-6. **Lancer** : `./gradlew assembleDebug`, ou Run ▶ dans Android Studio.
+3. **Supabase** : appliquer `supabase/migrations/` dans l'éditeur SQL du tableau de bord. La migration
+   crée le schéma `cartouche` et la table `game` (isolation par compte via RLS, contraintes sur
+   chaque champ, Realtime). Ajouter `cartouche` aux schémas exposés de la Data API. Le projet peut
+   être partagé avec une autre application : les tables de Cartouche vivent dans leur propre schéma.
+4. **Google Cloud** : un client OAuth *Web* (celui déclaré dans le fournisseur Google de Supabase,
+   et dont l'identifiant va dans `GOOGLE_WEB_CLIENT_ID`) et un client *Android* avec le SHA-1 du
+   keystore (`./gradlew signingReport`).
+5. **Lancer** : `./gradlew assembleDebug`, ou Run ▶ dans Android Studio.
 
 ## Tests
 
@@ -102,14 +106,14 @@ et Google Sign-In activés.
 ./gradlew testDebugUnitTest
 ```
 
-Les tests couvrent les ViewModels, les repositories (synchro Firestore ↔ Room, mapping, erreurs) et
+Les tests couvrent les ViewModels, les repositories (synchro Supabase ↔ Room, file d'envoi, mapping, erreurs) et
 la logique pure (récaps, années), avec des fakes pour rester rapides et déterministes.
 
 ## Structure du projet
 
 ```
 app/src/main/java/fr/cklla/cartouche/
-├── data/           # Room, clients distants (RAWG, IGDB, Firestore), repositories
+├── data/           # Room, clients distants (RAWG, IGDB, Supabase), repositories
 ├── di/             # Modules Hilt
 ├── domain/         # Modèles, interfaces de repository, logique pure
 ├── notification/   # Notification locale du récap annuel
@@ -120,7 +124,7 @@ app/src/main/java/fr/cklla/cartouche/
 
 - **RAWG pour la recherche, IGDB en complément** : RAWG est simple (clé API, pas d'OAuth) ; IGDB est
   plus fiable pour le temps de jeu estimé et la plateforme.
-- **UUID pour `Game.id`** : le même identifiant côté Room et Firestore, sans table de correspondance.
+- **UUID pour `Game.id`** : le même identifiant côté Room et Supabase, sans table de correspondance.
 - **Connexion Google obligatoire** : un utilisateur = un espace de données, sans mot de passe dédié.
 - **Notification locale, sans FCM** : un job WorkManager décide d'après la date de l'appareil.
 - **Statistiques et récaps calculés en direct** à partir des données déjà stockées, par des

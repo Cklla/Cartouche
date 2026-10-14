@@ -8,9 +8,9 @@ import kotlinx.coroutines.flow.Flow
  * Point d'accès unique aux données du backlog pour les ViewModels.
  *
  * Le ViewModel ne connaît que cette interface : il ignore si les jeux
- * viennent de Room, de Firestore ou d'un cache mémoire. L'implémentation
+ * viennent de Room, du serveur ou d'un cache mémoire. L'implémentation
  * (voir `data.repository.GameRepositoryImpl`) orchestre Room (lecture/écriture
- * hors-ligne) et Firestore (synchro multi-appareils).
+ * hors-ligne) et Supabase (synchro multi-appareils).
  */
 interface GameRepository {
 
