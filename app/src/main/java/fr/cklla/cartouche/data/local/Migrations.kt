@@ -237,3 +237,19 @@ val MIGRATION_8_9 = object : Migration(8, 9) {
         connection.execSQL("ALTER TABLE `games` ADD COLUMN `igdbLookupAttempted` INTEGER NOT NULL DEFAULT 0")
     }
 }
+
+/**
+ * Ajoute `pending_operation`, la file des écritures pas encore envoyées au serveur (voir
+ * `PendingOperationEntity`). Nouvelle table sans lien avec `games` : migration purement additive,
+ * aucune donnée existante n'est touchée, et la file démarre vide.
+ */
+val MIGRATION_9_10 = object : Migration(9, 10) {
+    override fun migrate(connection: SQLiteConnection) {
+        connection.execSQL(
+            "CREATE TABLE IF NOT EXISTS `pending_operation` (" +
+                "`seq` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+                "`kind` TEXT NOT NULL, " +
+                "`gameId` TEXT NOT NULL)",
+        )
+    }
+}

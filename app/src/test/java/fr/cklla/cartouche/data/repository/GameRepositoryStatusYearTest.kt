@@ -2,7 +2,7 @@ package fr.cklla.cartouche.data.repository
 
 import fr.cklla.cartouche.data.local.GameDao
 import fr.cklla.cartouche.data.local.entity.GameEntity
-import fr.cklla.cartouche.data.remote.firestore.FakeFirestoreGameDataSource
+import fr.cklla.cartouche.data.remote.FakeRemoteGameDataSource
 import fr.cklla.cartouche.domain.model.Game
 import fr.cklla.cartouche.domain.model.GameStatus
 import fr.cklla.cartouche.domain.model.Resource
@@ -10,12 +10,10 @@ import fr.cklla.cartouche.domain.repository.GameRepository
 import fr.cklla.cartouche.ui.abandonedYear
 import fr.cklla.cartouche.ui.completedYear
 import java.time.LocalDate
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.yield
 import org.junit.Assert.assertEquals
@@ -37,7 +35,7 @@ import org.junit.Test
 class GameRepositoryStatusYearTest {
 
     private lateinit var dao: FakeGameDao
-    private lateinit var firestoreDataSource: FakeFirestoreGameDataSource
+    private lateinit var remote: FakeRemoteGameDataSource
     private lateinit var authRepository: FakeAuthRepository
     private lateinit var repository: GameRepository
 
@@ -51,12 +49,7 @@ class GameRepositoryStatusYearTest {
     )
 
     private fun buildRepository(gameDao: GameDao = dao) {
-        repository = GameRepositoryImpl(
-            gameDao = gameDao,
-            firestoreDataSource = firestoreDataSource,
-            authRepository = authRepository,
-            repositoryScope = CoroutineScope(UnconfinedTestDispatcher()),
-        )
+        repository = fakeGameRepository(gameDao, remote, authRepository)
     }
 
     private suspend fun seed(game: Game) = dao.insert(game.toEntity())
@@ -66,7 +59,7 @@ class GameRepositoryStatusYearTest {
     @Before
     fun setUp() {
         dao = FakeGameDao()
-        firestoreDataSource = FakeFirestoreGameDataSource()
+        remote = FakeRemoteGameDataSource()
         authRepository = FakeAuthRepository()
         buildRepository()
     }
@@ -112,7 +105,7 @@ class GameRepositoryStatusYearTest {
             assertTrue(result is Resource.Success)
             assertEquals(hades.copy(status = status), stored())
         }
-        assertTrue(firestoreDataSource.upsertedGames.isEmpty())
+        assertTrue(remote.upsertedGames.isEmpty())
     }
 
     @Test
@@ -124,7 +117,7 @@ class GameRepositoryStatusYearTest {
 
         assertEquals(listOf("hades"), repository.observeGames().first().map { it.id })
         assertNull(stored().completedAt)
-        assertTrue(firestoreDataSource.upsertedGames.isEmpty())
+        assertTrue(remote.upsertedGames.isEmpty())
     }
 
     @Test
@@ -135,7 +128,7 @@ class GameRepositoryStatusYearTest {
         repository.setStatusYear("hades", 2019)
 
         assertNull(stored().completedAt)
-        assertTrue(firestoreDataSource.upsertedGames.isEmpty())
+        assertTrue(remote.upsertedGames.isEmpty())
     }
 
     @Test
@@ -143,12 +136,12 @@ class GameRepositoryStatusYearTest {
         seed(hades.copy(completedAt = null))
         repository.setStatusYear("hades", 2024)
         val firstTimestamp = stored().completedAt
-        val pushesAfterFirst = firestoreDataSource.upsertedGames.size
+        val pushesAfterFirst = remote.upsertedGames.size
 
         repository.setStatusYear("hades", 2024)
 
         assertEquals(firstTimestamp, stored().completedAt)
-        assertEquals(pushesAfterFirst, firestoreDataSource.upsertedGames.size)
+        assertEquals(pushesAfterFirst, remote.upsertedGames.size)
     }
 
     @Test
@@ -209,20 +202,20 @@ class GameRepositoryStatusYearTest {
     }
 
     @Test
-    fun `l annee choisie est poussee vers Firestore`() = runTest {
+    fun `l annee choisie est envoyee au serveur`() = runTest {
         seed(hades.copy(completedAt = null))
 
         repository.setStatusYear("hades", 2024)
 
-        val pushed = firestoreDataSource.upsertedGames.last()
+        val pushed = remote.upsertedGames.last()
         assertEquals("hades", pushed.id)
         assertEquals(2024, completedYear(pushed))
     }
 
     @Test
-    fun `un echec Firestore n annule pas l ecriture locale`() = runTest {
+    fun `un serveur injoignable n annule pas l ecriture locale`() = runTest {
         seed(hades.copy(completedAt = null))
-        firestoreDataSource.shouldThrowOnWrite = true
+        remote.offline = true
 
         val result = repository.setStatusYear("hades", 2024)
 

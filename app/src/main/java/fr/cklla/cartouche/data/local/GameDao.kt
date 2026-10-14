@@ -34,6 +34,10 @@ interface GameDao {
     @Query("DELETE FROM games WHERE id = :id")
     suspend fun deleteById(id: String)
 
+    // Lecture ponctuelle de toutes les lignes : sert à la synchro (miroir du serveur, envoi initial).
+    @Query("SELECT * FROM games")
+    suspend fun getAllOnce(): List<GameEntity>
+
     @Query("SELECT id FROM games")
     suspend fun getAllIds(): List<String>
 
