@@ -8,6 +8,9 @@ import fr.cklla.cartouche.domain.model.Game
 import fr.cklla.cartouche.domain.model.GameSearchResult
 import fr.cklla.cartouche.domain.model.GameStatus
 import fr.cklla.cartouche.domain.model.IgdbGameMatch
+import fr.cklla.cartouche.domain.model.MAX_HOURS
+import fr.cklla.cartouche.domain.model.MAX_NOTES_LENGTH
+import fr.cklla.cartouche.domain.model.MAX_PLAYED_PLATFORMS
 import fr.cklla.cartouche.domain.model.Resource
 import fr.cklla.cartouche.domain.model.realignPlayedPlatformsOrNull
 import fr.cklla.cartouche.domain.model.toGame
@@ -178,21 +181,28 @@ class DetailViewModel @Inject constructor(
     // choisir une nouvelle.
     fun onRatingSelected(rating: Int?) = applyEdit { it.copy(rating = rating) }
 
-    fun onHoursIncrement() = applyEdit { it.copy(userPlaytimeHours = it.userPlaytimeHours + 1) }
+    fun onHoursIncrement() =
+        applyEdit { it.copy(userPlaytimeHours = (it.userPlaytimeHours + 1).coerceAtMost(MAX_HOURS)) }
 
     fun onHoursDecrement() =
         applyEdit { it.copy(userPlaytimeHours = (it.userPlaytimeHours - 1).coerceAtLeast(0)) }
 
     // Saisie manuelle (voir `HoursValueField`) : permet de renseigner directement un temps de jeu
     // élevé sans passer par des dizaines de clics sur le bouton "+" (ex. 380h sur un JRPG).
-    fun onHoursSet(hours: Int) = applyEdit { it.copy(userPlaytimeHours = hours.coerceAtLeast(0)) }
+    fun onHoursSet(hours: Int) = applyEdit { it.copy(userPlaytimeHours = hours.coerceIn(0, MAX_HOURS)) }
 
-    fun onNotesChanged(notes: String) = applyEdit { it.copy(notes = notes) }
+    // Les notes sont bornées à la saisie (limite du serveur) : un texte plus long est coupé ici, sous les
+    // yeux de l'utilisateur, plutôt qu'au moment de l'envoi où la fin disparaîtrait sans qu'il le voie.
+    fun onNotesChanged(notes: String) = applyEdit { it.copy(notes = notes.take(MAX_NOTES_LENGTH)) }
 
     // Cases à cocher "joué sur" (voir `PlayedPlatformsSection`) : plusieurs plateformes peuvent
     // être cochées à la fois (jeu fait pour partie sur PC, pour partie sur PS5 par exemple).
     fun onPlayedPlatformToggled(platform: String) = applyEdit {
-        val updated = if (platform in it.playedPlatforms) it.playedPlatforms - platform else it.playedPlatforms + platform
+        val updated = when {
+            platform in it.playedPlatforms -> it.playedPlatforms - platform
+            it.playedPlatforms.size >= MAX_PLAYED_PLATFORMS -> it.playedPlatforms
+            else -> it.playedPlatforms + platform
+        }
         it.copy(playedPlatforms = updated)
     }
 

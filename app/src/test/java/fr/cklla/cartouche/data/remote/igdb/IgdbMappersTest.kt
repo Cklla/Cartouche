@@ -4,6 +4,7 @@ import fr.cklla.cartouche.data.remote.igdb.dto.IgdbGameDto
 import fr.cklla.cartouche.data.remote.igdb.dto.IgdbPlatformDto
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class IgdbMappersTest {
@@ -193,6 +194,22 @@ class IgdbMappersTest {
     @Test
     fun `toEstimatedHours traite une duree a zero comme non disponible`() {
         assertNull(toEstimatedHours(0))
+    }
+
+    @Test
+    fun `toEstimatedHours ecarte une duree au-dela de la borne du serveur`() {
+        assertEquals(100_000, toEstimatedHours(100_000 * 3600))
+        assertNull(toEstimatedHours(2_000_000_000))
+    }
+
+    @Test
+    fun `formatIgdbPlatforms reste dans la borne du serveur`() {
+        val platforms = List(40) { IgdbPlatformDto(name = "Plateforme-$it") }
+
+        val joined = formatIgdbPlatforms(platforms)!!
+
+        assertTrue(joined.length <= 200)
+        assertTrue(joined.split("/").all { name -> platforms.any { it.name == name } })
     }
 
     @Test

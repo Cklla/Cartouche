@@ -2,6 +2,8 @@ package fr.cklla.cartouche.data.remote.supabase
 
 import fr.cklla.cartouche.domain.model.Game
 import fr.cklla.cartouche.domain.model.GameStatus
+import fr.cklla.cartouche.domain.model.MAX_NOTES_LENGTH
+import fr.cklla.cartouche.domain.model.MAX_PLATFORM_LENGTH
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
@@ -139,6 +141,22 @@ class SupabaseRowsTest {
     fun `une jaquette qui n'est pas en https est ecartee`() {
         assertNull(game.toRow().copy(coverUrl = "http://exemple.fr/a.jpg").toGameOrNull()?.coverUrl)
         assertNull(game.toRow().copy(coverUrl = "file:///etc/passwd").toGameOrNull()?.coverUrl)
+    }
+
+    @Test
+    fun `une valeur hors borne est ramenee dans la borne avant l'envoi`() {
+        // Ces trois cas sont refusés par un CHECK du serveur (23514), ce qui ferait supprimer le jeu.
+        val oversized = game.copy(
+            notes = "n".repeat(MAX_NOTES_LENGTH + 10),
+            platform = List(40) { "Plateforme-$it" }.joinToString("/"),
+            releaseYear = 1949,
+        )
+
+        val row = oversized.toRow()
+
+        assertEquals(MAX_NOTES_LENGTH, row.notes.length)
+        assertTrue(row.platform.length <= MAX_PLATFORM_LENGTH)
+        assertNull(row.releaseYear)
     }
 
     // --- pagination ---
