@@ -12,6 +12,9 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
@@ -35,6 +38,7 @@ import fr.cklla.cartouche.notification.EXTRA_RECAP_NOTIFICATION_YEAR
 import fr.cklla.cartouche.ui.AppTab
 import fr.cklla.cartouche.ui.bibliotheque.BibliothequeScreen
 import fr.cklla.cartouche.ui.components.BottomNavBar
+import fr.cklla.cartouche.domain.model.AuthState
 import fr.cklla.cartouche.ui.detail.DetailScreen
 import fr.cklla.cartouche.ui.login.AuthGateViewModel
 import fr.cklla.cartouche.ui.login.LoginScreen
@@ -97,19 +101,27 @@ private fun Intent.recapNotificationYear(): Int? =
 //
 // Connexion Google obligatoire au lancement : tant que personne n'est connecté, on affiche `LoginScreen` à la
 // place du `NavHost` — pas une destination de plus dans le graphe de navigation, un vrai "portail"
-// en dehors de la pile. Dès que `AuthRepository.currentUser` devient non-null (connexion réussie),
-// la recomposition bascule automatiquement sur le NavHost normal, qui démarre toujours sur la
-// Bibliothèque.
+// en dehors de la pile. Le temps que la session enregistrée se charge, rien n'est affiché : ni écran
+// de connexion (l'utilisateur est peut-être déjà connecté), ni application. Dès que
+// `AuthRepository.authState` devient `SignedIn` (connexion réussie), la recomposition bascule
+// automatiquement sur le NavHost normal, qui démarre toujours sur la Bibliothèque.
 @Composable
 fun CartoucheApp(
     authGateViewModel: AuthGateViewModel = hiltViewModel(),
     pendingRecapYear: Int? = null,
     onPendingRecapYearConsumed: () -> Unit = {},
 ) {
-    val currentUser by authGateViewModel.currentUser.collectAsStateWithLifecycle()
-    if (currentUser == null) {
-        LoginScreen()
-        return
+    val authState by authGateViewModel.authState.collectAsStateWithLifecycle()
+    when (authState) {
+        AuthState.Initializing -> {
+            Box(Modifier.fillMaxSize().background(BackgroundDark))
+            return
+        }
+        AuthState.SignedOut -> {
+            LoginScreen()
+            return
+        }
+        is AuthState.SignedIn -> Unit
     }
 
     // Point d'entrée le plus proche d'un "onboarding" existant dans cette app (pas d'écran

@@ -4,6 +4,7 @@ import java.util.Properties
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.ksp)
     alias(libs.plugins.hilt)
     alias(libs.plugins.androidx.room)
@@ -64,6 +65,26 @@ android {
             "IGDB_CLIENT_SECRET",
             "\"${localProperties.getProperty("IGDB_CLIENT_SECRET", "")}\"",
         )
+        // Configuration Supabase, injectée comme la clé RAWG : jamais dans le code source. La clé
+        // publishable est publique par conception (la sécurité repose sur le RLS), mais reste
+        // propre à ce projet Supabase ; l'identifiant client Web est celui déclaré côté Supabase
+        // pour la connexion par jeton Google (il remplace `default_web_client_id`, que générait
+        // le plugin google-services).
+        buildConfigField(
+            "String",
+            "SUPABASE_URL",
+            "\"${localProperties.getProperty("SUPABASE_URL", "")}\"",
+        )
+        buildConfigField(
+            "String",
+            "SUPABASE_PUBLISHABLE_KEY",
+            "\"${localProperties.getProperty("SUPABASE_PUBLISHABLE_KEY", "")}\"",
+        )
+        buildConfigField(
+            "String",
+            "GOOGLE_WEB_CLIENT_ID",
+            "\"${localProperties.getProperty("GOOGLE_WEB_CLIENT_ID", "")}\"",
+        )
     }
 
     signingConfigs {
@@ -107,6 +128,28 @@ android {
     buildFeatures {
         compose = true
         buildConfig = true
+    }
+}
+
+// Un build de release signé est un build publiable : sans ces valeurs, il s'installerait mais ne
+// pourrait ni se connecter ni rien synchroniser. Le build non signé (CI) reste possible sans elles.
+// Toute tâche de la variante release dépend de `preReleaseBuild` : avec keystore.properties
+// présent, `test` ou `check` exigent donc aussi ces valeurs.
+if (keystoreProperties.isNotEmpty()) {
+    val missing = listOf(
+        "RAWG_API_KEY",
+        "IGDB_CLIENT_ID",
+        "IGDB_CLIENT_SECRET",
+        "SUPABASE_URL",
+        "SUPABASE_PUBLISHABLE_KEY",
+        "GOOGLE_WEB_CLIENT_ID",
+    ).filter { localProperties.getProperty(it).isNullOrBlank() }
+    if (missing.isNotEmpty()) {
+        tasks.matching { it.name == "preReleaseBuild" }.configureEach {
+            doFirst {
+                throw GradleException("Valeurs absentes de local.properties pour un build signé : ${missing.joinToString()}")
+            }
+        }
     }
 }
 
@@ -176,6 +219,20 @@ dependencies {
     // Le fournisseur Play Integrity ne peut rien attester sur un émulateur ou un build local :
     // en debug, App Check s'appuie sur un jeton à déclarer dans la console Firebase.
     debugImplementation(libs.firebase.appcheck.debug)
+
+    // Stockage chiffré de la session Supabase : les jetons d'accès et de renouvellement donnent
+    // accès au backlog du compte, ils ne doivent pas rester en clair dans les préférences.
+    implementation(libs.androidx.security.crypto)
+
+    // Supabase : authentification (connexion par jeton Google), puis données et Realtime à
+    // l'étape suivante. Le moteur HTTP OkHttp est celui qu'utilise déjà le reste de l'app ; sans
+    // lui, Ktor n'aurait aucun moteur sur Android.
+    implementation(platform(libs.supabase.bom))
+    implementation(libs.supabase.auth)
+    implementation(libs.supabase.postgrest)
+    implementation(libs.supabase.realtime)
+    implementation(libs.kotlinx.serialization.json)
+    implementation(libs.ktor.client.okhttp)
 
     // Connexion Google (Credential Manager)
     implementation(libs.androidx.credentials)

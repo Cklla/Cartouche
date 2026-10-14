@@ -18,7 +18,7 @@ data class LoginUiState(
 )
 
 /**
- * Ne s'occupe que de déclencher la connexion : une fois réussie, `AuthRepository.currentUser`
+ * Ne s'occupe que de déclencher la connexion : une fois réussie, `AuthRepository.authState`
  * (observé par `CartoucheApp`) bascule automatiquement l'app hors de cet écran — pas besoin de
  * naviguer explicitement d'ici.
  */
