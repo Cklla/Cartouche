@@ -76,11 +76,13 @@ create policy "jeux : suppression de ses lignes" on cartouche.game
 -- Droits d'accès aux rôles de l'API. Le RLS filtre les lignes, mais sans ces droits le rôle
 -- `authenticated` est refusé avant même d'arriver aux politiques (SQLSTATE 42501) : un projet
 -- Supabase récent n'accorde rien automatiquement, ni sur le schéma ni sur les tables.
+--
+-- On repart de zéro avant d'accorder : si le projet avait tout de même des privilèges par
+-- défaut, `authenticated` hériterait aussi de `truncate` (qui ignore le RLS), `references` et
+-- `trigger`, et `anon` d'un accès. Aucun accès sans compte connecté.
+revoke all on cartouche.game from anon, authenticated;
 grant usage on schema cartouche to authenticated;
 grant select, insert, update, delete on cartouche.game to authenticated;
-
--- Aucun accès sans compte connecté.
-revoke all on cartouche.game from anon;
 
 -- Realtime sert de simple signal « quelque chose a changé » : l'application refait ensuite un
 -- chargement complet. Les suppressions ne sont pas filtrées par le RLS côté Realtime, mais ne
