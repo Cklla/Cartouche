@@ -6,7 +6,12 @@ import fr.cklla.cartouche.data.remote.dto.RawgPlatformDto
 import fr.cklla.cartouche.data.remote.dto.RawgPlatformWrapperDto
 import fr.cklla.cartouche.data.remote.dto.RawgStoreLinkDto
 import org.junit.Assert.assertEquals
+import fr.cklla.cartouche.domain.model.MAX_GENRE_LENGTH
+import fr.cklla.cartouche.domain.model.MAX_PLATFORM_LENGTH
+import fr.cklla.cartouche.domain.model.MAX_TITLE_LENGTH
+import fr.cklla.cartouche.domain.model.toGame
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class RawgMappersTest {
@@ -34,6 +39,42 @@ class RawgMappersTest {
     fun `formatPlatforms renvoie une chaine vide sans plateforme connue`() {
         assertEquals("", formatPlatforms(null))
         assertEquals("", formatPlatforms(emptyList()))
+    }
+
+    @Test
+    fun `formatPlatforms reste dans la borne du serveur sans couper un nom de plateforme`() {
+        val names = List(40) { "Plateforme-$it" }
+        val platforms = names.mapIndexed { i, n -> RawgPlatformWrapperDto(RawgPlatformDto(id = i.toLong(), name = n)) }
+
+        val joined = formatPlatforms(platforms)
+
+        assertTrue(joined.length <= MAX_PLATFORM_LENGTH)
+        assertTrue(joined.split("/").all { it in names })
+    }
+
+    @Test
+    fun `un titre ou un genre trop longs sont coupes a la borne du serveur`() {
+        val dto = RawgGameDto(
+            id = 1,
+            name = "t".repeat(MAX_TITLE_LENGTH + 50),
+            genres = listOf(RawgGenreDto(id = 1, name = "g".repeat(MAX_GENRE_LENGTH + 50))),
+        )
+
+        val result = dto.toDomain()
+
+        assertEquals(MAX_TITLE_LENGTH, result.title.length)
+        assertEquals(MAX_GENRE_LENGTH, result.genre.length)
+    }
+
+    @Test
+    fun `une annee de sortie anterieure a 1950 n'est pas retenue pour le jeu ajoute`() {
+        val result = RawgGameDto(id = 1, name = "Spacewar!", released = "1962-04-01").toDomain()
+        assertEquals("1962", result.year)
+
+        val old = result.copy(year = "1949")
+        assertNull(old.toGame().releaseYear)
+        assertEquals(1962, result.toGame().releaseYear)
+        assertNull(result.copy(year = "").toGame().releaseYear)
     }
 
     @Test

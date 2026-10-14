@@ -2,6 +2,8 @@ package fr.cklla.cartouche.data.remote.igdb
 
 import fr.cklla.cartouche.data.remote.igdb.dto.IgdbGameDto
 import fr.cklla.cartouche.data.remote.igdb.dto.IgdbPlatformDto
+import fr.cklla.cartouche.domain.model.hoursOrNull
+import fr.cklla.cartouche.domain.model.joinPlatformsWithinLimit
 import java.time.Instant
 import java.time.ZoneOffset
 import java.util.Locale
@@ -176,7 +178,7 @@ private fun levenshteinDistance(a: String, b: String): Int {
  * pour signifier l'absence de donnée : les deux cas sont traités comme "non disponible", jamais
  * comme "0h".
  */
-fun toEstimatedHours(seconds: Int?): Int? = seconds?.takeIf { it > 0 }?.let { it / 3600 }
+fun toEstimatedHours(seconds: Int?): Int? = hoursOrNull(seconds?.takeIf { it > 0 }?.let { it / 3600 })
 
 /**
  * Reformate les plateformes IGDB d'un jeu identifié au même format d'affichage que `Game.platform`
@@ -198,7 +200,7 @@ fun formatIgdbPlatforms(platforms: List<IgdbPlatformDto>?): String? =
         .distinct()
         .sorted()
         .takeIf { it.isNotEmpty() }
-        ?.joinToString("/")
+        ?.let(::joinPlatformsWithinLimit)
 
 /** Noms IGDB (en minuscules) désignant un système d'exploitation de la famille PC. */
 private val PC_FAMILY_PLATFORM_NAMES = setOf(

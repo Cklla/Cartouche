@@ -2,6 +2,7 @@ package fr.cklla.cartouche.data.remote.supabase
 
 import fr.cklla.cartouche.domain.model.Game
 import fr.cklla.cartouche.domain.model.GameStatus
+import fr.cklla.cartouche.domain.model.withinServerLimits
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
@@ -37,7 +38,14 @@ internal data class GameRow(
     @SerialName("igdb_lookup_attempted") val igdbLookupAttempted: Boolean,
 )
 
-internal fun Game.toRow() = GameRow(
+/**
+ * Le jeu est d'abord ramené dans les bornes du serveur ([withinServerLimits]) : une valeur hors borne
+ * ferait refuser l'écriture (classe 23, définitif), donc supprimer le jeu local au miroir suivant.
+ * C'est ce point, et non l'écriture dans Room, qui protège aussi les lignes déjà présentes en local.
+ */
+internal fun Game.toRow() = withinServerLimits().toRowUnchecked()
+
+private fun Game.toRowUnchecked() = GameRow(
     id = id,
     title = title,
     platform = platform,
