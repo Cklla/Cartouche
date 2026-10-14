@@ -232,6 +232,20 @@ select pg_temp.connecte_comme('aaaaaaaa-0000-0000-0000-000000000001');
 select pg_temp.refuse('insert into public.temoin values (1)', 'écriture dans public', '42501');
 commit;
 
+-- Droits exacts sur la table, quels que soient les privilèges par défaut du projet : les quatre
+-- opérations de l'API pour `authenticated` (ni `truncate`, ni `references`, ni `trigger`), rien
+-- pour `anon` ni pour tout le monde.
+do $$ begin
+    assert (select string_agg(privilege_type, ',' order by privilege_type)
+            from information_schema.table_privileges
+            where table_schema = 'cartouche' and table_name = 'game' and grantee = 'authenticated')
+        = 'DELETE,INSERT,SELECT,UPDATE', 'droits de authenticated sur cartouche.game non minimaux';
+    assert not exists (select 1 from information_schema.table_privileges
+                       where table_schema = 'cartouche' and table_name = 'game'
+                         and grantee in ('anon', 'PUBLIC')),
+        'anon ou PUBLIC a un droit sur cartouche.game';
+end $$;
+
 -- Realtime : seule `cartouche.game` rejoint la publication.
 do $$ begin
     assert (select count(*) from pg_publication_tables where pubname = 'supabase_realtime') = 1,

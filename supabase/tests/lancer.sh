@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
-# Rejoue les migrations puis les tests d'isolation sur un Postgres jetable (Docker).
+# Rejoue les migrations puis les tests d'isolation sur un Postgres jetable (Docker), en deux
+# passes : sans aucun droit par défaut (un GRANT oublié fait échouer les tests), puis avec tous
+# les droits par défaut (un droit en trop non retiré fait échouer les tests).
 # Usage : supabase/tests/lancer.sh
 #
 # MIGRATIONS_DIR (facultatif) : dossier de migrations à rejouer à la place de
@@ -21,10 +23,6 @@ if sed 's/--.*$//' "$migrations_dir"/*.sql \
     exit 1
 fi
 
-docker run -d --name "$conteneur" -e POSTGRES_PASSWORD=test postgres:18 >/dev/null
-until docker exec "$conteneur" pg_isready -U postgres >/dev/null 2>&1; do sleep 1; done
-sleep 2
-
 executer() {
     docker exec -i "$conteneur" psql -U postgres -v ON_ERROR_STOP=1 -q <"$1"
 }
@@ -40,18 +38,35 @@ instantane() {
         "select nspname, nspacl from pg_namespace where nspname in ('public', 'auth') order by 1"
 }
 
-executer supabase/tests/00_simulation_supabase.sql
-avant="$(instantane)"
+# Une passe complète sur un conteneur neuf ; arguments : fichiers de simulation à jouer avant
+# les migrations.
+passe() {
+    docker run -d --name "$conteneur" -e POSTGRES_PASSWORD=test postgres:18 >/dev/null
+    until docker exec "$conteneur" pg_isready -U postgres >/dev/null 2>&1; do sleep 1; done
+    sleep 2
 
-for migration in "$migrations_dir"/*.sql; do
-    executer "$migration"
-done
+    for simulation in "$@"; do
+        executer "$simulation"
+    done
+    local avant apres
+    avant="$(instantane)"
 
-apres="$(instantane)"
-if [ "$avant" != "$apres" ]; then
-    echo "Les migrations ont modifié le schéma public ou auth :" >&2
-    diff <(echo "$avant") <(echo "$apres") >&2 || true
-    exit 1
-fi
+    for migration in "$migrations_dir"/*.sql; do
+        executer "$migration"
+    done
 
-executer supabase/tests/rls.sql
+    apres="$(instantane)"
+    if [ "$avant" != "$apres" ]; then
+        echo "Les migrations ont modifié le schéma public ou auth :" >&2
+        diff <(echo "$avant") <(echo "$apres") >&2 || true
+        exit 1
+    fi
+
+    executer supabase/tests/rls.sql
+    docker rm -f "$conteneur" >/dev/null
+}
+
+echo "Passe 1 : aucun droit par défaut"
+passe supabase/tests/00_simulation_supabase.sql
+echo "Passe 2 : tous les droits par défaut"
+passe supabase/tests/00_simulation_supabase.sql supabase/tests/01_droits_par_defaut.sql
