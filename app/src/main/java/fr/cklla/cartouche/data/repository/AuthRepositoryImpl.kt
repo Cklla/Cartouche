@@ -18,7 +18,9 @@ import fr.cklla.cartouche.domain.model.Resource
 import fr.cklla.cartouche.domain.repository.AuthRepository
 import java.security.SecureRandom
 import javax.inject.Inject
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.tasks.await
 
 private fun FirebaseUser.toAuthUser() = AuthUser(uid = uid, displayName = displayName)
@@ -33,6 +35,12 @@ class AuthRepositoryImpl @Inject constructor(
 ) : AuthRepository {
 
     override val currentUser = MutableStateFlow(firebaseAuth.currentUser?.toAuthUser())
+
+    // `extraBufferCapacity = 1` : l'émission ne suspend jamais, même si le collecteur (la purge du
+    // GameRepository) est encore occupé. Sans abonné, le signal est simplement perdu, ce qui est
+    // sans importance : le repository est un singleton abonné dès sa création.
+    private val _signedOut = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+    override val signedOut: SharedFlow<Unit> = _signedOut
 
     init {
         // FirebaseAuth garde l'utilisateur connecté en cache disque entre deux lancements de
@@ -73,6 +81,9 @@ class AuthRepositoryImpl @Inject constructor(
 
     override suspend fun signOut() {
         firebaseAuth.signOut()
+        // Émis dès la session fermée, avant le nettoyage de Credential Manager : la purge des
+        // données locales n'a pas à attendre une opération système qui peut échouer ou traîner.
+        _signedOut.emit(Unit)
         // Firebase oublie la session, mais le système garde de son côté la trace du compte
         // Google associé à l'app : sans ce nettoyage, la reconnexion suivante peut resélectionner
         // le compte précédent sans jamais repasser par le sélecteur. Échec sans conséquence (la
