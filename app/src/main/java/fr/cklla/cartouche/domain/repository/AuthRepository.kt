@@ -1,6 +1,7 @@
 package fr.cklla.cartouche.domain.repository
 
 import android.content.Context
+import fr.cklla.cartouche.domain.model.AuthState
 import fr.cklla.cartouche.domain.model.AuthUser
 import fr.cklla.cartouche.domain.model.Resource
 import kotlinx.coroutines.flow.SharedFlow
@@ -16,13 +17,19 @@ import kotlinx.coroutines.flow.StateFlow
  */
 interface AuthRepository {
 
-    /** Utilisateur actuellement connecté, ou `null` si personne n'est connecté. */
+    /** État de connexion, dont l'instant où la session enregistrée n'est pas encore chargée. */
+    val authState: StateFlow<AuthState>
+
+    /**
+     * Utilisateur actuellement connecté, ou `null` si personne ne l'est (ou pas encore, pendant le
+     * chargement de la session : voir [authState] pour les distinguer).
+     */
     val currentUser: StateFlow<AuthUser?>
 
     /**
      * Émet une fois par déconnexion demandée par l'utilisateur, une fois la session fermée. Seul
      * signal à partir duquel les données locales peuvent être purgées : `currentUser` vaut aussi
-     * `null` avant que la session enregistrée soit connue, ce qui ne doit rien effacer.
+     * `null` avant le chargement de la session au lancement, ce qui ne doit rien effacer.
      */
     val signedOut: SharedFlow<Unit>
 
