@@ -32,6 +32,12 @@ keystore.properties
 google-services.json
 play-store-key.json
 
+# Scripts Python : bytecode, clés de compte de service, sauvegardes (données personnelles)
+__pycache__/
+*.pyc
+sauvegarde*.sql
+scripts/**/*.json
+
 # Android Profiling
 *.hprof
 
