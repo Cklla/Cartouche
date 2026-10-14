@@ -8,9 +8,6 @@ plugins {
     alias(libs.plugins.ksp)
     alias(libs.plugins.hilt)
     alias(libs.plugins.androidx.room)
-    // Lit google-services.json et génère les ressources/config
-    // nécessaires aux SDK Firebase (Auth, Firestore) à la compilation.
-    alias(libs.plugins.google.services)
 }
 
 // La clé API RAWG vit uniquement dans local.properties,
@@ -68,8 +65,7 @@ android {
         // Configuration Supabase, injectée comme la clé RAWG : jamais dans le code source. La clé
         // publishable est publique par conception (la sécurité repose sur le RLS), mais reste
         // propre à ce projet Supabase ; l'identifiant client Web est celui déclaré côté Supabase
-        // pour la connexion par jeton Google (il remplace `default_web_client_id`, que générait
-        // le plugin google-services).
+        // pour la connexion par jeton Google.
         buildConfigField(
             "String",
             "SUPABASE_URL",
@@ -176,9 +172,6 @@ dependencies {
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.kotlinx.coroutines.android)
-    // Pont .await() entre les Task Google Play Services (FirebaseAuth.signInWithCredential...)
-    // et les coroutines, pour éviter les callbacks imbriqués dans AuthRepositoryImpl.
-    implementation(libs.kotlinx.coroutines.play.services)
     implementation(libs.androidx.navigation.compose)
 
     // Persistance locale (cache offline)
@@ -192,13 +185,13 @@ dependencies {
     implementation(libs.androidx.hilt.navigation.compose)
 
     // Notification locale du récap annuel : job périodique (voir RecapNotificationWorker),
-    // sans lien avec Firebase Cloud Messaging (condition purement locale, basée sur la date).
+    // sans serveur de notifications (condition purement locale, basée sur la date).
     implementation(libs.androidx.work.runtime.ktx)
     implementation(libs.androidx.hilt.work)
     ksp(libs.androidx.hilt.compiler)
 
     // Réseau : recherche de jeux via l'API RAWG (seul usage de Retrofit/Moshi,
-    // le backlog lui-même reste stocké via Room/Firestore).
+    // le backlog lui-même est stocké via Room et synchronisé avec Supabase).
     implementation(libs.retrofit.core)
     implementation(libs.retrofit.converter.moshi)
     implementation(libs.moshi.kotlin)
@@ -206,19 +199,6 @@ dependencies {
 
     // Chargement des jaquettes réelles renvoyées par RAWG
     implementation(libs.coil.compose)
-
-    // Firebase : Firestore (source de vérité distante du backlog) + Auth (identifie
-    // l'utilisateur, nécessaire aux règles de sécurité Firestore). Le BoM aligne les versions
-    // des différents modules Firebase entre eux, pas besoin de préciser de version sur chacun.
-    implementation(platform(libs.firebase.bom))
-    implementation(libs.firebase.auth)
-    implementation(libs.firebase.firestore)
-    // App Check : atteste que les appels à Firestore/Auth viennent bien de cette app installée
-    // depuis le Play Store, et pas d'un script ou d'une app reconstruite à partir du binaire.
-    implementation(libs.firebase.appcheck.playintegrity)
-    // Le fournisseur Play Integrity ne peut rien attester sur un émulateur ou un build local :
-    // en debug, App Check s'appuie sur un jeton à déclarer dans la console Firebase.
-    debugImplementation(libs.firebase.appcheck.debug)
 
     // Stockage chiffré de la session Supabase : les jetons d'accès et de renouvellement donnent
     // accès au backlog du compte, ils ne doivent pas rester en clair dans les préférences.

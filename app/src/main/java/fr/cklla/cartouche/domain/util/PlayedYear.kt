@@ -7,7 +7,7 @@ import java.time.ZonedDateTime
 /**
  * Année la plus ancienne proposée comme année de fin ou d'abandon. C'est à la fois la borne basse
  * quand l'année de sortie du jeu est inconnue et un plancher absolu : un horodatage antérieur à
- * 1970 serait négatif, et les règles Firestore bornent `completedAt` / `abandonedAt` à partir de 0.
+ * 1970 serait négatif, et le serveur borne `completedAt` / `abandonedAt` à partir de 0.
  */
 const val EARLIEST_PLAYED_YEAR = 1970
 

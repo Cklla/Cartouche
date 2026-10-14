@@ -12,7 +12,7 @@ import androidx.room.PrimaryKey
  * si l'ordre des valeurs de l'enum change un jour.
  *
  * [id] est un UUID (généré côté Repository, pas par Room) plutôt qu'un entier auto-incrémenté :
- * avec la synchro Firestore, cet id doit être stable et unique sur tous les appareils, ce qu'un
+ * avec la synchro multi-appareils, cet id doit être stable et unique sur tous les appareils, ce qu'un
  * compteur local ne garantit pas (deux téléphones généreraient tous les deux un jeu n°1).
  *
  * [playedPlatforms] réutilise le même format que [platform] (plateformes jointes par "/") plutôt
