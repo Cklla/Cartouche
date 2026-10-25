@@ -552,6 +552,7 @@ private fun FactCard(
 
 @Composable
 private fun MosaicSlide(slide: RecapSlide.Mosaic, year: Int, onGameClick: (String) -> Unit) {
+    val clock = LocalRecapEntryClock.current
     Column(modifier = Modifier.fillMaxSize()) {
         SlideHeader(
             kicker = null,
@@ -564,9 +565,12 @@ private fun MosaicSlide(slide: RecapSlide.Mosaic, year: Int, onGameClick: (Strin
             ),
         )
         // LazyVerticalGrid : seules les tuiles visibles sont composées et chargées, même avec une centaine de jeux.
+        // La grille entre d'un bloc (un seul calque) : animer chaque tuile coûterait cher avec une centaine de jaquettes.
         LazyVerticalGrid(
             columns = GridCells.Fixed(MOSAIC_COLUMNS),
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier
+                .fillMaxSize()
+                .recapEnter(clock, RecapMotion.DETAIL_DELAY, RecapMotion.DETAIL_DURATION),
             contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 16.dp),
             horizontalArrangement = Arrangement.spacedBy(6.dp),
             verticalArrangement = Arrangement.spacedBy(6.dp),
