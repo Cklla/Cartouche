@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -185,13 +186,21 @@ private fun StatusLegendRow(status: GameStatus, count: Int, clock: RecapEntryClo
 
 @Composable
 private fun SlideHeader(kicker: String?, title: String, subtitle: String? = null) {
+    val clock = LocalRecapEntryClock.current
+    // Surtitre et titre entrent ensemble ; le sous-titre, détail de la slide, un peu après.
+    val titleEnter = Modifier.recapEnter(clock, RecapMotion.TITLE_DELAY, RecapMotion.TITLE_DURATION)
     Column(modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 12.dp)) {
         if (kicker != null) {
-            Text(text = kicker, style = CartoucheTextStyles.kicker, color = AccentPurpleLight)
+            Text(text = kicker, style = CartoucheTextStyles.kicker, color = AccentPurpleLight, modifier = titleEnter)
         }
-        Text(text = title, style = CartoucheTextStyles.detailTitle, color = TextPrimary)
+        Text(text = title, style = CartoucheTextStyles.detailTitle, color = TextPrimary, modifier = titleEnter)
         if (subtitle != null) {
-            Text(text = subtitle, style = CartoucheTextStyles.detailSubtitle, color = TextTertiary)
+            Text(
+                text = subtitle,
+                style = CartoucheTextStyles.detailSubtitle,
+                color = TextTertiary,
+                modifier = Modifier.recapEnter(clock, RecapMotion.DETAIL_DELAY, RecapMotion.DETAIL_DURATION),
+            )
         }
     }
 }
@@ -200,6 +209,7 @@ private fun SlideHeader(kicker: String?, title: String, subtitle: String? = null
 
 @Composable
 private fun FavoritesSlide(slide: RecapSlide.Favorites, onGameClick: (String) -> Unit) {
+    val clock = LocalRecapEntryClock.current
     Column(modifier = Modifier.fillMaxSize()) {
         SlideHeader(
             kicker = stringResource(R.string.recap_story_favorites_kicker),
@@ -212,8 +222,13 @@ private fun FavoritesSlide(slide: RecapSlide.Favorites, onGameClick: (String) ->
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            items(items = slide.games, key = { it.id }) { game ->
-                FavoriteCell(game = game, onClick = { onGameClick(game.id) })
+            // Les jaquettes entrent en cascade : les trois premières décalées, les suivantes avec la troisième.
+            itemsIndexed(items = slide.games, key = { _, game -> game.id }) { index, game ->
+                FavoriteCell(
+                    game = game,
+                    onClick = { onGameClick(game.id) },
+                    modifier = Modifier.recapEnter(clock, RecapMotion.coverDelay(index), RecapMotion.COVER_DURATION),
+                )
             }
         }
     }
@@ -224,9 +239,9 @@ private fun FavoritesSlide(slide: RecapSlide.Favorites, onGameClick: (String) ->
  * la décrit, la cellule entière étant un seul bouton « Ouvrir la fiche ».
  */
 @Composable
-private fun FavoriteCell(game: Game, onClick: () -> Unit) {
+private fun FavoriteCell(game: Game, onClick: () -> Unit, modifier: Modifier = Modifier) {
     Column(
-        modifier = Modifier
+        modifier = modifier
             .clip(RoundedCornerShape(8.dp))
             .clickable(onClickLabel = stringResource(R.string.recap_story_open_game), onClick = onClick),
         verticalArrangement = Arrangement.spacedBy(6.dp),
