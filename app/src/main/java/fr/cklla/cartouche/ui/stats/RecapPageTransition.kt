@@ -74,5 +74,6 @@ internal fun RecapSlideBackground(
                     }
                 },
         )
+        RecapGrain(modifier = Modifier.fillMaxSize())
     }
 }
