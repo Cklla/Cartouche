@@ -284,6 +284,7 @@ private fun RatingStars(rating: Int) {
 
 @Composable
 private fun LongestSlide(slide: RecapSlide.Longest, onGameClick: (String) -> Unit) {
+    val clock = LocalRecapEntryClock.current
     Column(modifier = Modifier.fillMaxSize()) {
         SlideHeader(
             kicker = stringResource(R.string.recap_story_longest_kicker),
@@ -298,17 +299,23 @@ private fun LongestSlide(slide: RecapSlide.Longest, onGameClick: (String) -> Uni
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             slide.games.forEachIndexed { index, game ->
-                LongestRow(rank = index + 1, game = game, onClick = { onGameClick(game.id) })
+                // Recette des cartes de faits : fondu + montée de 360 ms, décalées de 80 ms.
+                LongestRow(
+                    rank = index + 1,
+                    game = game,
+                    onClick = { onGameClick(game.id) },
+                    modifier = Modifier.recapEnter(clock, RecapMotion.detailDelay(index), RecapMotion.DETAIL_DURATION),
+                )
             }
         }
     }
 }
 
 @Composable
-private fun LongestRow(rank: Int, game: Game, onClick: () -> Unit) {
+private fun LongestRow(rank: Int, game: Game, onClick: () -> Unit, modifier: Modifier = Modifier) {
     val shape = RoundedCornerShape(12.dp)
     Row(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .clip(shape)
             .background(SurfaceCard)
@@ -347,6 +354,7 @@ private fun LongestRow(rank: Int, game: Game, onClick: () -> Unit) {
 @Composable
 private fun PlatformsSlide(slide: RecapSlide.Platforms) {
     val dotColor = GameStatus.TERMINE.palette().color
+    val clock = LocalRecapEntryClock.current
     Column(modifier = Modifier.fillMaxSize()) {
         SlideHeader(
             kicker = stringResource(R.string.recap_story_platforms_kicker),
@@ -359,8 +367,15 @@ private fun PlatformsSlide(slide: RecapSlide.Platforms) {
                 .padding(start = 20.dp, end = 20.dp, bottom = 20.dp),
             verticalArrangement = Arrangement.spacedBy(18.dp),
         ) {
-            slide.counts.forEach { entry ->
-                PlatformBarRow(entry = entry, maxCount = slide.maxCount, color = dotColor)
+            // Pas d'équivalent dans la spec : les lignes entrent comme des détails, décalées de 80 ms.
+            // La barre suit sa ligne sans animation propre.
+            slide.counts.forEachIndexed { index, entry ->
+                PlatformBarRow(
+                    entry = entry,
+                    maxCount = slide.maxCount,
+                    color = dotColor,
+                    modifier = Modifier.recapEnter(clock, RecapMotion.detailDelay(index), RecapMotion.DETAIL_DURATION),
+                )
             }
         }
     }
@@ -368,9 +383,9 @@ private fun PlatformsSlide(slide: RecapSlide.Platforms) {
 
 /** Une plateforme, son nombre de jeux et une barre proportionnelle au maximum de la slide. */
 @Composable
-private fun PlatformBarRow(entry: PlatformCount, maxCount: Int, color: Color) {
+private fun PlatformBarRow(entry: PlatformCount, maxCount: Int, color: Color, modifier: Modifier = Modifier) {
     val fraction = if (maxCount > 0) entry.count.toFloat() / maxCount else 0f
-    Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+    Column(modifier = modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
@@ -415,6 +430,11 @@ private fun PlatformBarRow(entry: PlatformCount, maxCount: Int, color: Color) {
 private fun FactsSlide(slide: RecapSlide.Facts, onGameClick: (String) -> Unit) {
     val facts = slide.facts
     val locale = rememberRecapLocale()
+    val clock = LocalRecapEntryClock.current
+    // Les cartes présentes entrent l'une après l'autre, dans l'ordre d'affichage.
+    var cardRank = 0
+    fun nextCardEnter(): Modifier =
+        Modifier.recapEnter(clock, RecapMotion.detailDelay(cardRank++), RecapMotion.DETAIL_DURATION)
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -422,17 +442,39 @@ private fun FactsSlide(slide: RecapSlide.Facts, onGameClick: (String) -> Unit) {
             .padding(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 20.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Text(text = stringResource(R.string.recap_story_facts_title), style = CartoucheTextStyles.detailTitle, color = TextPrimary)
-        facts.first?.let { DatedGameFactCard(label = R.string.recap_story_fact_first, fact = it, locale = locale, onGameClick = onGameClick) }
-        facts.last?.let { DatedGameFactCard(label = R.string.recap_story_fact_last, fact = it, locale = locale, onGameClick = onGameClick) }
-        facts.busiestMonth?.let { BusiestMonthCard(busiest = it, locale = locale) }
-        facts.oldest?.let { OldestFactCard(game = it, onGameClick = onGameClick) }
+        Text(
+            text = stringResource(R.string.recap_story_facts_title),
+            style = CartoucheTextStyles.detailTitle,
+            color = TextPrimary,
+            modifier = Modifier.recapEnter(clock, RecapMotion.TITLE_DELAY, RecapMotion.TITLE_DURATION),
+        )
+        facts.first?.let {
+            DatedGameFactCard(
+                label = R.string.recap_story_fact_first, fact = it, locale = locale, onGameClick = onGameClick,
+                modifier = nextCardEnter(),
+            )
+        }
+        facts.last?.let {
+            DatedGameFactCard(
+                label = R.string.recap_story_fact_last, fact = it, locale = locale, onGameClick = onGameClick,
+                modifier = nextCardEnter(),
+            )
+        }
+        facts.busiestMonth?.let { BusiestMonthCard(busiest = it, locale = locale, modifier = nextCardEnter()) }
+        facts.oldest?.let { OldestFactCard(game = it, onGameClick = onGameClick, modifier = nextCardEnter()) }
     }
 }
 
 @Composable
-private fun DatedGameFactCard(label: Int, fact: DatedGame, locale: Locale, onGameClick: (String) -> Unit) {
+private fun DatedGameFactCard(
+    label: Int,
+    fact: DatedGame,
+    locale: Locale,
+    onGameClick: (String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
     FactCard(
+        modifier = modifier,
         label = stringResource(label),
         headline = fact.game.title,
         detail = formatRecapDate(fact.date, locale),
@@ -442,8 +484,9 @@ private fun DatedGameFactCard(label: Int, fact: DatedGame, locale: Locale, onGam
 }
 
 @Composable
-private fun OldestFactCard(game: Game, onGameClick: (String) -> Unit) {
+private fun OldestFactCard(game: Game, onGameClick: (String) -> Unit, modifier: Modifier = Modifier) {
     FactCard(
+        modifier = modifier,
         label = stringResource(R.string.recap_story_fact_oldest),
         headline = game.title,
         detail = game.releaseYear?.let { stringResource(R.string.recap_story_fact_oldest_released, it) }.orEmpty(),
@@ -453,8 +496,9 @@ private fun OldestFactCard(game: Game, onGameClick: (String) -> Unit) {
 }
 
 @Composable
-private fun BusiestMonthCard(busiest: BusiestMonth, locale: Locale) {
+private fun BusiestMonthCard(busiest: BusiestMonth, locale: Locale, modifier: Modifier = Modifier) {
     FactCard(
+        modifier = modifier,
         label = stringResource(R.string.recap_story_fact_busiest_month),
         headline = monthName(busiest.month, locale).replaceFirstChar { it.titlecase(locale) },
         detail = pluralStringResource(R.plurals.recap_story_fact_month_count, busiest.count, busiest.count),
@@ -464,11 +508,18 @@ private fun BusiestMonthCard(busiest: BusiestMonth, locale: Locale) {
 }
 
 @Composable
-private fun FactCard(label: String, headline: String, detail: String, game: Game?, onClick: (() -> Unit)?) {
+private fun FactCard(
+    label: String,
+    headline: String,
+    detail: String,
+    game: Game?,
+    onClick: (() -> Unit)?,
+    modifier: Modifier = Modifier,
+) {
     val shape = RoundedCornerShape(12.dp)
     val openLabel = stringResource(R.string.recap_story_open_game)
     Row(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .clip(shape)
             .background(SurfaceCard)
