@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -82,12 +83,19 @@ internal fun RecapSlideContent(slide: RecapSlide, year: Int, onGameClick: (Strin
 
 // --- Total ---
 
+/**
+ * Couleur du gros chiffre de la slide Total, isolée pour être rétablie d'une ligne. Avant les
+ * animations, il prenait la couleur du statut (vert si des jeux sont terminés, corail sinon) : pour
+ * y revenir, remplacer par `if (completedCount > 0) completedColor else abandonedColor` dans [TotalSlide].
+ */
+private val TotalHeroColor = TextPrimary
+
 @Composable
 private fun TotalSlide(slide: RecapSlide.Total) {
-    val completedColor = GameStatus.TERMINE.palette().color
     val abandonedColor = GameStatus.ABANDONNE.palette().color
-    // Rien de terminé (année avec seulement des abandons) : le gros chiffre prend la couleur du statut abandonné.
-    val heroColor = if (slide.completedCount > 0) completedColor else abandonedColor
+    val clock = LocalRecapEntryClock.current
+    // Entrée commune des textes secondaires de la slide (titre, heures, abandons).
+    val detailEnter = Modifier.recapEnter(clock, RecapMotion.DETAIL_DELAY, RecapMotion.DETAIL_DURATION)
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -100,13 +108,21 @@ private fun TotalSlide(slide: RecapSlide.Total) {
             text = stringResource(R.string.recap_story_total_kicker),
             style = CartoucheTextStyles.kicker,
             color = AccentPurpleLight,
+            modifier = Modifier.recapEnter(clock, RecapMotion.TITLE_DELAY, RecapMotion.TITLE_DURATION),
         )
-        Text(text = slide.completedCount.toString(), style = CartoucheTextStyles.recapHero, color = heroColor)
+        CountUpText(
+            target = slide.completedCount,
+            clock = clock,
+            style = CartoucheTextStyles.recapHero,
+            color = TotalHeroColor,
+            modifier = Modifier.recapEnter(clock, RecapMotion.KEY_FIGURE_DELAY, RecapMotion.KEY_FIGURE_DURATION),
+        )
         Text(
             text = pluralStringResource(R.plurals.recap_story_total_title, slide.completedCount, slide.year),
             style = CartoucheTextStyles.detailTitle,
             color = TextPrimary,
             textAlign = TextAlign.Center,
+            modifier = detailEnter,
         )
         Spacer(modifier = Modifier.height(20.dp))
         if (slide.totalHours > 0) {
@@ -114,6 +130,7 @@ private fun TotalSlide(slide: RecapSlide.Total) {
                 text = stringResource(R.string.recap_story_total_hours, slide.totalHours),
                 style = CartoucheTextStyles.hoursValue,
                 color = AccentPurpleLight,
+                modifier = detailEnter,
             )
         }
         if (slide.abandonedCount > 0) {
@@ -121,49 +138,27 @@ private fun TotalSlide(slide: RecapSlide.Total) {
                 text = pluralStringResource(R.plurals.recap_story_total_abandoned, slide.abandonedCount, slide.abandonedCount),
                 style = CartoucheTextStyles.legendLabel,
                 color = abandonedColor,
+                modifier = detailEnter,
             )
         }
         // La répartition n'a de sens que s'il y a les deux statuts.
         if (slide.completedCount > 0 && slide.abandonedCount > 0) {
             Spacer(modifier = Modifier.height(32.dp))
-            StatusSplit(slide = slide)
+            StatusRing(completedCount = slide.completedCount, abandonedCount = slide.abandonedCount, clock = clock)
+            Spacer(modifier = Modifier.height(24.dp))
+            Column(modifier = detailEnter, verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                listOf(
+                    GameStatus.TERMINE to slide.completedCount,
+                    GameStatus.ABANDONNE to slide.abandonedCount,
+                ).forEach { (status, count) -> StatusLegendRow(status = status, count = count, clock = clock) }
+            }
         }
     }
 }
 
-/** Barre proportionnelle Terminé / Abandonné et sa légende, aux couleurs de [GameStatus.palette]. */
+/** Ligne de légende de l'anneau : pastille, libellé du statut et effectif seul, qui compte de 0 à sa valeur. */
 @Composable
-private fun StatusSplit(slide: RecapSlide.Total) {
-    val segments = listOf(
-        GameStatus.TERMINE to slide.completedCount,
-        GameStatus.ABANDONNE to slide.abandonedCount,
-    )
-    // Décorative : la légende juste dessous porte les mêmes chiffres en texte.
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(10.dp)
-            .clip(RoundedCornerShape(5.dp))
-            .clearAndSetSemantics {},
-        horizontalArrangement = Arrangement.spacedBy(2.dp),
-    ) {
-        segments.forEach { (status, count) ->
-            Box(
-                modifier = Modifier
-                    .weight(count.toFloat())
-                    .fillMaxSize()
-                    .background(status.palette().color),
-            )
-        }
-    }
-    Spacer(modifier = Modifier.height(20.dp))
-    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        segments.forEach { (status, count) -> StatusLegendRow(status = status, count = count) }
-    }
-}
-
-@Composable
-private fun StatusLegendRow(status: GameStatus, count: Int) {
+private fun StatusLegendRow(status: GameStatus, count: Int, clock: RecapEntryClock) {
     val color = status.palette().color
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -177,7 +172,13 @@ private fun StatusLegendRow(status: GameStatus, count: Int) {
             color = TextSecondary,
             modifier = Modifier.weight(1f),
         )
-        Text(text = count.toString(), style = CartoucheTextStyles.legendCount, color = color)
+        CountUpText(
+            target = count,
+            clock = clock,
+            style = CartoucheTextStyles.legendCount,
+            color = color,
+            contentAlignment = Alignment.CenterEnd,
+        )
     }
 }
 
@@ -185,13 +186,21 @@ private fun StatusLegendRow(status: GameStatus, count: Int) {
 
 @Composable
 private fun SlideHeader(kicker: String?, title: String, subtitle: String? = null) {
+    val clock = LocalRecapEntryClock.current
+    // Surtitre et titre entrent ensemble ; le sous-titre, détail de la slide, un peu après.
+    val titleEnter = Modifier.recapEnter(clock, RecapMotion.TITLE_DELAY, RecapMotion.TITLE_DURATION)
     Column(modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 12.dp)) {
         if (kicker != null) {
-            Text(text = kicker, style = CartoucheTextStyles.kicker, color = AccentPurpleLight)
+            Text(text = kicker, style = CartoucheTextStyles.kicker, color = AccentPurpleLight, modifier = titleEnter)
         }
-        Text(text = title, style = CartoucheTextStyles.detailTitle, color = TextPrimary)
+        Text(text = title, style = CartoucheTextStyles.detailTitle, color = TextPrimary, modifier = titleEnter)
         if (subtitle != null) {
-            Text(text = subtitle, style = CartoucheTextStyles.detailSubtitle, color = TextTertiary)
+            Text(
+                text = subtitle,
+                style = CartoucheTextStyles.detailSubtitle,
+                color = TextTertiary,
+                modifier = Modifier.recapEnter(clock, RecapMotion.DETAIL_DELAY, RecapMotion.DETAIL_DURATION),
+            )
         }
     }
 }
@@ -200,6 +209,7 @@ private fun SlideHeader(kicker: String?, title: String, subtitle: String? = null
 
 @Composable
 private fun FavoritesSlide(slide: RecapSlide.Favorites, onGameClick: (String) -> Unit) {
+    val clock = LocalRecapEntryClock.current
     Column(modifier = Modifier.fillMaxSize()) {
         SlideHeader(
             kicker = stringResource(R.string.recap_story_favorites_kicker),
@@ -212,8 +222,13 @@ private fun FavoritesSlide(slide: RecapSlide.Favorites, onGameClick: (String) ->
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            items(items = slide.games, key = { it.id }) { game ->
-                FavoriteCell(game = game, onClick = { onGameClick(game.id) })
+            // Les jaquettes entrent en cascade : les trois premières décalées, les suivantes avec la troisième.
+            itemsIndexed(items = slide.games, key = { _, game -> game.id }) { index, game ->
+                FavoriteCell(
+                    game = game,
+                    onClick = { onGameClick(game.id) },
+                    modifier = Modifier.recapEnter(clock, RecapMotion.coverDelay(index), RecapMotion.COVER_DURATION),
+                )
             }
         }
     }
@@ -224,9 +239,9 @@ private fun FavoritesSlide(slide: RecapSlide.Favorites, onGameClick: (String) ->
  * la décrit, la cellule entière étant un seul bouton « Ouvrir la fiche ».
  */
 @Composable
-private fun FavoriteCell(game: Game, onClick: () -> Unit) {
+private fun FavoriteCell(game: Game, onClick: () -> Unit, modifier: Modifier = Modifier) {
     Column(
-        modifier = Modifier
+        modifier = modifier
             .clip(RoundedCornerShape(8.dp))
             .clickable(onClickLabel = stringResource(R.string.recap_story_open_game), onClick = onClick),
         verticalArrangement = Arrangement.spacedBy(6.dp),
@@ -269,6 +284,7 @@ private fun RatingStars(rating: Int) {
 
 @Composable
 private fun LongestSlide(slide: RecapSlide.Longest, onGameClick: (String) -> Unit) {
+    val clock = LocalRecapEntryClock.current
     Column(modifier = Modifier.fillMaxSize()) {
         SlideHeader(
             kicker = stringResource(R.string.recap_story_longest_kicker),
@@ -283,17 +299,23 @@ private fun LongestSlide(slide: RecapSlide.Longest, onGameClick: (String) -> Uni
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             slide.games.forEachIndexed { index, game ->
-                LongestRow(rank = index + 1, game = game, onClick = { onGameClick(game.id) })
+                // Recette des cartes de faits : fondu + montée de 360 ms, décalées de 80 ms.
+                LongestRow(
+                    rank = index + 1,
+                    game = game,
+                    onClick = { onGameClick(game.id) },
+                    modifier = Modifier.recapEnter(clock, RecapMotion.detailDelay(index), RecapMotion.DETAIL_DURATION),
+                )
             }
         }
     }
 }
 
 @Composable
-private fun LongestRow(rank: Int, game: Game, onClick: () -> Unit) {
+private fun LongestRow(rank: Int, game: Game, onClick: () -> Unit, modifier: Modifier = Modifier) {
     val shape = RoundedCornerShape(12.dp)
     Row(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .clip(shape)
             .background(SurfaceCard)
@@ -332,6 +354,7 @@ private fun LongestRow(rank: Int, game: Game, onClick: () -> Unit) {
 @Composable
 private fun PlatformsSlide(slide: RecapSlide.Platforms) {
     val dotColor = GameStatus.TERMINE.palette().color
+    val clock = LocalRecapEntryClock.current
     Column(modifier = Modifier.fillMaxSize()) {
         SlideHeader(
             kicker = stringResource(R.string.recap_story_platforms_kicker),
@@ -344,8 +367,15 @@ private fun PlatformsSlide(slide: RecapSlide.Platforms) {
                 .padding(start = 20.dp, end = 20.dp, bottom = 20.dp),
             verticalArrangement = Arrangement.spacedBy(18.dp),
         ) {
-            slide.counts.forEach { entry ->
-                PlatformBarRow(entry = entry, maxCount = slide.maxCount, color = dotColor)
+            // Pas d'équivalent dans la spec : les lignes entrent comme des détails, décalées de 80 ms.
+            // La barre suit sa ligne sans animation propre.
+            slide.counts.forEachIndexed { index, entry ->
+                PlatformBarRow(
+                    entry = entry,
+                    maxCount = slide.maxCount,
+                    color = dotColor,
+                    modifier = Modifier.recapEnter(clock, RecapMotion.detailDelay(index), RecapMotion.DETAIL_DURATION),
+                )
             }
         }
     }
@@ -353,9 +383,9 @@ private fun PlatformsSlide(slide: RecapSlide.Platforms) {
 
 /** Une plateforme, son nombre de jeux et une barre proportionnelle au maximum de la slide. */
 @Composable
-private fun PlatformBarRow(entry: PlatformCount, maxCount: Int, color: Color) {
+private fun PlatformBarRow(entry: PlatformCount, maxCount: Int, color: Color, modifier: Modifier = Modifier) {
     val fraction = if (maxCount > 0) entry.count.toFloat() / maxCount else 0f
-    Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+    Column(modifier = modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
@@ -400,6 +430,11 @@ private fun PlatformBarRow(entry: PlatformCount, maxCount: Int, color: Color) {
 private fun FactsSlide(slide: RecapSlide.Facts, onGameClick: (String) -> Unit) {
     val facts = slide.facts
     val locale = rememberRecapLocale()
+    val clock = LocalRecapEntryClock.current
+    // Les cartes présentes entrent l'une après l'autre, dans l'ordre d'affichage.
+    var cardRank = 0
+    fun nextCardEnter(): Modifier =
+        Modifier.recapEnter(clock, RecapMotion.detailDelay(cardRank++), RecapMotion.DETAIL_DURATION)
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -407,17 +442,39 @@ private fun FactsSlide(slide: RecapSlide.Facts, onGameClick: (String) -> Unit) {
             .padding(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 20.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Text(text = stringResource(R.string.recap_story_facts_title), style = CartoucheTextStyles.detailTitle, color = TextPrimary)
-        facts.first?.let { DatedGameFactCard(label = R.string.recap_story_fact_first, fact = it, locale = locale, onGameClick = onGameClick) }
-        facts.last?.let { DatedGameFactCard(label = R.string.recap_story_fact_last, fact = it, locale = locale, onGameClick = onGameClick) }
-        facts.busiestMonth?.let { BusiestMonthCard(busiest = it, locale = locale) }
-        facts.oldest?.let { OldestFactCard(game = it, onGameClick = onGameClick) }
+        Text(
+            text = stringResource(R.string.recap_story_facts_title),
+            style = CartoucheTextStyles.detailTitle,
+            color = TextPrimary,
+            modifier = Modifier.recapEnter(clock, RecapMotion.TITLE_DELAY, RecapMotion.TITLE_DURATION),
+        )
+        facts.first?.let {
+            DatedGameFactCard(
+                label = R.string.recap_story_fact_first, fact = it, locale = locale, onGameClick = onGameClick,
+                modifier = nextCardEnter(),
+            )
+        }
+        facts.last?.let {
+            DatedGameFactCard(
+                label = R.string.recap_story_fact_last, fact = it, locale = locale, onGameClick = onGameClick,
+                modifier = nextCardEnter(),
+            )
+        }
+        facts.busiestMonth?.let { BusiestMonthCard(busiest = it, locale = locale, modifier = nextCardEnter()) }
+        facts.oldest?.let { OldestFactCard(game = it, onGameClick = onGameClick, modifier = nextCardEnter()) }
     }
 }
 
 @Composable
-private fun DatedGameFactCard(label: Int, fact: DatedGame, locale: Locale, onGameClick: (String) -> Unit) {
+private fun DatedGameFactCard(
+    label: Int,
+    fact: DatedGame,
+    locale: Locale,
+    onGameClick: (String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
     FactCard(
+        modifier = modifier,
         label = stringResource(label),
         headline = fact.game.title,
         detail = formatRecapDate(fact.date, locale),
@@ -427,8 +484,9 @@ private fun DatedGameFactCard(label: Int, fact: DatedGame, locale: Locale, onGam
 }
 
 @Composable
-private fun OldestFactCard(game: Game, onGameClick: (String) -> Unit) {
+private fun OldestFactCard(game: Game, onGameClick: (String) -> Unit, modifier: Modifier = Modifier) {
     FactCard(
+        modifier = modifier,
         label = stringResource(R.string.recap_story_fact_oldest),
         headline = game.title,
         detail = game.releaseYear?.let { stringResource(R.string.recap_story_fact_oldest_released, it) }.orEmpty(),
@@ -438,8 +496,9 @@ private fun OldestFactCard(game: Game, onGameClick: (String) -> Unit) {
 }
 
 @Composable
-private fun BusiestMonthCard(busiest: BusiestMonth, locale: Locale) {
+private fun BusiestMonthCard(busiest: BusiestMonth, locale: Locale, modifier: Modifier = Modifier) {
     FactCard(
+        modifier = modifier,
         label = stringResource(R.string.recap_story_fact_busiest_month),
         headline = monthName(busiest.month, locale).replaceFirstChar { it.titlecase(locale) },
         detail = pluralStringResource(R.plurals.recap_story_fact_month_count, busiest.count, busiest.count),
@@ -449,11 +508,18 @@ private fun BusiestMonthCard(busiest: BusiestMonth, locale: Locale) {
 }
 
 @Composable
-private fun FactCard(label: String, headline: String, detail: String, game: Game?, onClick: (() -> Unit)?) {
+private fun FactCard(
+    label: String,
+    headline: String,
+    detail: String,
+    game: Game?,
+    onClick: (() -> Unit)?,
+    modifier: Modifier = Modifier,
+) {
     val shape = RoundedCornerShape(12.dp)
     val openLabel = stringResource(R.string.recap_story_open_game)
     Row(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .clip(shape)
             .background(SurfaceCard)
@@ -486,6 +552,7 @@ private fun FactCard(label: String, headline: String, detail: String, game: Game
 
 @Composable
 private fun MosaicSlide(slide: RecapSlide.Mosaic, year: Int, onGameClick: (String) -> Unit) {
+    val clock = LocalRecapEntryClock.current
     Column(modifier = Modifier.fillMaxSize()) {
         SlideHeader(
             kicker = null,
@@ -498,9 +565,12 @@ private fun MosaicSlide(slide: RecapSlide.Mosaic, year: Int, onGameClick: (Strin
             ),
         )
         // LazyVerticalGrid : seules les tuiles visibles sont composées et chargées, même avec une centaine de jeux.
+        // La grille entre d'un bloc (un seul calque) : animer chaque tuile coûterait cher avec une centaine de jaquettes.
         LazyVerticalGrid(
             columns = GridCells.Fixed(MOSAIC_COLUMNS),
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier
+                .fillMaxSize()
+                .recapEnter(clock, RecapMotion.DETAIL_DELAY, RecapMotion.DETAIL_DURATION),
             contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 16.dp),
             horizontalArrangement = Arrangement.spacedBy(6.dp),
             verticalArrangement = Arrangement.spacedBy(6.dp),

@@ -1,5 +1,8 @@
 package fr.cklla.cartouche.ui.stats
 
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.snap
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -12,6 +15,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.PagerDefaults
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -20,11 +24,17 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -76,24 +86,36 @@ private fun RecapStoryContent(
     onGameClick: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .background(BackgroundDark),
-    ) {
-        when {
-            state.isLoading -> StoryTopBar(slideCount = 0, currentPage = 0, onCloseClick = onCloseClick)
-            state.slides.isEmpty() -> {
-                StoryTopBar(slideCount = 0, currentPage = 0, onCloseClick = onCloseClick)
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text(
-                        text = stringResource(R.string.recap_story_empty, year),
-                        style = CartoucheTextStyles.emptyMessage,
-                        color = TextMuted,
-                    )
+    // Réduction des animations lue une seule fois ici, puis partagée par tout l'écran.
+    val reducedMotion = rememberReducedMotion()
+    CompositionLocalProvider(LocalRecapReducedMotion provides reducedMotion) {
+        // Hissé ici : le fondu du chrome ne se rejoue pas quand le chargement se termine.
+        val chromeAlpha = rememberChromeAlpha(reducedMotion)
+        Column(
+            modifier = modifier
+                .fillMaxSize()
+                .background(BackgroundDark),
+        ) {
+            when {
+                state.isLoading -> StoryTopBar(slideCount = 0, currentPage = 0, chromeAlpha = chromeAlpha, onCloseClick = onCloseClick)
+                state.slides.isEmpty() -> {
+                    StoryTopBar(slideCount = 0, currentPage = 0, chromeAlpha = chromeAlpha, onCloseClick = onCloseClick)
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Text(
+                            text = stringResource(R.string.recap_story_empty, year),
+                            style = CartoucheTextStyles.emptyMessage,
+                            color = TextMuted,
+                        )
+                    }
                 }
+                else -> StoryPager(
+                    year = year,
+                    slides = state.slides,
+                    chromeAlpha = chromeAlpha,
+                    onCloseClick = onCloseClick,
+                    onGameClick = onGameClick,
+                )
             }
-            else -> StoryPager(year = year, slides = state.slides, onCloseClick = onCloseClick, onGameClick = onGameClick)
         }
     }
 }
@@ -107,45 +129,96 @@ private fun RecapStoryContent(
 private fun ColumnScope.StoryPager(
     year: Int,
     slides: List<RecapSlide>,
+    chromeAlpha: () -> Float,
     onCloseClick: () -> Unit,
     onGameClick: (String) -> Unit,
 ) {
     val pagerState = rememberPagerState { slides.size }
-    StoryTopBar(slideCount = slides.size, currentPage = pagerState.currentPage, onCloseClick = onCloseClick)
+    val reducedMotion = LocalRecapReducedMotion.current
+    // Seul l'accrochage du pager est chronométré : le glissement lui-même suit le doigt.
+    val flingBehavior = PagerDefaults.flingBehavior(
+        state = pagerState,
+        snapAnimationSpec = if (reducedMotion) {
+            snap()
+        } else {
+            tween(durationMillis = RecapMotion.PAGE_SNAP_DURATION, easing = RecapMotion.EaseOut)
+        },
+    )
+    StoryTopBar(
+        slideCount = slides.size,
+        currentPage = pagerState.currentPage,
+        chromeAlpha = chromeAlpha,
+        onCloseClick = onCloseClick,
+    )
     HorizontalPager(
         state = pagerState,
         modifier = Modifier
             .fillMaxWidth()
             .weight(1f),
         key = { index -> slides[index].key },
+        flingBehavior = flingBehavior,
     ) { index ->
         val slide = slides[index]
-        Box(modifier = Modifier.fillMaxSize().background(slideBackground(slide))) {
-            RecapSlideContent(slide = slide, year = year, onGameClick = onGameClick)
+        // Une horloge par page : elle démarre à la composition de la slide et pilote toutes ses entrées.
+        val clock = rememberRecapEntryClock()
+        // Position lue au dessin seulement (lambda) : le glissement ne recompose pas la slide.
+        val pageOffset = { pagerState.pageOffset(index) }
+        CompositionLocalProvider(LocalRecapEntryClock provides clock) {
+            Box(modifier = Modifier.fillMaxSize().recapPageFade(reducedMotion, pageOffset)) {
+                RecapSlideBackground(
+                    tint = slideTint(slide),
+                    clock = clock,
+                    reducedMotion = reducedMotion,
+                    pageOffset = pageOffset,
+                )
+                RecapSlideContent(slide = slide, year = year, onGameClick = onGameClick)
+            }
         }
     }
 }
 
 /**
- * Voile de couleur en haut de la slide, qui se fond dans le fond sombre : la couleur du statut sur
- * la slide Total (vert si des jeux sont terminés, corail s'il n'y a que des abandons),
- * [AccentPurple] ailleurs.
+ * Couleur du voile et du halo d'une slide : celle du statut sur la slide Total (vert si des jeux
+ * sont terminés, corail s'il n'y a que des abandons), [AccentPurple] ailleurs.
  */
-private fun slideBackground(slide: RecapSlide): Brush {
-    val tint = if (slide is RecapSlide.Total) {
+private fun slideTint(slide: RecapSlide): Color =
+    if (slide is RecapSlide.Total) {
         val status = if (slide.completedCount > 0) GameStatus.TERMINE else GameStatus.ABANDONNE
         status.palette().color
     } else {
         AccentPurple
     }
-    return Brush.verticalGradient(listOf(tint.copy(alpha = 0.2f), BackgroundDark))
+
+/** Opacité du bouton de fermeture et de l'indicateur : ils apparaissent en fondu une seule fois à l'ouverture. */
+@Composable
+private fun rememberChromeAlpha(reducedMotion: Boolean): () -> Float {
+    val alpha = remember { Animatable(if (reducedMotion) 1f else 0f) }
+    LaunchedEffect(reducedMotion) {
+        if (reducedMotion) {
+            alpha.snapTo(1f)
+        } else {
+            alpha.animateTo(
+                targetValue = 1f,
+                animationSpec = tween(
+                    durationMillis = RecapMotion.CHROME_FADE_DURATION,
+                    delayMillis = RecapMotion.CHROME_FADE_DELAY,
+                    easing = RecapMotion.EaseOut,
+                ),
+            )
+        }
+    }
+    return { alpha.value }
 }
 
 /** Barre de progression segmentée (un segment par slide) et bouton fermer. */
 @Composable
-private fun StoryTopBar(slideCount: Int, currentPage: Int, onCloseClick: () -> Unit) {
+private fun StoryTopBar(slideCount: Int, currentPage: Int, chromeAlpha: () -> Float, onCloseClick: () -> Unit) {
     val progress = stringResource(R.string.recap_story_progress, currentPage + 1, slideCount)
-    Column(modifier = Modifier.padding(start = 16.dp, end = 4.dp, top = 8.dp)) {
+    Column(
+        modifier = Modifier
+            .graphicsLayer { alpha = chromeAlpha() }
+            .padding(start = 16.dp, end = 4.dp, top = 8.dp),
+    ) {
         if (slideCount > 0) {
             Row(
                 modifier = Modifier
@@ -155,13 +228,7 @@ private fun StoryTopBar(slideCount: Int, currentPage: Int, onCloseClick: () -> U
                 horizontalArrangement = Arrangement.spacedBy(4.dp),
             ) {
                 repeat(slideCount) { index ->
-                    Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(3.dp)
-                            .clip(RoundedCornerShape(2.dp))
-                            .background(if (index <= currentPage) AccentPurple else BorderHairline),
-                    )
+                    StorySegment(filled = index <= currentPage, startsFilled = index < currentPage, modifier = Modifier.weight(1f))
                 }
             }
         }
@@ -177,6 +244,29 @@ private fun StoryTopBar(slideCount: Int, currentPage: Int, onCloseClick: () -> U
             }
         }
     }
+}
+
+/** Segment de l'indicateur : se remplit horizontalement quand sa slide devient la slide courante. */
+@Composable
+private fun StorySegment(filled: Boolean, startsFilled: Boolean, modifier: Modifier = Modifier) {
+    val reducedMotion = LocalRecapReducedMotion.current
+    val fill = remember { Animatable(if (startsFilled) 1f else 0f) }
+    LaunchedEffect(filled, reducedMotion) {
+        val target = if (filled) 1f else 0f
+        if (reducedMotion) {
+            fill.snapTo(target)
+        } else {
+            fill.animateTo(target, tween(durationMillis = RecapMotion.SEGMENT_FILL_DURATION, easing = RecapMotion.EaseOut))
+        }
+    }
+    Box(
+        modifier = modifier
+            .height(3.dp)
+            .clip(RoundedCornerShape(2.dp))
+            .background(BorderHairline)
+            // Rempli au dessin : l'animation ne recompose pas la barre.
+            .drawBehind { drawRect(AccentPurple, size = Size(size.width * fill.value, size.height)) },
+    )
 }
 
 @Preview(showBackground = true, backgroundColor = 0xFF0A0812)
