@@ -1,5 +1,6 @@
 package fr.cklla.cartouche.ui.stats
 
+import fr.cklla.cartouche.domain.model.GameStatus
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -71,5 +72,42 @@ class RecapMotionTest {
         assertTrue(isReducedMotion(0f))
         assertFalse(isReducedMotion(0.5f))
         assertFalse(isReducedMotion(1f))
+    }
+
+    private val terminé = StatusRingSegment(GameStatus.TERMINE, startAngle = -90f, sweepAngle = 270f)
+    private val abandonné = StatusRingSegment(GameStatus.ABANDONNE, startAngle = 180f, sweepAngle = 90f)
+
+    @Test
+    fun `les tranches de l'anneau sont proportionnelles aux effectifs et partent du haut`() {
+        val segments = statusRingSegments(completedCount = 3, abandonedCount = 1)
+
+        assertEquals(listOf(GameStatus.TERMINE, GameStatus.ABANDONNE), segments.map { it.status })
+        assertEquals(-90f, segments[0].startAngle, 0.001f)
+        assertEquals(270f, segments[0].sweepAngle, 0.001f)
+        assertEquals(180f, segments[1].startAngle, 0.001f)
+        assertEquals(90f, segments[1].sweepAngle, 0.001f)
+    }
+
+    @Test
+    fun `un effectif nul n'a pas de tranche`() {
+        assertEquals(listOf(GameStatus.TERMINE), statusRingSegments(4, 0).map { it.status })
+        assertEquals(listOf(GameStatus.ABANDONNE), statusRingSegments(0, 4).map { it.status })
+        assertTrue(statusRingSegments(0, 0).isEmpty())
+    }
+
+    @Test
+    fun `l'anneau est vide au depart et complet a la fin`() {
+        assertEquals(0f, revealedSweep(terminé, 0f), 0f)
+        assertEquals(270f, revealedSweep(terminé, 1f), 0f)
+        assertEquals(90f, revealedSweep(abandonné, 1f), 0f)
+    }
+
+    @Test
+    fun `le balayage revele les tranches dans l'ordre`() {
+        // 180° balayés sur 360° : la première tranche est à demi dessinée, la suivante pas encore.
+        assertEquals(180f, revealedSweep(terminé, 0.5f), 0.001f)
+        assertEquals(0f, revealedSweep(abandonné, 0.5f), 0f)
+        // 0,875 × 360° = 315° : la seconde tranche (270° à 360°) est entamée de 45°.
+        assertEquals(45f, revealedSweep(abandonné, 0.875f), 0.001f)
     }
 }

@@ -82,12 +82,19 @@ internal fun RecapSlideContent(slide: RecapSlide, year: Int, onGameClick: (Strin
 
 // --- Total ---
 
+/**
+ * Couleur du gros chiffre de la slide Total, isolée pour être rétablie d'une ligne. Avant les
+ * animations, il prenait la couleur du statut (vert si des jeux sont terminés, corail sinon) : pour
+ * y revenir, remplacer par `if (completedCount > 0) completedColor else abandonedColor` dans [TotalSlide].
+ */
+private val TotalHeroColor = TextPrimary
+
 @Composable
 private fun TotalSlide(slide: RecapSlide.Total) {
-    val completedColor = GameStatus.TERMINE.palette().color
     val abandonedColor = GameStatus.ABANDONNE.palette().color
-    // Rien de terminé (année avec seulement des abandons) : le gros chiffre prend la couleur du statut abandonné.
-    val heroColor = if (slide.completedCount > 0) completedColor else abandonedColor
+    val clock = LocalRecapEntryClock.current
+    // Entrée commune des textes secondaires de la slide (titre, heures, abandons).
+    val detailEnter = Modifier.recapEnter(clock, RecapMotion.DETAIL_DELAY, RecapMotion.DETAIL_DURATION)
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -100,13 +107,21 @@ private fun TotalSlide(slide: RecapSlide.Total) {
             text = stringResource(R.string.recap_story_total_kicker),
             style = CartoucheTextStyles.kicker,
             color = AccentPurpleLight,
+            modifier = Modifier.recapEnter(clock, RecapMotion.TITLE_DELAY, RecapMotion.TITLE_DURATION),
         )
-        Text(text = slide.completedCount.toString(), style = CartoucheTextStyles.recapHero, color = heroColor)
+        CountUpText(
+            target = slide.completedCount,
+            clock = clock,
+            style = CartoucheTextStyles.recapHero,
+            color = TotalHeroColor,
+            modifier = Modifier.recapEnter(clock, RecapMotion.KEY_FIGURE_DELAY, RecapMotion.KEY_FIGURE_DURATION),
+        )
         Text(
             text = pluralStringResource(R.plurals.recap_story_total_title, slide.completedCount, slide.year),
             style = CartoucheTextStyles.detailTitle,
             color = TextPrimary,
             textAlign = TextAlign.Center,
+            modifier = detailEnter,
         )
         Spacer(modifier = Modifier.height(20.dp))
         if (slide.totalHours > 0) {
@@ -114,6 +129,7 @@ private fun TotalSlide(slide: RecapSlide.Total) {
                 text = stringResource(R.string.recap_story_total_hours, slide.totalHours),
                 style = CartoucheTextStyles.hoursValue,
                 color = AccentPurpleLight,
+                modifier = detailEnter,
             )
         }
         if (slide.abandonedCount > 0) {
@@ -121,49 +137,27 @@ private fun TotalSlide(slide: RecapSlide.Total) {
                 text = pluralStringResource(R.plurals.recap_story_total_abandoned, slide.abandonedCount, slide.abandonedCount),
                 style = CartoucheTextStyles.legendLabel,
                 color = abandonedColor,
+                modifier = detailEnter,
             )
         }
         // La répartition n'a de sens que s'il y a les deux statuts.
         if (slide.completedCount > 0 && slide.abandonedCount > 0) {
             Spacer(modifier = Modifier.height(32.dp))
-            StatusSplit(slide = slide)
+            StatusRing(completedCount = slide.completedCount, abandonedCount = slide.abandonedCount, clock = clock)
+            Spacer(modifier = Modifier.height(24.dp))
+            Column(modifier = detailEnter, verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                listOf(
+                    GameStatus.TERMINE to slide.completedCount,
+                    GameStatus.ABANDONNE to slide.abandonedCount,
+                ).forEach { (status, count) -> StatusLegendRow(status = status, count = count, clock = clock) }
+            }
         }
     }
 }
 
-/** Barre proportionnelle Terminé / Abandonné et sa légende, aux couleurs de [GameStatus.palette]. */
+/** Ligne de légende de l'anneau : pastille, libellé du statut et effectif seul, qui compte de 0 à sa valeur. */
 @Composable
-private fun StatusSplit(slide: RecapSlide.Total) {
-    val segments = listOf(
-        GameStatus.TERMINE to slide.completedCount,
-        GameStatus.ABANDONNE to slide.abandonedCount,
-    )
-    // Décorative : la légende juste dessous porte les mêmes chiffres en texte.
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(10.dp)
-            .clip(RoundedCornerShape(5.dp))
-            .clearAndSetSemantics {},
-        horizontalArrangement = Arrangement.spacedBy(2.dp),
-    ) {
-        segments.forEach { (status, count) ->
-            Box(
-                modifier = Modifier
-                    .weight(count.toFloat())
-                    .fillMaxSize()
-                    .background(status.palette().color),
-            )
-        }
-    }
-    Spacer(modifier = Modifier.height(20.dp))
-    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        segments.forEach { (status, count) -> StatusLegendRow(status = status, count = count) }
-    }
-}
-
-@Composable
-private fun StatusLegendRow(status: GameStatus, count: Int) {
+private fun StatusLegendRow(status: GameStatus, count: Int, clock: RecapEntryClock) {
     val color = status.palette().color
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -177,7 +171,13 @@ private fun StatusLegendRow(status: GameStatus, count: Int) {
             color = TextSecondary,
             modifier = Modifier.weight(1f),
         )
-        Text(text = count.toString(), style = CartoucheTextStyles.legendCount, color = color)
+        CountUpText(
+            target = count,
+            clock = clock,
+            style = CartoucheTextStyles.legendCount,
+            color = color,
+            contentAlignment = Alignment.CenterEnd,
+        )
     }
 }
 
