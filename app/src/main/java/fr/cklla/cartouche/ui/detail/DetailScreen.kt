@@ -81,6 +81,7 @@ import fr.cklla.cartouche.domain.model.GameStatus
 import fr.cklla.cartouche.domain.model.parsePlatforms
 import fr.cklla.cartouche.ui.components.GameCoverPlaceholder
 import fr.cklla.cartouche.ui.theme.AccentPurple
+import fr.cklla.cartouche.ui.theme.AccentPurpleLight
 import fr.cklla.cartouche.ui.theme.AccentPurpleMuted
 import fr.cklla.cartouche.ui.theme.BackgroundDark
 import fr.cklla.cartouche.ui.theme.BorderHairline
@@ -407,7 +408,7 @@ private fun RatingSection(rating: Int?, onRatingSelected: (Int?) -> Unit) {
                     Icon(
                         imageVector = if (filled) Icons.Filled.Star else Icons.Outlined.Star,
                         contentDescription = stringResource(R.string.detail_rating_star_content_description, star),
-                        tint = if (filled) AccentPurple else AccentPurpleMuted,
+                        tint = if (filled) AccentPurpleLight else AccentPurpleMuted,
                         modifier = Modifier.size(26.dp),
                     )
                 }
