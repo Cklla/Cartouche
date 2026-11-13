@@ -130,11 +130,48 @@ class IgdbEnrichmentTest {
     }
 
     @Test
-    fun `la plateforme n'est pas remplacee si une case cochee perdrait sa plateforme (Switch vers Switch 2)`() {
-        val played = game.copy(platform = "Nintendo Switch", playedPlatforms = setOf("Nintendo Switch"))
-        val result = applyIgdbEnrichment(played, fullMatch.copy(platform = "Nintendo Switch 2"))
+    fun `un jeu a plateforme unique est corrige quand IGDB est certain (Switch vers Switch 2)`() {
+        val single = game.copy(platform = "Nintendo Switch", playedPlatforms = setOf("Nintendo Switch"))
+        val result = applyIgdbEnrichment(single, fullMatch.copy(platform = "Nintendo Switch 2"))
+
+        assertEquals("Nintendo Switch 2", result.platform)
+        assertEquals(setOf("Nintendo Switch 2"), result.playedPlatforms)
+    }
+
+    @Test
+    fun `un jeu a plateforme unique sans case cochee est corrige aussi`() {
+        val single = game.copy(platform = "Nintendo Switch", playedPlatforms = emptySet())
+        val result = applyIgdbEnrichment(single, fullMatch.copy(platform = "Nintendo Switch 2"))
+
+        assertEquals("Nintendo Switch 2", result.platform)
+        // Aucune case cochée : la plateforme jouée reste dérivée de `platform` (effectivePlayedPlatforms).
+        assertEquals(emptySet<String>(), result.playedPlatforms)
+    }
+
+    @Test
+    fun `un jeu a plateforme unique corrige vers plusieurs plateformes n'a plus de case cochee`() {
+        val single = game.copy(platform = "PS3", playedPlatforms = setOf("PS3"))
+        val result = applyIgdbEnrichment(single, fullMatch.copy(platform = "Nintendo Switch/Wii"))
+
+        assertEquals("Nintendo Switch/Wii", result.platform)
+        assertEquals(emptySet<String>(), result.playedPlatforms)
+    }
+
+    @Test
+    fun `un rapprochement non certain ne corrige pas la plateforme d'un jeu a plateforme unique`() {
+        val single = game.copy(platform = "Nintendo Switch", playedPlatforms = setOf("Nintendo Switch"))
+        val result = applyIgdbEnrichment(single, fullMatch.copy(igdbId = null, platform = "Nintendo Switch 2"))
 
         assertEquals("Nintendo Switch", result.platform)
+        assertEquals(setOf("Nintendo Switch"), result.playedPlatforms)
+    }
+
+    @Test
+    fun `la plateforme n'est pas remplacee si une case cochee d'un jeu multi-plateformes perdrait sa plateforme`() {
+        val played = game.copy(platform = "Nintendo Switch/Wii", playedPlatforms = setOf("Nintendo Switch"))
+        val result = applyIgdbEnrichment(played, fullMatch.copy(platform = "Nintendo Switch 2/Wii"))
+
+        assertEquals("Nintendo Switch/Wii", result.platform)
         assertEquals(setOf("Nintendo Switch"), result.playedPlatforms)
         // Le reste de la remise à niveau, lui, s'applique.
         assertEquals(2364L, result.igdbId)

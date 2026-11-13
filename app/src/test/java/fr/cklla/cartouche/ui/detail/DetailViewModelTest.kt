@@ -762,7 +762,7 @@ class DetailViewModelTest {
     }
 
     @Test
-    fun `platform n'est pas remplace si une plateforme deja cochee n'a plus de correspondance (Switch vers Switch 2)`() = runTest {
+    fun `platform unique est corrige par un rapprochement certain (Switch vers Switch 2)`() = runTest {
         val dao = FakeGameDao()
         val repository = fakeGameRepository(dao)
         val result = repository.addGame(
@@ -783,8 +783,8 @@ class DetailViewModelTest {
         dispatcher.scheduler.advanceUntilIdle()
 
         val game = viewModel.uiState.value.game
-        assertEquals("Switch", game?.platform)
-        assertEquals(setOf("Switch"), game?.playedPlatforms)
+        assertEquals("Nintendo Switch 2", game?.platform)
+        assertEquals(setOf("Nintendo Switch 2"), game?.playedPlatforms)
         collectorJob.cancel()
     }
 
