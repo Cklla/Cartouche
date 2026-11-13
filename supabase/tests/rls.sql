@@ -158,6 +158,7 @@ select pg_temp.accepte_valeur('cover_url', 'null');
 select pg_temp.accepte_valeur(c, v)
 from (values ('rating', '0'), ('rating', '5'), ('rating', 'null'),
              ('rawg_id', '0'), ('rawg_id', '9999999999'), ('rawg_id', 'null'),
+             ('igdb_id', '1'), ('igdb_id', '9999999999'), ('igdb_id', 'null'),
              ('release_year', '1950'), ('release_year', '2999'), ('release_year', 'null'),
              ('estimated_playtime_hastily_hours', '0'), ('estimated_playtime_hastily_hours', '100000'),
              ('estimated_playtime_hastily_hours', 'null'),
@@ -172,6 +173,7 @@ from (values ('rating', '0'), ('rating', '5'), ('rating', 'null'),
 select pg_temp.refuse_valeur(c, v)
 from (values ('rating', '-1'), ('rating', '6'),
              ('rawg_id', '-1'), ('rawg_id', '10000000000'),
+             ('igdb_id', '0'), ('igdb_id', '-1'), ('igdb_id', '10000000000'),
              ('release_year', '1949'), ('release_year', '3000'),
              ('estimated_playtime_hastily_hours', '-1'), ('estimated_playtime_hastily_hours', '100001'),
              ('estimated_playtime_normally_hours', '-1'), ('estimated_playtime_normally_hours', '100001'),
@@ -192,6 +194,37 @@ select pg_temp.refuse(pg_temp.requete_valeur('played_platforms', 'null'), 'plate
 -- Les contraintes valent aussi à la modification.
 select pg_temp.refuse($q$update cartouche.game set rating = 6$q$, 'note hors bornes en modification', '23514');
 select pg_temp.refuse($q$update cartouche.game set status = 'VU'$q$, 'statut inconnu en modification', '23514');
+commit;
+
+-- `igdb_id` : absent d'une insertion, il vaut null ; un upsert qui ne l'envoie pas (celui des
+-- versions de l'application et du site antérieures à la colonne) ne l'efface pas ; un upsert qui
+-- l'envoie le met à jour.
+begin;
+select pg_temp.connecte_comme('aaaaaaaa-0000-0000-0000-000000000001');
+insert into cartouche.game (id, title, platform, genre, status)
+    values ('22222222-2222-2222-2222-222222222222', 'Jeu IGDB', 'PC', 'RPG', 'A_FAIRE');
+do $$ begin
+    assert (select igdb_id from cartouche.game where id = '22222222-2222-2222-2222-222222222222') is null,
+        'igdb_id non nul sans avoir été envoyé';
+end $$;
+update cartouche.game set igdb_id = 1029 where id = '22222222-2222-2222-2222-222222222222';
+insert into cartouche.game (id, title, platform, genre, status)
+    values ('22222222-2222-2222-2222-222222222222', 'Jeu IGDB', 'PC', 'RPG', 'EN_COURS')
+    on conflict (id) do update set status = excluded.status;
+do $$ begin
+    assert (select igdb_id from cartouche.game where id = '22222222-2222-2222-2222-222222222222') = 1029,
+        'un upsert sans igdb_id a effacé igdb_id';
+    assert (select status from cartouche.game where id = '22222222-2222-2222-2222-222222222222') = 'EN_COURS',
+        'upsert partiel : statut non mis à jour';
+end $$;
+insert into cartouche.game (id, title, platform, genre, status, igdb_id)
+    values ('22222222-2222-2222-2222-222222222222', 'Jeu IGDB', 'PC', 'RPG', 'EN_COURS', 405460)
+    on conflict (id) do update set igdb_id = excluded.igdb_id;
+do $$ begin
+    assert (select igdb_id from cartouche.game where id = '22222222-2222-2222-2222-222222222222') = 405460,
+        'un upsert avec igdb_id ne l''a pas mis à jour';
+end $$;
+delete from cartouche.game where id = '22222222-2222-2222-2222-222222222222';
 commit;
 
 -- Suppression : A retire son jeu.
