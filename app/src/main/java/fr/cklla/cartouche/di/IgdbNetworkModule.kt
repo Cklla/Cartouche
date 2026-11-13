@@ -5,6 +5,7 @@ import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
+import fr.cklla.cartouche.BuildConfig
 import fr.cklla.cartouche.data.remote.igdb.IgdbApi
 import fr.cklla.cartouche.data.remote.igdb.IgdbTokenProvider
 import fr.cklla.cartouche.data.remote.igdb.IgdbTokenSource
@@ -29,7 +30,8 @@ object IgdbNetworkModule {
     @Singleton
     fun provideTwitchAuthApi(okHttpClient: OkHttpClient, moshi: Moshi): TwitchAuthApi = Retrofit.Builder()
         .baseUrl(TwitchAuthApi.BASE_URL)
-        .client(okHttpClient)
+        // Client dédié : sa réponse contient le jeton d'accès, jamais journalisée en corps.
+        .client(twitchHttpClient(okHttpClient, BuildConfig.DEBUG))
         .addConverterFactory(MoshiConverterFactory.create(moshi))
         .build()
         .create(TwitchAuthApi::class.java)
