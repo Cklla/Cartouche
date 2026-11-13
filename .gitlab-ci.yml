@@ -5,7 +5,7 @@
 # reference au socle. Toute correction apportee aux jobs eux-memes se fait
 # dans ci-templates puis se recupere ici en changeant `ref`.
 #
-# Aucune variable CI n'est requise : les valeurs Supabase, RAWG et IGDB vivent
+# Aucune variable CI n'est requise : les valeurs Supabase et IGDB vivent
 # dans local.properties et restent vides en CI (build non signe, tests seuls).
 # =============================================================================
 

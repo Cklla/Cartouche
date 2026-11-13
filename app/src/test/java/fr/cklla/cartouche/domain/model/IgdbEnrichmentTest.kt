@@ -158,6 +158,47 @@ class IgdbEnrichmentTest {
     }
 
     @Test
+    fun `la plateforme jouee explicite d'un jeu mono-plateforme n'est pas ecrasee`() {
+        // Plateforme enregistrée « PS3 », mais la case cochée est « Wii » : un vrai choix, à garder.
+        val single = game.copy(platform = "PS3", playedPlatforms = setOf("Wii"))
+        // La nouvelle liste ne contient pas « Wii » : le réalignement échoue et l'exception ne s'applique pas.
+        val result = applyIgdbEnrichment(single, fullMatch.copy(platform = "Nintendo Switch 2"))
+
+        assertEquals("PS3", result.platform)
+        assertEquals(setOf("Wii"), result.playedPlatforms)
+        // Le reste de la remise à niveau s'applique.
+        assertEquals(2364L, result.igdbId)
+    }
+
+    @Test
+    fun `une plateforme jouee a la casse differente de la plateforme unique est corrigee`() {
+        val single = game.copy(platform = "nintendo switch", playedPlatforms = setOf("Nintendo Switch"))
+        val result = applyIgdbEnrichment(single, fullMatch.copy(platform = "Nintendo Switch 2"))
+
+        assertEquals("Nintendo Switch 2", result.platform)
+        assertEquals(setOf("Nintendo Switch 2"), result.playedPlatforms)
+    }
+
+    @Test
+    fun `une plateforme vide avec une plateforme jouee non vide garde la plateforme jouee`() {
+        val single = game.copy(platform = "", playedPlatforms = setOf("PS3"))
+        val result = applyIgdbEnrichment(single, fullMatch.copy(platform = "Nintendo Switch 2"))
+
+        assertEquals("", result.platform)
+        assertEquals(setOf("PS3"), result.playedPlatforms)
+    }
+
+    @Test
+    fun `une plateforme unique a la casse differente vers une liste qui la contient garde la case cochee`() {
+        // Cas du réalignement (2) : il passe avant l'exception du jeu à plateforme unique.
+        val single = game.copy(platform = "pc", playedPlatforms = setOf("pc"))
+        val result = applyIgdbEnrichment(single, fullMatch.copy(platform = "PC/PS5"))
+
+        assertEquals("PC/PS5", result.platform)
+        assertEquals(setOf("PC"), result.playedPlatforms)
+    }
+
+    @Test
     fun `un rapprochement non certain ne corrige pas la plateforme d'un jeu a plateforme unique`() {
         val single = game.copy(platform = "Nintendo Switch", playedPlatforms = setOf("Nintendo Switch"))
         val result = applyIgdbEnrichment(single, fullMatch.copy(igdbId = null, platform = "Nintendo Switch 2"))

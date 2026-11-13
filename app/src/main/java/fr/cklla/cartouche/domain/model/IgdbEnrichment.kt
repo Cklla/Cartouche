@@ -17,11 +17,15 @@ private fun isRawgCoverUrl(url: String): Boolean =
  * - `igdbId` : renseigné s'il est vide, jamais changé ensuite.
  * - `coverUrl` : remplacée par la jaquette IGDB **si IGDB en a une** et si la valeur actuelle est
  *   vide ou hébergée sur `media.rawg.io` (captures paysage). Une jaquette choisie ailleurs reste.
- * - `platform` : la nouvelle liste est d'abord bornée, puis remplacée **seulement si** les cases
- *   « joué sur » déjà cochées retrouvent toutes leur plateforme (`realignPlayedPlatformsOrNull`).
- *   Exception : un jeu à plateforme **unique** n'a pas de case à cocher (la plateforme jouée est
- *   dérivée de `platform`) ; si IGDB est certain (`igdbId` présent), il est corrigé et sa plateforme
- *   jouée suit (la nouvelle plateforme si elle est unique, sinon aucune case cochée).
+ * - `platform` : la nouvelle liste est d'abord bornée, puis le réalignement des cases « joué sur »
+ *   déjà cochées est tenté **en premier** (`realignPlayedPlatformsOrNull`) : si toutes retrouvent leur
+ *   plateforme (ou si aucune n'est cochée), la liste remplace `platform` et les cases suivent.
+ *   Sinon, exception pour un jeu dont la plateforme **enregistrée** est unique (0 ou 1 nom) **et** dont
+ *   la plateforme jouée n'est que la copie de cette plateforme (à la casse près) : aucune case n'existe
+ *   alors à l'écran, ce n'est pas un choix de l'utilisateur. Si IGDB est certain (`igdbId` présent),
+ *   `platform` est corrigée et la plateforme jouée suit (la nouvelle plateforme si elle est unique,
+ *   sinon aucune case cochée). Dans tous les autres cas (case cochée explicitement, rapprochement non
+ *   certain), `platform` et les cases sont gardées telles quelles.
  * - `estimatedPlaytime*` : seules les durées qu'IGDB fournit (non nulles) sont écrites ; les autres
  *   sont gardées.
  * - `releaseYear` : renseignée si elle est vide.
@@ -31,8 +35,8 @@ private fun isRawgCoverUrl(url: String): Boolean =
  * - Un [match] sans `igdbId` (rapprochement par nom non certain) n'écrit **ni id, ni jaquette, ni
  *   année** : seules les plateformes et les durées sont reprises.
  *
- * **Jamais modifiés** : titre, genre, statut, note, heures personnelles, notes, dates, plateformes
- * jouées (hors réalignement de casse).
+ * **Jamais modifiés** : titre, genre, statut, note, heures personnelles, notes, dates. Les plateformes
+ * jouées ne changent que par le réalignement de casse ou par l'exception du jeu à plateforme unique.
  */
 fun applyIgdbEnrichment(game: Game, match: IgdbGameMatch?): Game {
     val attempted = game.copy(igdbLookupAttempted = true)
@@ -64,9 +68,12 @@ fun applyIgdbEnrichment(game: Game, match: IgdbGameMatch?): Game {
     // Jeu à plateforme unique : aucune case « joué sur » n'existe à l'écran, la plateforme jouée n'est
     // donc pas un choix de l'utilisateur mais la simple copie de `platform`. Si IGDB est certain
     // (id connu), elle se corrige avec la plateforme (ex. un remake enregistré sur Switch alors
-    // qu'il n'existe que sur Switch 2). Pour un jeu multi-plateformes, la case cochée est un vrai
-    // choix : on la garde, et la plateforme avec.
-    val platformIsDerived = parsePlatforms(game.platform).size <= 1
+    // qu'il n'existe que sur Switch 2). On ne l'applique que si la plateforme jouée est bien cette
+    // copie : une plateforme jouée différente (ex. cochée avant que la liste ne se réduise) est un
+    // vrai choix, on la garde, et la plateforme avec.
+    val registered = parsePlatforms(game.platform)
+    val platformIsDerived = registered.size <= 1 &&
+        enriched.playedPlatforms.all { played -> registered.any { it.equals(played, ignoreCase = true) } }
     if (!platformIsDerived || match.igdbId == null) return enriched
     return enriched.copy(
         platform = newPlatform,
