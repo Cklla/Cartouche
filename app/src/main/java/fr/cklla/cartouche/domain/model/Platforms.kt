@@ -32,8 +32,10 @@ fun effectivePlayedPlatforms(game: Game): Set<String> {
 /**
  * Ré-aligne [playedPlatforms] sur [newPlatform] (typiquement une correction IGDB, voir
  * `IgdbGameMatch.platform`) en cas de remplacement de `Game.platform`, ou `null` si ce remplacement
- * casserait une plateforme déjà cochée — signal à l'appelant (voir `DetailViewModel`) de ne pas
- * remplacer `Game.platform` du tout, pour ne jamais perdre silencieusement un choix déjà fait.
+ * casserait une plateforme déjà cochée — signal à l'appelant (voir `applyIgdbEnrichment`) de ne pas
+ * remplacer `Game.platform` sur la seule foi des cases, pour ne jamais perdre silencieusement un choix
+ * déjà fait. L'appelant peut tout de même corriger un jeu à plateforme unique dont la plateforme jouée
+ * n'est que la copie de `platform` (voir `applyIgdbEnrichment`).
  *
  * La correspondance entre l'ancien et le nouveau nom de plateforme n'est acceptée que si elle est
  * exacte à la casse près (`"ps5"` ~ `"PS5"`), jamais approximative (ex. sous-chaîne) : le cas motivant
