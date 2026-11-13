@@ -10,7 +10,7 @@
 -keepattributes Signature, InnerClasses, EnclosingMethod, RuntimeVisibleAnnotations, AnnotationDefault
 
 # Les DTO sont désérialisés par réflexion : leurs noms de propriétés doivent correspondre au JSON
-# renvoyé par RAWG/IGDB/Twitch, donc ni renommage ni suppression.
+# renvoyé par IGDB/Twitch, donc ni renommage ni suppression.
 -keep class fr.cklla.cartouche.data.remote.dto.** { *; }
 -keep class fr.cklla.cartouche.data.remote.igdb.dto.** { *; }
 

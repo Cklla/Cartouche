@@ -11,8 +11,8 @@ tout à partir des sources de ce dépôt.
   données dans Supabase — aucun autre usage.
 - **Backlog de jeux** : titres, plateformes, genres, statuts, notes personnelles, temps de jeu et
   notes libres saisis par l'utilisateur, ainsi que les métadonnées récupérées automatiquement
-  (jaquette, temps de jeu estimé) via les API RAWG et IGDB.
-- **Requêtes de recherche** : les termes tapés dans l'écran Recherche sont envoyés à l'API RAWG
+  (jaquette, plateformes, année de sortie, temps de jeu estimé) via l'API IGDB.
+- **Requêtes de recherche** : les termes tapés dans l'écran Recherche sont envoyés à l'API IGDB
   pour renvoyer des résultats. Ils ne sont pas stockés au-delà de la session de recherche.
 
 Aucune autre donnée n'est demandée : pas de géolocalisation, pas de contacts, pas d'identifiant
@@ -29,8 +29,9 @@ publicitaire.
 
 ## Partage avec des tiers
 
-- **RAWG** et **IGDB** reçoivent les requêtes nécessaires à la recherche de jeux et à l'estimation
-  du temps de jeu (titre recherché, identifiant du jeu) — aucune donnée de compte n'est transmise.
+- **IGDB** (service de Twitch) reçoit les requêtes nécessaires à la recherche de jeux et à l'enrichissement
+  de leur fiche (titre recherché, identifiant du jeu) — aucune donnée de compte n'est transmise. Les
+  jaquettes sont chargées depuis `images.igdb.com`. Données : IGDB.com.
 - **Supabase** héberge l'authentification et les données du backlog ; **Google** fournit la
   connexion (Google Sign-In).
 - Aucune vente, aucun partage à des fins publicitaires, aucun tracking tiers.

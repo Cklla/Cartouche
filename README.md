@@ -1,17 +1,17 @@
 # Cartouche
 
 Application Android personnelle de gestion de backlog de jeux vidéo : suivez les jeux à faire, en
-cours, terminés ou abandonnés, recherchez-en de nouveaux via l'API RAWG, et retrouvez votre backlog
+cours, terminés ou abandonnés, recherchez-en de nouveaux via l'API IGDB, et retrouvez votre backlog
 synchronisé automatiquement entre tous vos appareils grâce à Supabase.
 
 ## Fonctionnalités
 
 - **Bibliothèque** : liste du backlog avec statut visuel (À faire / En cours / Terminé /
   Abandonné), tri et filtrage.
-- **Recherche** : recherche de jeux via l'[API RAWG](https://rawg.io/apidocs), ajout en un tap au
-  backlog.
+- **Recherche** : recherche de jeux via l'[API IGDB](https://www.igdb.com/api) (jaquettes, plateformes, année), ajout
+  en un tap au backlog.
 - **Fiche détail** : statut, note personnelle, temps de jeu personnel, notes libres, temps de jeu
-  estimé via [IGDB](https://www.igdb.com/api), et plateformes « Joué sur » pour un jeu
+  estimé (IGDB), et plateformes « Joué sur » pour un jeu
   multi-plateforme.
 - **Plateforme fiabilisée via IGDB** : distingue Switch et Switch 2, regroupe Windows/Mac/Linux sous
   « PC ».
@@ -46,7 +46,7 @@ synchronisé automatiquement entre tous vos appareils grâce à Supabase.
 |---|---|
 | Langage / UI | Kotlin 2.2, Jetpack Compose, Navigation Compose |
 | Persistance locale | Room |
-| Réseau | Retrofit 3 + Moshi (RAWG, IGDB) |
+| Réseau | Retrofit 3 + Moshi (IGDB) |
 | Injection de dépendances | Hilt |
 | Arrière-plan | WorkManager (notification du récap annuel) |
 | Cloud | Supabase (Postgres + Auth par jeton Google + Realtime), via supabase-kt |
@@ -60,7 +60,7 @@ MVVM, avec le Repository comme source de vérité unique :
 ```
 UI (Compose) ↔ ViewModel ↔ Repository ─┬─ Room (cache local, hors ligne)
                                        ├─ Supabase (synchro distante)
-                                       └─ Retrofit (recherche RAWG, temps de jeu IGDB)
+                                       └─ Retrofit (recherche et fiche IGDB)
 ```
 
 - Les ViewModels passent toujours par une interface de repository (`domain/repository/`), injectée
@@ -75,8 +75,7 @@ UI (Compose) ↔ ViewModel ↔ Repository ─┬─ Room (cache local, hors lign
 
 ## Installation
 
-**Prérequis** : Android Studio avec JDK 17+, un appareil ou émulateur en API 24 ou plus, une clé API
-[RAWG](https://rawg.io/apidocs), une application [Twitch Developer](https://dev.twitch.tv/console/apps)
+**Prérequis** : Android Studio avec JDK 17+, un appareil ou émulateur en API 24 ou plus, une application [Twitch Developer](https://dev.twitch.tv/console/apps)
 (authentification IGDB), un projet [Supabase](https://supabase.com/) avec le
 fournisseur Google activé. Le projet peut être partagé avec une autre application : celle de Cartouche
 vit dans son propre schéma.
@@ -85,7 +84,6 @@ vit dans son propre schéma.
 2. **Clés API** : dans `local.properties` (ignoré par git) :
    ```properties
    sdk.dir=/chemin/vers/le/sdk/android
-   RAWG_API_KEY=votre_clé_rawg
    IGDB_CLIENT_ID=votre_client_id_twitch
    IGDB_CLIENT_SECRET=votre_client_secret_twitch
    SUPABASE_URL=https://votre-projet.supabase.co
@@ -126,7 +124,7 @@ Docker : `supabase/tests/lancer.sh`.
 
 ```
 app/src/main/java/fr/cklla/cartouche/
-├── data/           # Room, clients distants (RAWG, IGDB, Supabase), repositories
+├── data/           # Room, clients distants (IGDB, Supabase), repositories
 ├── di/             # Modules Hilt
 ├── domain/         # Modèles, interfaces de repository, logique pure
 ├── notification/   # Notification locale du récap annuel
@@ -135,8 +133,9 @@ app/src/main/java/fr/cklla/cartouche/
 
 ## Choix techniques notables
 
-- **RAWG pour la recherche, IGDB en complément** : RAWG est simple (clé API, pas d'OAuth) ; IGDB est
-  plus fiable pour le temps de jeu estimé et la plateforme.
+- **IGDB, source unique des données de jeu** : recherche, jaquette, plateformes, année et temps de jeu
+  viennent de la même API ; un jeu ajouté garde son `igdb_id`, ce qui évite toute correspondance floue
+  par nom. L'ancien identifiant RAWG reste en base, sans être réécrit.
 - **UUID pour `Game.id`** : le même identifiant côté Room et Supabase, sans table de correspondance.
 - **Schéma Postgres dédié `cartouche`** : migrations, droits et sauvegarde séparables d'une autre
   application hébergée dans le même projet.
