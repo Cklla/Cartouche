@@ -29,10 +29,10 @@ class IgdbGatewayTest {
 
     private fun gateway(api: FakeIgdbApi, token: String? = "jeton") = IgdbGateway(api, FakeIgdbTokenSource(token))
 
-    // --- Xenoblade : les plateformes de l'édition Switch 2 remontent sur le jeu de base ---
+    // --- Xenoblade : le portage 3DS remonte sur le jeu de base, l'édition définitive a sa fiche ---
 
     @Test
-    fun `Xenoblade reunit Wii, Wii U, Switch, Switch 2 et 3DS sur une seule fiche`() = runTest {
+    fun `Xenoblade et son edition definitive sont deux fiches aux plateformes justes`() = runTest {
         val api = FakeIgdbApi(
             catalog = xenobladeCatalog,
             // IGDB renvoie le jeu de base, l'édition définitive et l'autre épisode, pas l'édition Switch 2.
@@ -42,24 +42,50 @@ class IgdbGatewayTest {
         val results = gateway(api).search("xenoblade chronicles")
 
         val base = results.single { it.game.id == xenoblade.id }
-        assertEquals(
-            "New Nintendo 3DS/Nintendo 3DS/Nintendo Switch/Nintendo Switch 2/Wii/Wii U",
-            formatIgdbPlatforms(base.platforms),
-        )
-        // L'édition définitive n'apparaît plus seule ; le DLC n'est jamais fusionné.
-        assertFalse(results.any { it.game.id == xenobladeDefinitive.id })
+        assertEquals("New Nintendo 3DS/Nintendo 3DS/Wii/Wii U", formatIgdbPlatforms(base.platforms))
+        // Le jeu étendu a sa propre fiche, avec son édition Switch 2 ; le DLC n'est jamais fusionné.
+        val definitive = results.single { it.game.id == xenobladeDefinitive.id }
+        assertEquals("Nintendo Switch/Nintendo Switch 2", formatIgdbPlatforms(definitive.platforms))
         assertFalse(formatIgdbPlatforms(base.platforms)!!.contains("PlayStation 5"))
         assertTrue(results.any { it.game.id == xenoblade3.id })
     }
 
     @Test
-    fun `une edition cherchee seule est ramenee a son jeu de base`() = runTest {
+    fun `Divinity Original Sin et son Enhanced Edition sont deux fiches`() = runTest {
+        // Ids et liens relevés sur IGDB le 2026-11-13 ; l'Enhanced Edition est un jeu étendu (10).
+        val base = igdbGame(5082, "Divinity: Original Sin", platforms = listOf("PC (Microsoft Windows)", "Mac"), ratings = 259)
+        val enhanced = igdbGame(
+            14177, "Divinity: Original Sin - Enhanced Edition", type = 10, parentGame = 5082,
+            platforms = listOf("PlayStation 4", "Xbox One"), ratings = 159,
+        )
+        val collector = igdbGame(52924, "Divinity: Original Sin - Collector's Edition", type = 0, versionParent = 5082)
+        val api = FakeIgdbApi(catalog = listOf(base, enhanced, collector), searchResults = listOf(5082, 14177, 52924))
+
+        val results = gateway(api).search("Divinity Original Sin")
+
+        assertEquals(listOf(5082L, 14177L), results.map { it.game.id })
+        assertEquals("PC", formatIgdbPlatforms(results[0].platforms))
+        assertEquals("PlayStation 4/Xbox One", formatIgdbPlatforms(results[1].platforms))
+    }
+
+    @Test
+    fun `un portage cherche seul est ramene a son jeu de base`() = runTest {
+        val api = FakeIgdbApi(catalog = xenobladeCatalog, searchResults = listOf(xenoblade3d.id))
+
+        val results = gateway(api).search("xenoblade chronicles 3d")
+
+        assertEquals(listOf(xenoblade.id), results.map { it.game.id })
+        assertTrue(formatIgdbPlatforms(results.single().platforms)!!.contains("Nintendo 3DS"))
+    }
+
+    @Test
+    fun `un jeu etendu cherche seul garde sa fiche`() = runTest {
         val api = FakeIgdbApi(catalog = xenobladeCatalog, searchResults = listOf(xenobladeDefinitive.id))
 
         val results = gateway(api).search("xenoblade chronicles definitive edition")
 
-        assertEquals(listOf(xenoblade.id), results.map { it.game.id })
-        assertTrue(formatIgdbPlatforms(results.single().platforms)!!.contains("Nintendo Switch 2"))
+        assertEquals(listOf(xenobladeDefinitive.id), results.map { it.game.id })
+        assertEquals("Nintendo Switch/Nintendo Switch 2", formatIgdbPlatforms(results.single().platforms))
     }
 
     @Test
@@ -113,7 +139,7 @@ class IgdbGatewayTest {
         val merged = gateway(api).loadById(xenoblade.id)!!
 
         assertEquals(xenoblade.id, merged.game.id)
-        assertTrue(formatIgdbPlatforms(merged.platforms)!!.contains("Nintendo Switch 2"))
+        assertEquals("New Nintendo 3DS/Nintendo 3DS/Wii/Wii U", formatIgdbPlatforms(merged.platforms))
     }
 
     @Test
