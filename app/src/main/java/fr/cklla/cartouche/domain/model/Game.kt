@@ -4,17 +4,20 @@ package fr.cklla.cartouche.domain.model
  * Représente un jeu du backlog, tel que manipulé par l'UI et les ViewModels.
  *
  * C'est le modèle "métier" : il ne dépend ni de Room (entité base de données)
- * ni du serveur, ni de RAWG (réponse API). Le Repository fait la conversion
+ * ni du serveur, ni d'IGDB (réponse API). Le Repository fait la conversion
  * entre ces représentations et ce modèle.
  *
  * @param id identifiant du jeu (UUID généré à la création) — chaîne vide si pas encore persisté.
  *   Sert aussi de clé primaire côté serveur, pour que le même id désigne le même jeu sur
  *   Room et sur le cloud sans table de correspondance séparée.
- * @param rawgId identifiant RAWG du jeu, ou `null` pour un jeu ajouté avant l'introduction de ce
- *   champ. Sert uniquement à retrouver la fiche Steam du jeu (voir `IgdbPlaytimeRepository`,
- *   étape 1 de la correspondance IGDB par ID Steam) — jamais affiché ni utilisé ailleurs.
- * @param releaseYear année de sortie RAWG, ou `null` si inconnue. Sert de signal secondaire pour
- *   départager plusieurs candidats IGDB proches par le nom (voir `IgdbPlaytimeRepository`, étape 2).
+ * @param rawgId ancien identifiant RAWG, conservé tel quel pour ne perdre aucune donnée mais plus
+ *   jamais renseigné pour un nouveau jeu ni utilisé par l'app.
+ * @param igdbId identifiant IGDB du jeu, ou `null` tant qu'il n'est pas connu (jeu ajouté avant
+ *   l'arrivée d'IGDB comme source unique, ou saisi sans passer par la recherche). Un jeu qui le
+ *   connaît relit ses temps, ses plateformes et sa jaquette directement par cet id, sans
+ *   correspondance par nom (voir `IgdbPlaytimeRepository`).
+ * @param releaseYear année de sortie, ou `null` si inconnue. Sert de signal secondaire pour
+ *   départager plusieurs candidats IGDB proches par le nom quand l'id IGDB n'est pas connu.
  * @param userPlaytimeHours temps de jeu renseigné manuellement par l'utilisateur, en heures.
  * @param estimatedPlaytimeHastilyHours temps pour "rusher" le jeu selon IGDB
  *   (`game_time_to_beats.hastily`), en heures ; `null` si IGDB n'a pas cette donnée pour ce jeu.
@@ -59,6 +62,7 @@ data class Game(
     val genre: String,
     val status: GameStatus,
     val rawgId: Long? = null,
+    val igdbId: Long? = null,
     val releaseYear: Int? = null,
     val userPlaytimeHours: Int = 0,
     val estimatedPlaytimeHastilyHours: Int? = null,

@@ -27,6 +27,7 @@ data class GameEntity(
     val genre: String,
     val status: String,
     val rawgId: Long?,
+    val igdbId: Long?,
     val releaseYear: Int?,
     val userPlaytimeHours: Int,
     val estimatedPlaytimeHastilyHours: Int?,

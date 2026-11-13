@@ -117,4 +117,14 @@ class GameLimitsTest {
         assertEquals(MAX_PLAYED_PLATFORMS, result.size)
         assertEquals(many.sorted().take(MAX_PLAYED_PLATFORMS).toSet(), result)
     }
+
+    @Test
+    fun `un id IGDB est garde dans la borne du serveur et devient null en dehors`() {
+        assertEquals(1L, igdbIdOrNull(1L))
+        assertEquals(9_999_999_999L, igdbIdOrNull(9_999_999_999L))
+        assertNull(igdbIdOrNull(0L))
+        assertNull(igdbIdOrNull(-1L))
+        assertNull(igdbIdOrNull(10_000_000_000L))
+        assertNull(igdbIdOrNull(null))
+    }
 }

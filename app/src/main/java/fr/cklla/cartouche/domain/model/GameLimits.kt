@@ -15,6 +15,8 @@ const val MAX_PLAYED_PLATFORMS = 20
 const val MAX_HOURS = 100_000
 const val MIN_RELEASE_YEAR = 1950
 const val MAX_RELEASE_YEAR = 2999
+const val MIN_IGDB_ID = 1L
+const val MAX_IGDB_ID = 9_999_999_999L
 
 private const val PLATFORM_SEPARATOR = "/"
 
@@ -38,12 +40,15 @@ fun joinPlatformsWithinLimit(names: List<String>): String {
 /** Année de sortie plausible, ou `null` : une année hors bornes serait refusée par le serveur. */
 fun releaseYearOrNull(year: Int?): Int? = year?.takeIf { it in MIN_RELEASE_YEAR..MAX_RELEASE_YEAR }
 
+/** Identifiant IGDB dans la borne du serveur, ou `null` : une valeur hors borne serait refusée (`CHECK`). */
+fun igdbIdOrNull(id: Long?): Long? = id?.takeIf { it in MIN_IGDB_ID..MAX_IGDB_ID }
+
 /** Durée en heures dans la borne du serveur, ou `null` si elle la dépasse (donnée de source douteuse). */
 fun hoursOrNull(hours: Int?): Int? = hours?.takeIf { it in 0..MAX_HOURS }
 
 /**
  * Ramène [this] dans les bornes du serveur, sans jamais lever : dernier filet avant l'envoi, quelle
- * que soit l'origine de la valeur (saisie, RAWG, IGDB, ligne déjà présente dans Room avant ces
+ * que soit l'origine de la valeur (saisie, IGDB, ligne déjà présente dans Room avant ces
  * bornes). Les textes sont tronqués, une année ou une durée hors borne passe à `null`, une URL trop
  * longue est écartée (tronquée, elle ne désignerait plus rien).
  */
@@ -53,6 +58,7 @@ fun Game.withinServerLimits(): Game = copy(
     genre = genre.take(MAX_GENRE_LENGTH),
     notes = notes.take(MAX_NOTES_LENGTH),
     coverUrl = coverUrl?.takeIf { it.length <= MAX_COVER_URL_LENGTH },
+    igdbId = igdbIdOrNull(igdbId),
     releaseYear = releaseYearOrNull(releaseYear),
     userPlaytimeHours = userPlaytimeHours.coerceIn(0, MAX_HOURS),
     estimatedPlaytimeHastilyHours = hoursOrNull(estimatedPlaytimeHastilyHours),
