@@ -38,14 +38,14 @@ class IgdbGameMergeTest {
     }
 
     @Test
-    fun `un portage ou un jeu etendu se rattache a son parent_game`() {
+    fun `un portage se rattache a son parent_game`() {
         assertEquals(2364L, igdbGame(1, "3D", type = 11, parentGame = 2364).mergeParentId())
-        assertEquals(2364L, igdbGame(1, "Definitive", type = 10, parentGame = 2364).mergeParentId())
     }
 
     @Test
-    fun `un remake, un remaster et une extension autonome restent des fiches a part`() {
-        listOf(8L, 9L, 4L).forEach { type ->
+    fun `un jeu etendu, un remake, un remaster et une extension autonome restent des fiches a part`() {
+        // Ex. *Divinity: Original Sin - Enhanced Edition* (type 10, parent_game = jeu de base).
+        listOf(10L, 8L, 9L, 4L).forEach { type ->
             assertNull("type $type", igdbGame(1, "x", type = type, parentGame = 1029, versionParent = 1029).mergeParentId())
         }
     }
@@ -59,13 +59,26 @@ class IgdbGameMergeTest {
     // --- Fusion sur deux niveaux ---
 
     @Test
-    fun `une edition d'une edition est fusionnee dans le jeu de base sur deux niveaux`() {
-        val merged = buildMergedGames(listOf(xenoblade, xenobladeDefinitive, xenobladeSwitch2))
+    fun `une edition d'un portage est fusionnee dans le jeu de base sur deux niveaux`() {
+        val base = igdbGame(1, "Jeu", platforms = listOf("Wii"))
+        val port = igdbGame(2, "Jeu 3D", type = 11, parentGame = 1, platforms = listOf("Nintendo 3DS"))
+        val portEdition = igdbGame(3, "Jeu 3D Collector", type = 0, versionParent = 2, platforms = listOf("New Nintendo 3DS"))
 
-        assertEquals(listOf(xenoblade.id), merged.map { it.game.id })
+        val merged = buildMergedGames(listOf(base, port, portEdition))
+
+        assertEquals(listOf(1L), merged.map { it.game.id })
+        assertEquals("New Nintendo 3DS/Nintendo 3DS/Wii", formatIgdbPlatforms(merged.single().platforms))
+    }
+
+    @Test
+    fun `un jeu etendu a sa propre fiche, avec ses propres editions`() {
+        val merged = buildMergedGames(listOf(xenoblade, xenobladeDefinitive, xenobladeSwitch2)).associateBy { it.game.id }
+
+        assertEquals(setOf(xenoblade.id, xenobladeDefinitive.id), merged.keys)
+        assertEquals("Wii/Wii U", formatIgdbPlatforms(merged.getValue(xenoblade.id).platforms))
         assertEquals(
-            "Nintendo Switch/Nintendo Switch 2/Wii/Wii U",
-            formatIgdbPlatforms(merged.single().platforms),
+            "Nintendo Switch/Nintendo Switch 2",
+            formatIgdbPlatforms(merged.getValue(xenobladeDefinitive.id).platforms),
         )
     }
 

@@ -22,7 +22,7 @@ class IgdbPlaytimeRepositoryImplTest {
     )
 
     private val catalog = listOf(
-        IgdbSamples.xenoblade, IgdbSamples.xenobladeDefinitive, IgdbSamples.xenobladeSwitch2, hades,
+        IgdbSamples.xenoblade, IgdbSamples.xenobladeDefinitive, IgdbSamples.xenobladeSwitch2, IgdbSamples.xenoblade3d, hades,
     )
 
     private val ttb = IgdbTimeToBeatDto(hastilySeconds = 0, normallySeconds = 252_000, completelySeconds = 400_000)
@@ -41,7 +41,7 @@ class IgdbPlaytimeRepositoryImplTest {
         val match = repository(api).findEstimatedPlaytime("Titre sans importance", 1999, IgdbSamples.XENOBLADE).found()
 
         assertEquals(IgdbSamples.XENOBLADE, match.igdbId)
-        assertEquals("Nintendo Switch/Nintendo Switch 2/Wii/Wii U", match.platform)
+        assertEquals("New Nintendo 3DS/Nintendo 3DS/Wii/Wii U", match.platform)
         assertEquals("https://images.igdb.com/igdb/image/upload/t_cover_big_2x/coc8ap.jpg", match.coverUrl)
         assertEquals(2010, match.releaseYear)
         // 0 seconde = « non disponible », jamais « 0 h ».
@@ -76,14 +76,14 @@ class IgdbPlaytimeRepositoryImplTest {
     }
 
     @Test
-    fun `un rapprochement tombant sur une edition remonte au jeu de base`() = runTest {
-        // IGDB ne renvoie que l'édition définitive : l'id retenu est celui du jeu de base.
-        val api = FakeIgdbApi(catalog, searchResults = listOf(IgdbSamples.XENOBLADE_DE))
+    fun `un rapprochement tombant sur un portage remonte au jeu de base`() = runTest {
+        // IGDB ne renvoie que le portage 3DS : l'id retenu est celui du jeu de base.
+        val api = FakeIgdbApi(catalog, searchResults = listOf(IgdbSamples.xenoblade3d.id))
 
         val match = repository(api).findEstimatedPlaytime("Xenoblade Chronicles", 2010, null).found()
 
         assertEquals(IgdbSamples.XENOBLADE, match.igdbId)
-        assertTrue(match.platform!!.contains("Nintendo Switch 2"))
+        assertTrue(match.platform!!.contains("Nintendo 3DS"))
     }
 
     @Test

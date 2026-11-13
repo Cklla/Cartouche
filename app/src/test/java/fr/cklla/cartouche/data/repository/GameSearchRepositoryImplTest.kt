@@ -54,7 +54,7 @@ class GameSearchRepositoryImplTest {
     }
 
     @Test
-    fun `la recherche fusionne les plateformes d'une edition dans le jeu de base`() = runTest {
+    fun `la recherche fusionne les plateformes d'une edition dans son jeu`() = runTest {
         val api = FakeIgdbApi(
             catalog = listOf(IgdbSamples.xenoblade, IgdbSamples.xenobladeDefinitive, IgdbSamples.xenobladeSwitch2),
             searchResults = listOf(IgdbSamples.xenoblade.id, IgdbSamples.xenobladeDefinitive.id),
@@ -62,8 +62,8 @@ class GameSearchRepositoryImplTest {
 
         val data = (repository(api).searchGames("xenoblade chronicles") as Resource.Success).data
 
-        assertEquals(1, data.size)
-        assertEquals("Nintendo Switch/Nintendo Switch 2/Wii/Wii U", data.single().platform)
+        // Jeu de base et jeu étendu : deux fiches ; l'édition Switch 2 rejoint le jeu étendu.
+        assertEquals(listOf("Wii/Wii U", "Nintendo Switch/Nintendo Switch 2"), data.map { it.platform })
     }
 
     @Test

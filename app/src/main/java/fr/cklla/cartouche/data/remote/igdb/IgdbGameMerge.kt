@@ -28,7 +28,6 @@ val KEPT_GAME_TYPE_IDS = listOf(0, 4, 8, 9, 10, 11)
 private val KEPT_GAME_TYPE_SET = KEPT_GAME_TYPE_IDS.map { it.toLong() }.toSet()
 
 private const val TYPE_MAIN_GAME = 0L
-private const val TYPE_EXPANDED_GAME = 10L
 private const val TYPE_PORT = 11L
 
 /** Nombre maximal de résultats renvoyés à l'écran après fusion. */
@@ -44,15 +43,17 @@ fun IgdbGameDto.isKeptGameType(): Boolean = gameType == null || gameType.id in K
  * Id du jeu de base auquel ce jeu est rattaché, ou `null` s'il est lui-même un jeu à part entière.
  *
  * - une **édition** (`version_parent`, type « jeu de base » ou absent) se rattache à son parent ;
- * - un **portage** ou un **jeu étendu** (types 11 et 10) se rattache à son `parent_game`
- *   (à défaut, à son `version_parent`) ;
- * - les **remakes** (8), **remasters** (9) et **extensions autonomes** (4) restent des fiches
- *   à part, même quand IGDB leur donne un parent : *Ocarina of Time* (1029), son remake 3DS et
- *   son remake Switch 2 sont trois jeux distincts.
+ * - un **portage** (type 11) se rattache à son `parent_game` (à défaut, à son `version_parent`) ;
+ * - les **jeux étendus** (10), **remakes** (8), **remasters** (9) et **extensions autonomes** (4)
+ *   restent des fiches à part, même quand IGDB leur donne un parent : *Ocarina of Time* (1029), son
+ *   remake 3DS et son remake Switch 2 sont trois jeux distincts ; *Divinity: Original Sin* et son
+ *   *Enhanced Edition* (type 10, `parent_game` = jeu de base) aussi (choix du développeur,
+ *   2026-11-13). Un jeu étendu garde ses propres éditions et portages (ex. l'édition Switch 2 de
+ *   *Xenoblade Chronicles: Definitive Edition*).
  */
 fun IgdbGameDto.mergeParentId(): Long? = when (gameType?.id) {
     null, TYPE_MAIN_GAME -> versionParent?.id
-    TYPE_EXPANDED_GAME, TYPE_PORT -> parentGame?.id ?: versionParent?.id
+    TYPE_PORT -> parentGame?.id ?: versionParent?.id
     else -> null
 }
 
