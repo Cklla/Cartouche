@@ -4,8 +4,10 @@ import com.squareup.moshi.Json
 import com.squareup.moshi.JsonClass
 
 /**
- * Un jeu IGDB, tel que renvoyé par l'endpoint `POST /v4/games`. Tous les champs hors `id` et `name`
- * peuvent être absents : IGDB n'en renseigne qu'une partie selon le jeu (29 jeux sur ~130 sans
+ * Un jeu IGDB, tel que renvoyé par l'endpoint `POST /v4/games`. Tous les champs hors `id` peuvent
+ * être absents, `name` compris : un nom manquant ne doit jamais faire échouer le décodage de toute la
+ * réponse (un jeu sans nom est écarté par `IgdbGateway`, un genre ou une plateforme sans nom sont
+ * ignorés). Pour les autres champs : IGDB n'en renseigne qu'une partie selon le jeu (29 jeux sur ~130 sans
  * jaquette, 15 sur ~100 sans date lors de l'exploration), et un champ absent ne doit jamais faire
  * écarter un jeu (voir `IgdbGameMerge`).
  *
@@ -18,7 +20,7 @@ import com.squareup.moshi.JsonClass
 @JsonClass(generateAdapter = true)
 data class IgdbGameDto(
     @Json(name = "id") val id: Long,
-    @Json(name = "name") val name: String,
+    @Json(name = "name") val name: String? = null,
     @Json(name = "first_release_date") val firstReleaseDate: Long? = null,
     @Json(name = "platforms") val platforms: List<IgdbPlatformDto>? = null,
     @Json(name = "cover") val cover: IgdbCoverDto? = null,
@@ -38,7 +40,7 @@ data class IgdbCoverDto(
 /** Genre IGDB (`games.genres`). */
 @JsonClass(generateAdapter = true)
 data class IgdbGenreDto(
-    @Json(name = "name") val name: String,
+    @Json(name = "name") val name: String? = null,
 )
 
 /** Type de jeu IGDB (`games.game_type`, table `game_types`) : 0 jeu de base, 1 DLC, 8 remake... */
@@ -56,7 +58,7 @@ data class IgdbRefDto(
 /** Une plateforme IGDB (`games.platforms`), voir `IgdbGameDto.platforms`. */
 @JsonClass(generateAdapter = true)
 data class IgdbPlatformDto(
-    @Json(name = "name") val name: String,
+    @Json(name = "name") val name: String? = null,
 )
 
 /**

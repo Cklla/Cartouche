@@ -98,7 +98,10 @@ class IgdbGateway @Inject constructor(
 
     private suspend fun query(apicalypse: String): List<IgdbGameDto> {
         val (clientId, authorization) = credentials()
+        // Un jeu sans nom ne peut ni s'afficher ni se rapprocher d'un titre : il est écarté, sans
+        // faire échouer le reste de la réponse (voir `IgdbGameDto`).
         return withRateLimitRetry { igdbApi.searchGames(clientId, authorization, apicalypse.toApicalypseBody()) }
+            .filter { !it.name.isNullOrBlank() }
     }
 
     private suspend fun credentials(): Pair<String, String> {

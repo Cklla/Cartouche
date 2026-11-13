@@ -102,7 +102,7 @@ fun findBestMatch(title: String, releaseYear: Int?, candidates: List<IgdbGameDto
     val normalizedTitle = normalizeForMatching(title)
 
     val closeCandidates = candidates
-        .map { it to titleSimilarity(normalizedTitle, normalizeForMatching(it.name)) }
+        .map { it to titleSimilarity(normalizedTitle, normalizeForMatching(it.name.orEmpty())) }
         .filter { (_, similarity) -> similarity >= MATCH_SIMILARITY_THRESHOLD }
     if (closeCandidates.isEmpty()) return null
 
@@ -207,7 +207,8 @@ fun toEstimatedHours(seconds: Int?): Int? = hoursOrNull(seconds?.takeIf { it > 0
  */
 fun formatIgdbPlatforms(platforms: List<IgdbPlatformDto>?): String? =
     platforms.orEmpty()
-        .map { normalizeIgdbPlatformName(it.name) }
+        .mapNotNull { it.name }
+        .map { normalizeIgdbPlatformName(it) }
         .filter { it.isNotEmpty() }
         .distinct()
         .sorted()

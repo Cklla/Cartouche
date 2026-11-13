@@ -103,7 +103,7 @@ fun buildMergedGames(pool: Collection<IgdbGameDto>): List<MergedGame> {
 fun rankByRelevance(query: String, games: List<MergedGame>): List<MergedGame> {
     val normalizedQuery = normalizeForMatching(query)
     fun tier(game: MergedGame): Int {
-        val title = normalizeForMatching(game.game.name)
+        val title = normalizeForMatching(game.game.name.orEmpty())
         return when {
             title == normalizedQuery -> 0
             title.startsWith(normalizedQuery) -> 1
@@ -136,7 +136,7 @@ fun yearTextOrEmpty(game: IgdbGameDto): String = igdbReleaseYear(game)?.toString
 
 /** Premier genre IGDB, affiché tel quel (en anglais), borné à la taille acceptée par le serveur. */
 fun firstGenreName(game: IgdbGameDto): String =
-    game.genres.orEmpty().firstOrNull()?.name?.take(MAX_GENRE_LENGTH).orEmpty()
+    game.genres.orEmpty().firstNotNullOfOrNull { it.name }?.take(MAX_GENRE_LENGTH).orEmpty()
 
 /**
  * Résultat de recherche d'un jeu de base fusionné. `null` si son id sort de la borne acceptée par
@@ -146,7 +146,7 @@ fun MergedGame.toSearchResult(): GameSearchResult? {
     val id = igdbIdOrNull(game.id) ?: return null
     return GameSearchResult(
         igdbId = id,
-        title = game.name.take(MAX_TITLE_LENGTH),
+        title = game.name.orEmpty().take(MAX_TITLE_LENGTH),
         platform = formatIgdbPlatforms(platforms).orEmpty(),
         genre = firstGenreName(game),
         year = yearTextOrEmpty(game),
