@@ -71,6 +71,19 @@ class IgdbGateway @Inject constructor(
         return buildMergedGames(pool.values).firstOrNull { it.game.id == game.id }
     }
 
+    /**
+     * Remonte d'une édition ou d'un portage à son jeu de base (au plus [MAX_MERGE_DEPTH] niveaux,
+     * une requête par niveau). Si un parent est introuvable, on s'arrête au dernier jeu connu.
+     */
+    suspend fun resolveBase(game: IgdbGameDto): IgdbGameDto {
+        var current = game
+        repeat(MAX_MERGE_DEPTH) {
+            val parentId = current.mergeParentId()?.let(::igdbIdOrNull) ?: return current
+            current = query(buildGameByIdQuery(parentId)).firstOrNull { it.id == parentId } ?: return current
+        }
+        return current
+    }
+
     /** Candidats pour la correspondance par titre d'un jeu sans id IGDB (voir `findBestMatch`). */
     suspend fun searchByTitle(title: String): List<IgdbGameDto> = query(buildSearchQuery(title))
 

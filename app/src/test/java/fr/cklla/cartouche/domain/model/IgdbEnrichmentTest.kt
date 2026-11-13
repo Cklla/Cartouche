@@ -36,6 +36,28 @@ class IgdbEnrichmentTest {
         playtimeEstimate = IgdbPlaytimeEstimate(hastilyHours = 40, normallyHours = 70, completelyHours = 110),
     )
 
+    // --- rapprochement non certain : ni id, ni jaquette, ni année ---
+
+    @Test
+    fun `un rapprochement sans id n'ecrit ni id, ni jaquette, ni annee mais garde plateformes et durees`() {
+        val uncertain = IgdbGameMatch(
+            igdbId = null,
+            platform = "Nintendo Switch/Wii",
+            coverUrl = null,
+            releaseYear = null,
+            playtimeEstimate = IgdbPlaytimeEstimate(hastilyHours = 40, normallyHours = 70, completelyHours = 110),
+        )
+
+        val result = applyIgdbEnrichment(game, uncertain)
+
+        assertNull(result.igdbId)
+        assertEquals(rawgCover, result.coverUrl)
+        assertNull(result.releaseYear)
+        assertEquals("Nintendo Switch/Wii", result.platform)
+        assertEquals(70, result.estimatedPlaytimeNormallyHours)
+        assertTrue(result.igdbLookupAttempted)
+    }
+
     // --- igdb_id ---
 
     @Test

@@ -7,6 +7,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import fr.cklla.cartouche.domain.model.Game
 import fr.cklla.cartouche.domain.model.GameSearchResult
 import fr.cklla.cartouche.domain.model.GameStatus
+import fr.cklla.cartouche.domain.model.IgdbLookup
 import fr.cklla.cartouche.domain.model.MAX_HOURS
 import fr.cklla.cartouche.domain.model.MAX_NOTES_LENGTH
 import fr.cklla.cartouche.domain.model.MAX_PLAYED_PLATFORMS
@@ -93,12 +94,21 @@ class DetailViewModel @Inject constructor(
 
     private fun fetchEstimatedPlaytime(game: Game) {
         viewModelScope.launch {
-            val match = igdbPlaytimeRepository.findEstimatedPlaytime(
-                title = game.title,
-                releaseYear = game.releaseYear,
-                igdbId = igdbIdOrNull(game.igdbId),
-            )
-            // Un échec (réseau, jeu introuvable) compte aussi comme une tentative : pas de boucle.
+            val match = when (
+                val lookup = igdbPlaytimeRepository.findEstimatedPlaytime(
+                    title = game.title,
+                    releaseYear = game.releaseYear,
+                    igdbId = igdbIdOrNull(game.igdbId),
+                )
+            ) {
+                is IgdbLookup.Found -> lookup.match
+                IgdbLookup.NotFound -> null
+                // Panne (hors ligne, quota, jeton) : la tentative n'est pas consommée, le jeu sera
+                // relu à une prochaine ouverture de sa fiche. Aucune boucle : une relance ne vient
+                // que de l'ouverture d'une fiche.
+                IgdbLookup.Failed -> return@launch
+            }
+            // Réponse d'IGDB (jeu lu, ou introuvable) : c'est la tentative qui compte, pas son succès.
             if (game.id.isNotEmpty()) igdbUpgradeStore.markDone(game.id)
             // Le jeu affiché a pu changer entretemps (retiré du backlog) : `applyEdit` gère déjà
             // ce cas (no-op si `workingGame` est `null`), donc pas de vérification supplémentaire ici.

@@ -1,10 +1,10 @@
 package fr.cklla.cartouche.domain.repository
 
-import fr.cklla.cartouche.domain.model.IgdbGameMatch
+import fr.cklla.cartouche.domain.model.IgdbLookup
 
 /**
  * Lecture, auprès d'IGDB, des informations d'un jeu déjà connu de l'app : temps de jeu estimé,
- * plateformes, jaquette et année (voir [IgdbGameMatch]).
+ * plateformes, jaquette et année (voir `IgdbGameMatch`).
  *
  * Séparé de [GameRepository] : ce repository ne touche jamais au backlog local, il ne fait que
  * répondre à une question ponctuelle ("qu'est-ce qu'IGDB sait de ce jeu ?"). C'est au ViewModel
@@ -14,12 +14,13 @@ import fr.cklla.cartouche.domain.model.IgdbGameMatch
 interface IgdbPlaytimeRepository {
 
     /**
-     * Renvoie ce qu'IGDB sait du jeu, ou `null` si le jeu n'est pas identifié ou en cas d'échec
-     * (réseau, authentification, quota...) — jamais d'exception qui remonterait jusqu'à l'UI.
+     * Lit ce qu'IGDB sait du jeu ([IgdbLookup.Found]), ou indique qu'il est introuvable
+     * ([IgdbLookup.NotFound], réponse définitive) ou que la lecture a échoué ([IgdbLookup.Failed] :
+     * réseau, authentification, quota...) — jamais d'exception qui remonterait jusqu'à l'UI.
      *
-     * Avec un [igdbId] connu, le jeu est lu directement par id. Sans id, la correspondance se fait
-     * par nom normalisé et année de sortie ([title], [releaseYear]) ; faute de correspondance
-     * fiable, le résultat est `null`.
+     * Avec un [igdbId] connu, le jeu est lu directement par id. Sans id, le jeu est rapproché par
+     * nom normalisé et année de sortie ([title], [releaseYear]) ; l'id et la jaquette ne sont
+     * retenus que si le rapprochement est certain (voir `IgdbPlaytimeRepositoryImpl`).
      */
-    suspend fun findEstimatedPlaytime(title: String, releaseYear: Int?, igdbId: Long?): IgdbGameMatch?
+    suspend fun findEstimatedPlaytime(title: String, releaseYear: Int?, igdbId: Long?): IgdbLookup
 }

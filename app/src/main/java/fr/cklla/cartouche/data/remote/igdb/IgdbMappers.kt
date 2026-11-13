@@ -25,11 +25,22 @@ private const val GAME_FIELDS =
     "name,first_release_date,platforms.name,cover.image_id,genres.name,game_type.type," +
         "version_parent.name,parent_game.name,total_rating_count"
 
+/**
+ * Champs de la correspondance par titre : le type et les parents permettent de remonter d'une
+ * édition ou d'un portage au jeu de base (voir `IgdbGameMerge.mergeParentId`).
+ */
+private const val MATCH_FIELDS = "id,name,first_release_date,game_type.type,version_parent.name,parent_game.name"
+
 /** Candidats demandés à IGDB pour une recherche : on en garde 20 au plus après fusion. */
 const val SEARCH_CANDIDATE_LIMIT = 40
 
-/** Plafond de lignes pour la lecture des éditions et portages (IGDB accepte jusqu'à 500). */
-private const val CHILDREN_LIMIT = 200
+/**
+ * Plafond de lignes pour la lecture des éditions et portages : le maximum accepté par IGDB (500).
+ * Les DLC et packs sont aussi liés par `parent_game` et occupent des lignes sans être gardés : un
+ * plafond plus bas pouvait faire tronquer des éditions et des portages, donc des plateformes, pour un
+ * jeu très chargé en contenus additionnels.
+ */
+private const val CHILDREN_LIMIT = 500
 
 /**
  * Recherche du catalogue par texte libre. Le filtre `where` est appliqué **côté serveur** (avant
@@ -83,7 +94,7 @@ fun buildChildrenQuery(parentIds: Collection<Long>): String {
  * `search "God of War"` retrouve le jeu.
  */
 fun buildSearchQuery(title: String): String =
-    "search \"${escapeQueryText(stripDisambiguatingSuffixes(title))}\"; fields id,name,first_release_date; limit 30;"
+    "search \"${escapeQueryText(stripDisambiguatingSuffixes(title))}\"; fields $MATCH_FIELDS; limit 30;"
 
 /** Requête de durée de vie pour un jeu IGDB déjà identifié. */
 fun buildTimeToBeatQuery(igdbGameId: Long): String =
@@ -118,6 +129,23 @@ fun findBestMatch(title: String, releaseYear: Int?, candidates: List<IgdbGameDto
     }
 
     return closeCandidates.maxByOrNull { (_, similarity) -> similarity }?.first
+}
+
+/**
+ * Le rapprochement par nom est-il **certain** ? Seul un rapprochement certain autorise à poser un
+ * `igdb_id` définitif et à remplacer la jaquette : il faut que le titre normalisé du **jeu de base**
+ * (voir `IgdbGateway.resolveBase`) soit identique à celui du jeu enregistré **et** que les années de
+ * sortie soient égales. Un titre voisin ("Hades" ~ "Hades II" est déjà écarté par le seuil de
+ * [findBestMatch], mais "Persona 3 Reload" ~ "Persona 3 Reload Expansion Pass" ne l'est pas) ou une
+ * année différente ne suffit pas, et une année enregistrée inconnue non plus : on ne fixe pas à vie
+ * un jeu sur un mauvais id, que la remise à niveau du site ne reproposerait plus.
+ */
+fun isCertainMatch(title: String, releaseYear: Int?, base: IgdbGameDto): Boolean {
+    val normalizedTitle = normalizeForMatching(title)
+    return releaseYear != null &&
+        igdbReleaseYear(base) == releaseYear &&
+        normalizedTitle.isNotEmpty() &&
+        normalizedTitle == normalizeForMatching(base.name.orEmpty())
 }
 
 /** Année de sortie IGDB, convertie depuis le timestamp Unix `first_release_date` (UTC). */

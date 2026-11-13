@@ -557,6 +557,59 @@ class DetailViewModelTest {
     }
 
     @Test
+    fun `un echec de lecture IGDB ne consomme pas la tentative, la suivante aboutit`() = runTest {
+        val dao = FakeGameDao()
+        val repository = fakeGameRepository(dao)
+        val gameId = (repository.addGame(
+            Game(title = "Hades", platform = "PC", genre = "Roguelike", status = GameStatus.A_FAIRE, igdbId = 113112L),
+        ) as Resource.Success).data
+        val store = FakeIgdbUpgradeStore()
+
+        // Hors ligne : rien n'est enregistré, ni drapeau, ni mémoire de remise à niveau.
+        val offline = FakeIgdbPlaytimeRepository(fails = true)
+        val offlineViewModel = viewModel(repository, gameId, offline, store)
+        val offlineJob = launch { offlineViewModel.uiState.collect {} }
+        dispatcher.scheduler.advanceUntilIdle()
+        assertEquals(1, offline.callCount)
+        assertFalse(offlineViewModel.uiState.value.game?.igdbLookupAttempted == true)
+        assertFalse(gameId in store.doneIds)
+        offlineJob.cancel()
+
+        // Retour du réseau : la fiche relit le jeu et reçoit ses temps.
+        val online = FakeIgdbPlaytimeRepository(
+            result = IgdbGameMatch(
+                igdbId = 113112L,
+                playtimeEstimate = IgdbPlaytimeEstimate(hastilyHours = 20, normallyHours = 25, completelyHours = 40),
+            ),
+        )
+        val onlineViewModel = viewModel(repository, gameId, online, store)
+        val onlineJob = launch { onlineViewModel.uiState.collect {} }
+        dispatcher.scheduler.advanceUntilIdle()
+        assertEquals(1, online.callCount)
+        assertEquals(25, onlineViewModel.uiState.value.game?.estimatedPlaytimeNormallyHours)
+        assertTrue(onlineViewModel.uiState.value.game?.igdbLookupAttempted == true)
+        onlineJob.cancel()
+    }
+
+    @Test
+    fun `un jeu ajoute depuis l'apercu pendant une panne garde sa tentative pour plus tard`() = runTest {
+        val dao = FakeGameDao()
+        val repository = fakeGameRepository(dao)
+        val igdbRepository = FakeIgdbPlaytimeRepository(fails = true)
+        val viewModel = previewViewModel(repository, title = "Hollow Knight", igdbPlaytimeRepository = igdbRepository)
+        val collectorJob = launch { viewModel.uiState.collect {} }
+        dispatcher.scheduler.advanceUntilIdle()
+
+        viewModel.onAddGame()
+        dispatcher.scheduler.advanceUntilIdle()
+
+        val game = viewModel.uiState.value.game
+        assertTrue(game?.id?.isNotEmpty() == true)
+        assertFalse(game?.igdbLookupAttempted == true)
+        collectorJob.cancel()
+    }
+
+    @Test
     fun `un jeu qui a son id IGDB et une tentative enregistree n'est pas relance`() = runTest {
         val dao = FakeGameDao()
         val repository = fakeGameRepository(dao)

@@ -22,8 +22,11 @@ private fun isRawgCoverUrl(url: String): Boolean =
  * - `estimatedPlaytime*` : seules les durées qu'IGDB fournit (non nulles) sont écrites ; les autres
  *   sont gardées.
  * - `releaseYear` : renseignée si elle est vide.
- * - `igdbLookupAttempted` : passe à `true`, y compris quand [match] est `null` (jeu introuvable ou
- *   échec réseau : le jeu n'est pas relancé en boucle).
+ * - `igdbLookupAttempted` : passe à `true`, y compris quand [match] est `null` (IgdbLookup.NotFound :
+ *   IGDB ne connaît pas ce jeu, inutile de le relancer en boucle). Un échec de lecture (réseau) n'appelle
+ *   pas cette règle : la tentative n'est alors pas consommée (voir `DetailViewModel`).
+ * - Un [match] sans `igdbId` (rapprochement par nom non certain) n'écrit **ni id, ni jaquette, ni
+ *   année** : seules les plateformes et les durées sont reprises.
  *
  * **Jamais modifiés** : titre, genre, statut, note, heures personnelles, notes, dates, plateformes
  * jouées (hors réalignement de casse).
