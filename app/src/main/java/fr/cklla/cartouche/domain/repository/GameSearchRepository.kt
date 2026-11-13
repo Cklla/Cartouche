@@ -4,11 +4,11 @@ import fr.cklla.cartouche.domain.model.GameSearchResult
 import fr.cklla.cartouche.domain.model.Resource
 
 /**
- * Point d'accès à la recherche de jeux via l'API externe (RAWG).
+ * Point d'accès à la recherche de jeux via l'API externe (IGDB).
  *
  * Séparé de [GameRepository] : ce repository ne touche jamais au backlog local,
- * il ne fait qu'interroger RAWG. C'est le ViewModel de l'écran Recherche qui
- * orchestre les deux (recherche RAWG + ajout au backlog via [GameRepository]).
+ * il ne fait qu'interroger IGDB. C'est le ViewModel de l'écran Recherche qui
+ * orchestre les deux (recherche IGDB + ajout au backlog via [GameRepository]).
  */
 interface GameSearchRepository {
 

@@ -25,7 +25,7 @@ import kotlinx.coroutines.launch
  * le champ de recherche et le passage "recherches populaires ↔ résultats"
  * réagissent sans délai), tandis que l'appel réseau réel est retardé
  * ([SEARCH_DEBOUNCE_MS]) et annulé/relancé à chaque frappe via `collectLatest`
- * — évite un appel RAWG par caractère tapé.
+ * — évite un appel IGDB par caractère tapé.
  */
 @OptIn(FlowPreview::class)
 @HiltViewModel
@@ -68,6 +68,7 @@ class RechercheViewModel @Inject constructor(
             results = (result as? Resource.Success)?.data.orEmpty(),
             errorMessage = (result as? Resource.Error)?.message,
             backlogGameIdsByTitle = backlog.associate { normalizeTitle(it.title) to it.id },
+            backlogGameIdsByIgdbId = backlog.mapNotNull { game -> game.igdbId?.let { it to game.id } }.toMap(),
         )
     }.stateIn(
         scope = viewModelScope,

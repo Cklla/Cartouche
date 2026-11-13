@@ -94,11 +94,12 @@ private fun RechercheContent(
         when {
             uiState.query.isBlank() -> SuggestionsSection(onSuggestionSelected = onSuggestionSelected)
             uiState.isSearching -> LoadingState()
-            uiState.errorMessage != null -> ErrorState(message = uiState.errorMessage)
+            uiState.errorMessage != null -> ErrorState(message = stringResource(R.string.recherche_error_generic))
             uiState.results.isEmpty() -> NoResultsState(query = uiState.query)
             else -> ResultsList(
                 results = uiState.results,
                 backlogGameIdsByTitle = uiState.backlogGameIdsByTitle,
+                backlogGameIdsByIgdbId = uiState.backlogGameIdsByIgdbId,
                 onAddGame = onAddGame,
                 onResultClick = onResultClick,
             )
@@ -228,6 +229,7 @@ private fun NoResultsState(query: String) {
 private fun ResultsList(
     results: List<GameSearchResult>,
     backlogGameIdsByTitle: Map<String, String>,
+    backlogGameIdsByIgdbId: Map<Long, String>,
     onAddGame: (GameSearchResult) -> Unit,
     onResultClick: (GameSearchResult, backlogGameId: String?) -> Unit,
 ) {
@@ -235,8 +237,8 @@ private fun ResultsList(
         contentPadding = PaddingValues(horizontal = 20.dp, vertical = 12.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        items(items = results, key = { it.rawgId }) { result ->
-            val backlogGameId = backlogGameId(result.title, backlogGameIdsByTitle)
+        items(items = results, key = { it.igdbId }) { result ->
+            val backlogGameId = backlogGameId(result, backlogGameIdsByIgdbId, backlogGameIdsByTitle)
             ResultRow(
                 result = result,
                 backlogGameId = backlogGameId,
@@ -345,8 +347,8 @@ private fun RechercheSuggestionsPreview() {
 @Composable
 private fun RechercheResultsPreview() {
     val results = listOf(
-        GameSearchResult(rawgId = 1, title = "The Legend of Zelda: Tears of the Kingdom", platform = "Switch", genre = "Aventure", year = "2023", coverUrl = null),
-        GameSearchResult(rawgId = 2, title = "Hades", platform = "PC", genre = "Roguelike", year = "2020", coverUrl = null),
+        GameSearchResult(igdbId = 1, title = "The Legend of Zelda: Tears of the Kingdom", platform = "Switch", genre = "Aventure", year = "2023", coverUrl = null),
+        GameSearchResult(igdbId = 2, title = "Hades", platform = "PC", genre = "Roguelike", year = "2020", coverUrl = null),
     )
     CartoucheTheme {
         RechercheContent(

@@ -13,4 +13,6 @@ data class RechercheUiState(
      * déjà présent dans le backlog (voir [backlogGameId]).
      */
     val backlogGameIdsByTitle: Map<String, String> = emptyMap(),
+    /** Id du backlog par id IGDB, pour les jeux qui le connaissent (prioritaire sur le titre). */
+    val backlogGameIdsByIgdbId: Map<Long, String> = emptyMap(),
 )

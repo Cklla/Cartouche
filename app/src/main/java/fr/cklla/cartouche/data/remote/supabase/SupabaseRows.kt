@@ -24,6 +24,11 @@ internal data class GameRow(
     val genre: String,
     val status: String,
     @SerialName("rawg_id") val rawgId: Long?,
+    // Valeur par défaut `null` : tant que le jeu n'a pas d'id IGDB, la clé n'est PAS envoyée (le
+    // `Json` du client n'encode pas les valeurs par défaut), ni dans le corps ni dans `columns=` de
+    // l'`upsert`. Une ligne locale périmée ne peut ainsi jamais effacer un `igdb_id` posé entre-temps
+    // par un autre appareil, comme le font les anciennes versions qui n'écrivent pas la colonne.
+    @SerialName("igdb_id") val igdbId: Long? = null,
     @SerialName("release_year") val releaseYear: Int?,
     @SerialName("user_playtime_hours") val userPlaytimeHours: Int,
     @SerialName("estimated_playtime_hastily_hours") val estimatedPlaytimeHastilyHours: Int?,
@@ -52,6 +57,7 @@ private fun Game.toRowUnchecked() = GameRow(
     genre = genre,
     status = status.name,
     rawgId = rawgId,
+    igdbId = igdbId,
     releaseYear = releaseYear,
     userPlaytimeHours = userPlaytimeHours,
     estimatedPlaytimeHastilyHours = estimatedPlaytimeHastilyHours,
@@ -81,6 +87,7 @@ internal fun GameRow.toGameOrNull(): Game? {
         genre = genre,
         status = gameStatus,
         rawgId = rawgId,
+        igdbId = igdbId,
         releaseYear = releaseYear,
         userPlaytimeHours = userPlaytimeHours,
         estimatedPlaytimeHastilyHours = estimatedPlaytimeHastilyHours,

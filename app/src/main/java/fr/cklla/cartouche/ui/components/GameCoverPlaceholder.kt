@@ -25,7 +25,7 @@ import fr.cklla.cartouche.ui.theme.TextMuted
 import fr.cklla.cartouche.ui.theme.TextPrimary
 
 /**
- * Jaquette d'un jeu : la vraie image RAWG ([coverUrl]) si elle est connue,
+ * Jaquette d'un jeu : la vraie image IGDB ([coverUrl]) si elle est connue,
  * sinon un dégradé placeholder (choisi selon le titre, pour une couleur stable
  * par jeu) avec la première lettre du titre en filigrane, comme dans la
  * maquette d'origine (avant branchement de l'API).

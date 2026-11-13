@@ -15,7 +15,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * Vérifie la migration 9 → 10 contre le schéma que Room a exporté pour la version 10 : les instructions
+ * Vérifie les migrations 9 → 10 et 10 → 11 contre le schéma que Room a exporté pour la version visée : les instructions
  * exécutées doivent produire exactement la table attendue par la base, faute de quoi Room refuse
  * d'ouvrir la base au lancement. Ce test JVM complète `MigrationInstrumentedTest`, qui joue la
  * migration sur un vrai SQLite (à lancer sur émulateur).
@@ -86,5 +86,47 @@ class MigrationsTest {
 
         assertEquals(setOf("pending_operation"), tables(10) - tables(9))
         assertEquals(emptySet<String>(), tables(9) - tables(10))
+    }
+
+    // --- 10 -> 11 : colonne igdbId ---
+
+    private fun columnOf(schema: JsonObject, table: String, column: String): JsonObject? =
+        entities(schema).map { it.jsonObject }
+            .first { it.getValue("tableName").jsonPrimitive.content == table }
+            .getValue("fields").jsonArray.map { it.jsonObject }
+            .firstOrNull { it.getValue("columnName").jsonPrimitive.content == column }
+
+    @Test
+    fun `la migration 10 vers 11 va de la version 10 a la version 11`() {
+        assertEquals(10, MIGRATION_10_11.startVersion)
+        assertEquals(11, MIGRATION_10_11.endVersion)
+    }
+
+    @Test
+    fun `la migration 10 vers 11 ajoute exactement la colonne igdbId telle que Room l'attend`() {
+        val executed = mutableListOf<String>()
+
+        MIGRATION_10_11.migrate(recordingConnection(executed))
+
+        // Une seule instruction : l'ajout de la colonne, nullable et sans valeur par défaut.
+        assertEquals(listOf("ALTER TABLE `games` ADD COLUMN `igdbId` INTEGER"), executed)
+
+        val column = columnOf(exportedSchema(11), "games", "igdbId") ?: error("igdbId absente du schéma 11")
+        assertEquals("INTEGER", column.getValue("affinity").jsonPrimitive.content)
+        // Nullable (aucune clé `notNull` pour une colonne nullable) et sans valeur par défaut.
+        assertTrue("nullable", column["notNull"]?.jsonPrimitive?.content != "true")
+        assertTrue("pas de valeur par défaut", !column.containsKey("defaultValue"))
+    }
+
+    @Test
+    fun `le schema 11 est le schema 10 plus la seule colonne igdbId`() {
+        fun columns(version: Int) = entities(exportedSchema(version)).map { it.jsonObject }
+            .first { it.getValue("tableName").jsonPrimitive.content == "games" }
+            .getValue("fields").jsonArray.map { it.jsonObject.getValue("columnName").jsonPrimitive.content }
+
+        assertEquals(columns(10), columns(11).filter { it != "igdbId" })
+        assertEquals(1, columns(11).count { it == "igdbId" })
+        // L'autre table n'a pas bougé.
+        assertEquals(createSql(exportedSchema(10), "pending_operation"), createSql(exportedSchema(11), "pending_operation"))
     }
 }

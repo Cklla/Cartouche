@@ -226,7 +226,7 @@ fun CartoucheApp(
             composable(
                 route = CartoucheDestinations.DETAIL_APERCU,
                 arguments = listOf(
-                    navArgument(CartoucheDestinations.DETAIL_APERCU_ARG_RAWG_ID) {
+                    navArgument(CartoucheDestinations.DETAIL_APERCU_ARG_IGDB_ID) {
                         type = NavType.LongType
                         defaultValue = -1L
                     },

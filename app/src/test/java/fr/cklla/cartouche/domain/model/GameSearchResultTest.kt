@@ -9,7 +9,7 @@ class GameSearchResultTest {
     @Test
     fun `toGame convertit un resultat de recherche en jeu du backlog a faire`() {
         val result = GameSearchResult(
-            rawgId = 1L,
+            igdbId = 1L,
             title = "Hades",
             platform = "PC",
             genre = "Roguelike",
@@ -25,14 +25,15 @@ class GameSearchResultTest {
         assertEquals("https://example.com/hades.jpg", game.coverUrl)
         assertEquals(GameStatus.A_FAIRE, game.status)
         assertEquals(0, game.userPlaytimeHours)
-        assertEquals(1L, game.rawgId)
+        assertEquals(1L, game.igdbId)
+        assertNull(game.rawgId)
         assertEquals(2020, game.releaseYear)
     }
 
     @Test
-    fun `toGame laisse releaseYear a null quand l'annee RAWG est inconnue`() {
+    fun `toGame laisse releaseYear a null quand l'annee est inconnue`() {
         val result = GameSearchResult(
-            rawgId = 1L,
+            igdbId = 1L,
             title = "Mystère",
             platform = "",
             genre = "",
@@ -46,7 +47,7 @@ class GameSearchResultTest {
     @Test
     fun `toGame precoche automatiquement l'unique plateforme disponible`() {
         val result = GameSearchResult(
-            rawgId = 1L,
+            igdbId = 1L,
             title = "Hades",
             platform = "PC",
             genre = "Roguelike",
@@ -60,7 +61,7 @@ class GameSearchResultTest {
     @Test
     fun `toGame laisse playedPlatforms vide quand plusieurs plateformes sont possibles`() {
         val result = GameSearchResult(
-            rawgId = 1L,
+            igdbId = 1L,
             title = "Trails in the Sky First Chapter",
             platform = "PC/PS5/Switch",
             genre = "RPG",
@@ -74,7 +75,7 @@ class GameSearchResultTest {
     @Test
     fun `toGame laisse les temps de jeu estimes a null, renseignes plus tard via IGDB`() {
         val result = GameSearchResult(
-            rawgId = 1L,
+            igdbId = 1L,
             title = "Mystère",
             platform = "",
             genre = "",

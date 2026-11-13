@@ -7,15 +7,17 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import fr.cklla.cartouche.domain.model.Game
 import fr.cklla.cartouche.domain.model.GameSearchResult
 import fr.cklla.cartouche.domain.model.GameStatus
-import fr.cklla.cartouche.domain.model.IgdbGameMatch
+import fr.cklla.cartouche.domain.model.IgdbLookup
 import fr.cklla.cartouche.domain.model.MAX_HOURS
 import fr.cklla.cartouche.domain.model.MAX_NOTES_LENGTH
 import fr.cklla.cartouche.domain.model.MAX_PLAYED_PLATFORMS
 import fr.cklla.cartouche.domain.model.Resource
-import fr.cklla.cartouche.domain.model.realignPlayedPlatformsOrNull
+import fr.cklla.cartouche.domain.model.applyIgdbEnrichment
+import fr.cklla.cartouche.domain.model.igdbIdOrNull
 import fr.cklla.cartouche.domain.model.toGame
 import fr.cklla.cartouche.domain.repository.GameRepository
 import fr.cklla.cartouche.domain.repository.IgdbPlaytimeRepository
+import fr.cklla.cartouche.domain.repository.IgdbUpgradeStore
 import fr.cklla.cartouche.domain.util.selectablePlayedYears
 import fr.cklla.cartouche.ui.navigation.CartoucheDestinations
 import java.time.ZoneId
@@ -44,7 +46,7 @@ import kotlinx.coroutines.launch
  *
  * Deux façons d'arriver sur cette fiche : depuis la Bibliothèque, avec l'id d'un jeu déjà dans le
  * backlog ([gameId] renseigné) ; ou directement depuis un résultat de Recherche pas encore ajouté,
- * auquel cas la fiche RAWG transite par les autres arguments de route ([previewResult]) et
+ * auquel cas la fiche IGDB transite par les autres arguments de route ([previewResult]) et
  * [workingGame] démarre avec un id vide. Tant que l'id est vide, la fiche est en aperçu
  * (`DetailUiState.isInBacklog` vaut `false`) et aucune action d'édition n'est persistée — voir
  * [applyEdit] — jusqu'à ce que [onAddGame] l'ajoute réellement au backlog.
@@ -54,6 +56,7 @@ class DetailViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
     private val gameRepository: GameRepository,
     private val igdbPlaytimeRepository: IgdbPlaytimeRepository,
+    private val igdbUpgradeStore: IgdbUpgradeStore,
 ) : ViewModel() {
 
     private val gameId: String? = savedStateHandle[CartoucheDestinations.DETAIL_ARG_GAME_ID]
@@ -77,56 +80,40 @@ class DetailViewModel @Inject constructor(
         }
     }
 
-    // Lookup IGDB déclenché une seule fois par jeu (voir `Game.igdbLookupAttempted`) — que la
-    // fiche soit déjà dans le backlog ou encore en aperçu, jamais pendant la recherche RAWG
-    // elle-même. Se fier à `igdbLookupAttempted` plutôt qu'à la nullité des `estimatedPlaytime*`
-    // (comme avant l'introduction de la correction de plateforme) : un jeu au temps de jeu
-    // partiellement en cache doit quand même pouvoir recevoir sa correction de plateforme.
+    // Lecture IGDB (règle d'enrichissement, voir `applyIgdbEnrichment`) déclenchée à l'ouverture de
+    // la fiche, que le jeu soit déjà dans le backlog ou encore en aperçu, jamais pendant la
+    // recherche elle-même. Deux cas : un jeu jamais passé par IGDB (`igdbLookupAttempted` faux), et
+    // un jeu **sans id IGDB** déjà passé par l'ancienne correspondance, relancé une seule fois
+    // (voir `IgdbUpgradeStore`) pour recevoir son id et sa jaquette IGDB.
     private fun fetchEstimatedPlaytimeIfMissing(game: Game) {
-        if (!game.igdbLookupAttempted) {
+        val upgradeOnce = game.id.isNotEmpty() && game.igdbId == null && !igdbUpgradeStore.isDone(game.id)
+        if (!game.igdbLookupAttempted || upgradeOnce) {
             fetchEstimatedPlaytime(game)
         }
     }
 
     private fun fetchEstimatedPlaytime(game: Game) {
         viewModelScope.launch {
-            val match = igdbPlaytimeRepository.findEstimatedPlaytime(
-                title = game.title,
-                releaseYear = game.releaseYear,
-                rawgId = game.rawgId,
-            )
+            val match = when (
+                val lookup = igdbPlaytimeRepository.findEstimatedPlaytime(
+                    title = game.title,
+                    releaseYear = game.releaseYear,
+                    igdbId = igdbIdOrNull(game.igdbId),
+                )
+            ) {
+                is IgdbLookup.Found -> lookup.match
+                IgdbLookup.NotFound -> null
+                // Panne (hors ligne, quota, jeton) : la tentative n'est pas consommée, le jeu sera
+                // relu à une prochaine ouverture de sa fiche. Aucune boucle : une relance ne vient
+                // que de l'ouverture d'une fiche.
+                IgdbLookup.Failed -> return@launch
+            }
+            // Réponse d'IGDB (jeu lu, ou introuvable) : c'est la tentative qui compte, pas son succès.
+            if (game.id.isNotEmpty()) igdbUpgradeStore.markDone(game.id)
             // Le jeu affiché a pu changer entretemps (retiré du backlog) : `applyEdit` gère déjà
             // ce cas (no-op si `workingGame` est `null`), donc pas de vérification supplémentaire ici.
-            applyEdit { applyIgdbMatch(it, match) }
+            applyEdit { applyIgdbEnrichment(it, match) }
         }
-    }
-
-    /**
-     * Applique un [IgdbGameMatch] résolu à [game] : temps de jeu estimé si IGDB en a trouvé, et
-     * correction de `platform` si IGDB a une liste de plateformes et que ce remplacement ne casse
-     * aucune entrée déjà cochée de `playedPlatforms` (voir `realignPlayedPlatformsOrNull` pour le
-     * raisonnement détaillé — notamment le cas Switch/Switch 2 qui motive cette prudence).
-     *
-     * `igdbLookupAttempted` passe à `true` inconditionnellement, y compris si [match] est `null`
-     * (échec total de la correspondance IGDB) : conformément au fonctionnement "un seul essai"
-     * voulu pour cette recherche (voir `Game.igdbLookupAttempted`), un échec ponctuel (réseau,
-     * jeu introuvable sur IGDB) n'est pas retenté automatiquement aux ouvertures suivantes.
-     */
-    private fun applyIgdbMatch(game: Game, match: IgdbGameMatch?): Game {
-        val attempted = game.copy(igdbLookupAttempted = true)
-
-        val withPlaytime = match?.playtimeEstimate?.let { estimate ->
-            attempted.copy(
-                estimatedPlaytimeHastilyHours = estimate.hastilyHours,
-                estimatedPlaytimeNormallyHours = estimate.normallyHours,
-                estimatedPlaytimeCompletelyHours = estimate.completelyHours,
-            )
-        } ?: attempted
-
-        val newPlatform = match?.platform ?: return withPlaytime
-        val realignedPlayedPlatforms = realignPlayedPlatformsOrNull(withPlaytime.playedPlatforms, newPlatform)
-            ?: return withPlaytime
-        return withPlaytime.copy(platform = newPlatform, playedPlatforms = realignedPlayedPlatforms)
     }
 
     val uiState: StateFlow<DetailUiState> = combine(isLoading, workingGame) { loading, game ->
@@ -245,9 +232,10 @@ class DetailViewModel @Inject constructor(
     }
 
     private fun SavedStateHandle.toPreviewResult(): GameSearchResult? {
-        val rawgId = get<Long>(CartoucheDestinations.DETAIL_APERCU_ARG_RAWG_ID)?.takeIf { it > 0 } ?: return null
+        // L'id vient d'un argument de route : on le valide comme toute entrée avant de s'en servir.
+        val igdbId = igdbIdOrNull(get<Long>(CartoucheDestinations.DETAIL_APERCU_ARG_IGDB_ID)) ?: return null
         return GameSearchResult(
-            rawgId = rawgId,
+            igdbId = igdbId,
             title = get<String>(CartoucheDestinations.DETAIL_APERCU_ARG_TITLE).orEmpty(),
             platform = get<String>(CartoucheDestinations.DETAIL_APERCU_ARG_PLATFORM).orEmpty(),
             genre = get<String>(CartoucheDestinations.DETAIL_APERCU_ARG_GENRE).orEmpty(),

@@ -1,26 +1,28 @@
 package fr.cklla.cartouche.data.repository
 
-import fr.cklla.cartouche.BuildConfig
-import fr.cklla.cartouche.data.remote.RawgApi
-import fr.cklla.cartouche.data.remote.toDomain
+import fr.cklla.cartouche.data.remote.igdb.IgdbGateway
+import fr.cklla.cartouche.data.remote.igdb.toSearchResult
 import fr.cklla.cartouche.domain.model.GameSearchResult
 import fr.cklla.cartouche.domain.model.Resource
 import fr.cklla.cartouche.domain.repository.GameSearchRepository
 import javax.inject.Inject
+import kotlinx.coroutines.CancellationException
 
-/** Implémentation RAWG du [GameSearchRepository]. */
+/** Implémentation IGDB du [GameSearchRepository]. */
 class GameSearchRepositoryImpl @Inject constructor(
-    private val rawgApi: RawgApi,
+    private val gateway: IgdbGateway,
 ) : GameSearchRepository {
 
     override suspend fun searchGames(query: String): Resource<List<GameSearchResult>> {
         if (query.isBlank()) return Resource.Success(emptyList())
 
-        return runCatching {
-            rawgApi.searchGames(apiKey = BuildConfig.RAWG_API_KEY, query = query).results.map { it.toDomain() }
-        }.fold(
-            onSuccess = { Resource.Success(it) },
-            onFailure = { Resource.Error("Impossible de contacter RAWG. Vérifie ta connexion.", it) },
-        )
+        return try {
+            Resource.Success(gateway.search(query.trim()).mapNotNull { it.toSearchResult() })
+        } catch (e: CancellationException) {
+            // Une recherche remplacée par la frappe suivante est annulée : ce n'est pas une erreur.
+            throw e
+        } catch (e: Exception) {
+            Resource.Error("Recherche IGDB impossible", e)
+        }
     }
 }

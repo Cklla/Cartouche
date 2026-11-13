@@ -253,3 +253,15 @@ val MIGRATION_9_10 = object : Migration(9, 10) {
         )
     }
 }
+
+/**
+ * Ajoute `igdbId`, l'identifiant IGDB du jeu (voir `Game.igdbId`). Colonne nullable, sans valeur
+ * par défaut : tous les jeux déjà en backlog démarrent à `NULL` et sont remis à niveau à
+ * l'ouverture de leur fiche. `ADD COLUMN` est fiable sur toutes les versions de SQLite embarquées
+ * par `minSdk 24` (voir [MIGRATION_5_6]).
+ */
+val MIGRATION_10_11 = object : Migration(10, 11) {
+    override fun migrate(connection: SQLiteConnection) {
+        connection.execSQL("ALTER TABLE `games` ADD COLUMN `igdbId` INTEGER")
+    }
+}

@@ -31,6 +31,7 @@ class SupabaseRowsTest {
         genre = "Metroidvania",
         status = GameStatus.TERMINE,
         rawgId = 123L,
+        igdbId = 4_567L,
         releaseYear = 2017,
         userPlaytimeHours = 35,
         estimatedPlaytimeHastilyHours = 28,
@@ -61,6 +62,7 @@ class SupabaseRowsTest {
         assertEquals("Hollow Knight", row.getValue("title").jsonPrimitive.content)
         assertEquals("TERMINE", row.getValue("status").jsonPrimitive.content)
         assertEquals("123", row.getValue("rawg_id").jsonPrimitive.content)
+        assertEquals("4567", row.getValue("igdb_id").jsonPrimitive.content)
         assertEquals(2017, row.getValue("release_year").jsonPrimitive.int)
         assertEquals(35, row.getValue("user_playtime_hours").jsonPrimitive.int)
         assertEquals(28, row.getValue("estimated_playtime_hastily_hours").jsonPrimitive.int)
@@ -84,6 +86,7 @@ class SupabaseRowsTest {
         val cleared = game.copy(
             rating = null,
             rawgId = null,
+            igdbId = null,
             releaseYear = null,
             coverUrl = null,
             completedAt = null,
@@ -119,7 +122,7 @@ class SupabaseRowsTest {
     @Test
     fun `une ligne serveur avec des colonnes en plus est lue`() {
         val raw = """{"id":"x","user_id":"u","title":"Hades","platform":"Switch","genre":"Roguelike","status":"A_FAIRE",
-            "rawg_id":null,"release_year":null,"user_playtime_hours":0,"estimated_playtime_hastily_hours":null,
+            "rawg_id":null,"igdb_id":null,"release_year":null,"user_playtime_hours":0,"estimated_playtime_hastily_hours":null,
             "estimated_playtime_normally_hours":null,"estimated_playtime_completely_hours":null,"rating":null,
             "notes":"","cover_url":null,"completed_at":null,"abandoned_at":null,"played_platforms":[],
             "igdb_lookup_attempted":false,"created_at":"2026-10-10T12:00:00Z"}"""
@@ -216,5 +219,39 @@ class SupabaseRowsTest {
             assertFalse(it, isPermanentFailure(it))
         }
         assertFalse(isPermanentFailure(null))
+    }
+
+    @Test
+    fun `un id IGDB hors borne n'est jamais envoye`() {
+        listOf(0L, -5L, 10_000_000_000L).forEach { invalid ->
+            val row = encode(game.copy(igdbId = invalid).toRow())
+            assertFalse("id $invalid", row.containsKey("igdb_id"))
+        }
+        // Les bornes elles-mêmes sont acceptées (CHECK entre 1 et 9999999999).
+        assertEquals("1", encode(game.copy(igdbId = 1L).toRow()).getValue("igdb_id").jsonPrimitive.content)
+        assertEquals(
+            "9999999999",
+            encode(game.copy(igdbId = 9_999_999_999L).toRow()).getValue("igdb_id").jsonPrimitive.content,
+        )
+    }
+
+    // Une ligne locale périmée (file d'envoi, téléphone hors ligne) ne doit jamais effacer un id IGDB
+    // posé entre-temps ailleurs : sans id connu, la clé n'est pas envoyée, donc pas non plus dans
+    // `columns=` de l'`upsert` (les colonnes sont les clés du corps).
+    @Test
+    fun `sans id IGDB la cle igdb_id n'est pas envoyee, avec un id elle l'est`() {
+        assertFalse(encode(game.copy(igdbId = null).toRow()).containsKey("igdb_id"))
+        assertEquals("4567", encode(game.toRow()).getValue("igdb_id").jsonPrimitive.content)
+    }
+
+    @Test
+    fun `une ligne serveur sans la cle igdb_id est lue avec un id nul`() {
+        val raw = """{"id":"x","title":"Hades","platform":"Switch","genre":"Roguelike","status":"A_FAIRE",
+            "rawg_id":null,"release_year":null,"user_playtime_hours":0,"estimated_playtime_hastily_hours":null,
+            "estimated_playtime_normally_hours":null,"estimated_playtime_completely_hours":null,"rating":null,
+            "notes":"","cover_url":null,"completed_at":null,"abandoned_at":null,"played_platforms":[],
+            "igdb_lookup_attempted":false}"""
+
+        assertNull(json.decodeFromString<GameRow>(raw).toGameOrNull()?.igdbId)
     }
 }

@@ -59,6 +59,7 @@ class GameMappersTest {
             genre = "g",
             status = GameStatus.ABANDONNE.name,
             rawgId = null,
+            igdbId = null,
             releaseYear = null,
             userPlaytimeHours = 0,
             estimatedPlaytimeHastilyHours = null,

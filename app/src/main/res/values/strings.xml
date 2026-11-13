@@ -160,12 +160,12 @@
     <string name="detail_status_year_abandoned_dialog_title">Année d\'abandon</string>
     <string name="detail_status_year_dialog_cancel">Annuler</string>
 
-    <!-- Recherche / ajout de jeu (RAWG) -->
+    <!-- Recherche / ajout de jeu (IGDB) -->
     <string name="recherche_kicker">base de données</string>
     <string name="recherche_title">Rechercher</string>
     <string name="recherche_search_placeholder">Titre, plateforme…</string>
     <string name="recherche_suggestions_label">Recherches populaires</string>
-    <string name="recherche_error_generic">Impossible de contacter RAWG. Vérifie ta connexion.</string>
+    <string name="recherche_error_generic">Impossible de contacter IGDB. Vérifie ta connexion.</string>
     <string name="recherche_empty_title">Aucun résultat</string>
     <string name="recherche_empty_message">Aucun jeu ne correspond à « %1$s ». Essaie un autre titre ou une autre plateforme.</string>
     <string name="recherche_result_platform_year">%1$s · %2$s</string>

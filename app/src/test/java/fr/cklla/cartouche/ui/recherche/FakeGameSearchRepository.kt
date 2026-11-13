@@ -4,7 +4,7 @@ import fr.cklla.cartouche.domain.model.GameSearchResult
 import fr.cklla.cartouche.domain.model.Resource
 import fr.cklla.cartouche.domain.repository.GameSearchRepository
 
-/** Faux repository de recherche, pour tester [RechercheViewModel] sans appel RAWG réel. */
+/** Faux repository de recherche, pour tester [RechercheViewModel] sans appel IGDB réel. */
 class FakeGameSearchRepository : GameSearchRepository {
 
     var response: Resource<List<GameSearchResult>> = Resource.Success(emptyList())

@@ -3,6 +3,7 @@ package fr.cklla.cartouche.data.remote.igdb
 import fr.cklla.cartouche.data.remote.igdb.dto.IgdbGameDto
 import fr.cklla.cartouche.data.remote.igdb.dto.IgdbPlatformDto
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -12,7 +13,7 @@ class IgdbMappersTest {
     @Test
     fun `buildSearchQuery construit une requete Apicalypse de recherche par titre`() {
         assertEquals(
-            "search \"Hades\"; fields id,name,first_release_date,platforms.name; limit 30;",
+            "search \"Hades\"; fields id,name,first_release_date,game_type.type,version_parent.name,parent_game.name; limit 30;",
             buildSearchQuery("Hades"),
         )
     }
@@ -21,7 +22,7 @@ class IgdbMappersTest {
     fun `buildSearchQuery echappe les guillemets du titre pour ne pas casser la requete`() {
         val titleWithQuotes = "Baldur's Gate 3: " + "\"Honour Mode\""
         val expected = "search \"Baldur's Gate 3: " + "\\\"Honour Mode\\\"" +
-            "\"; fields id,name,first_release_date,platforms.name; limit 30;"
+            "\"; fields id,name,first_release_date,game_type.type,version_parent.name,parent_game.name; limit 30;"
 
         assertEquals(expected, buildSearchQuery(titleWithQuotes))
     }
@@ -34,7 +35,7 @@ class IgdbMappersTest {
     @Test
     fun `buildSearchQuery retire le suffixe entre parentheses du titre avant de construire la requete`() {
         assertEquals(
-            "search \"God of War\"; fields id,name,first_release_date,platforms.name; limit 30;",
+            "search \"God of War\"; fields id,name,first_release_date,game_type.type,version_parent.name,parent_game.name; limit 30;",
             buildSearchQuery("God of War (2018)"),
         )
     }
@@ -42,7 +43,7 @@ class IgdbMappersTest {
     @Test
     fun `buildSearchQuery retire le suffixe d'edition du titre avant de construire la requete`() {
         assertEquals(
-            "search \"Hollow Knight\"; fields id,name,first_release_date,platforms.name; limit 30;",
+            "search \"Hollow Knight\"; fields id,name,first_release_date,game_type.type,version_parent.name,parent_game.name; limit 30;",
             buildSearchQuery("Hollow Knight: Definitive Edition"),
         )
     }
@@ -56,19 +57,57 @@ class IgdbMappersTest {
     }
 
     @Test
-    fun `buildSteamExternalGameQuery filtre sur l'App ID Steam et la categorie Steam`() {
+    fun `buildCatalogSearchQuery filtre les types cote serveur et garde les jeux sans type`() {
+        val query = buildCatalogSearchQuery("xenoblade chronicles")
+
+        assertTrue(query.startsWith("search \"xenoblade chronicles\"; fields "))
+        assertTrue(query.contains("where game_type = (0,4,8,9,10,11) | game_type = null; limit 40;"))
+    }
+
+    @Test
+    fun `buildCatalogSearchQuery echappe les guillemets et les barres obliques inverses`() {
+        val query = buildCatalogSearchQuery("Baldur's \"Gate\" \\ 3")
+
+        assertTrue(query.startsWith("search \"Baldur's \\\"Gate\\\" \\\\ 3\"; fields "))
+    }
+
+    @Test
+    fun `buildCatalogSearchQuery ne retire pas le suffixe saisi par l'utilisateur`() {
+        // La recherche libre envoie ce que l'utilisateur a tapé ; seule la correspondance par titre
+        // d'un jeu déjà enregistré retire les suffixes (voir buildSearchQuery).
+        assertTrue(buildCatalogSearchQuery("God of War (2018)").startsWith("search \"God of War (2018)\";"))
+    }
+
+    @Test
+    fun `buildGameByIdQuery ne contient que l'id valide`() {
         assertEquals(
-            "fields game; where uid = \"1145360\" & category = 1; limit 1;",
-            buildSteamExternalGameQuery(1145360L),
+            true,
+            buildGameByIdQuery(1029L).endsWith("where id = (1029); limit 1;"),
         )
     }
 
     @Test
-    fun `buildPlatformsQuery filtre sur l'id du jeu IGDB et ne demande que les plateformes`() {
-        assertEquals(
-            "fields platforms.name; where id = 252647; limit 1;",
-            buildPlatformsQuery(252647L),
-        )
+    fun `buildGamesByIdsQuery ecarte les ids hors borne et les doublons`() {
+        val query = buildGamesByIdsQuery(listOf(5L, 5L, 0L, -3L, 10_000_000_000L, 9L))
+
+        assertTrue(query.endsWith("where id = (5,9); limit 2;"))
+    }
+
+    @Test(expected = IllegalArgumentException::class)
+    fun `buildGamesByIdsQuery refuse une liste sans id valide`() {
+        buildGamesByIdsQuery(listOf(0L, -1L))
+    }
+
+    @Test
+    fun `buildChildrenQuery cherche les editions et les portages des jeux donnes`() {
+        val query = buildChildrenQuery(listOf(2364L, 122238L))
+
+        assertTrue(query.endsWith("where version_parent = (2364,122238) | parent_game = (2364,122238); limit 500;"))
+    }
+
+    @Test(expected = IllegalArgumentException::class)
+    fun `buildChildrenQuery refuse une liste sans id valide`() {
+        buildChildrenQuery(emptyList())
     }
 
     @Test
@@ -264,5 +303,35 @@ class IgdbMappersTest {
             IgdbPlatformDto(name = "Mac"),
         )
         assertEquals("Nintendo Switch 2/PC", formatIgdbPlatforms(platforms))
+    }
+
+    // --- Rapprochement certain (id et jaquette seulement dans ce cas) ---
+
+    private val hades = IgdbGameDto(id = 113112, name = "Hades", firstReleaseDate = 1_600_000_000L) // 2020
+
+    @Test
+    fun `un titre identique et une annee egale donnent un rapprochement certain`() {
+        assertTrue(isCertainMatch("Hades", 2020, hades))
+        assertTrue(isCertainMatch("  hades!! ", 2020, hades))
+        assertTrue(isCertainMatch("Hades (2020)", 2020, hades))
+    }
+
+    @Test
+    fun `une annee differente, absente ou inconnue ne suffit pas`() {
+        assertFalse(isCertainMatch("Hades", 2019, hades))
+        assertFalse(isCertainMatch("Hades", null, hades))
+        assertFalse(isCertainMatch("Hades", 2020, hades.copy(firstReleaseDate = null)))
+    }
+
+    @Test
+    fun `un titre seulement voisin ne suffit pas`() {
+        assertFalse(isCertainMatch("Hades Remastered", 2020, hades))
+        assertFalse(isCertainMatch("Hade", 2020, hades))
+    }
+
+    @Test
+    fun `un titre vide ou sans lettre n'est jamais certain`() {
+        assertFalse(isCertainMatch("!!!", 2020, hades.copy(name = "???")))
+        assertFalse(isCertainMatch("", 2020, hades.copy(name = null)))
     }
 }

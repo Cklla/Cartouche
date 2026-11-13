@@ -3,6 +3,7 @@ package fr.cklla.cartouche.data.remote.igdb
 import fr.cklla.cartouche.data.remote.igdb.dto.IgdbGameDto
 import fr.cklla.cartouche.data.remote.igdb.dto.IgdbPlatformDto
 import fr.cklla.cartouche.domain.model.hoursOrNull
+import fr.cklla.cartouche.domain.model.igdbIdOrNull
 import fr.cklla.cartouche.domain.model.joinPlatformsWithinLimit
 import java.time.Instant
 import java.time.ZoneOffset
@@ -11,78 +12,100 @@ import java.util.Locale
 /**
  * Fonctions pures autour d'IGDB (construction de requêtes "Apicalypse", correspondance de titre) :
  * isolées du repository pour rester testables sans appel réseau, même principe que
- * `RawgMappers`/`SearchFiltering` ailleurs dans le projet.
+ * `SearchFiltering` ailleurs dans le projet.
  *
- * La correspondance RAWG → IGDB se fait en cascade, du signal le plus fiable au moins fiable (voir
- * `IgdbPlaytimeRepositoryImpl`) :
- * 1. App ID Steam (`external_games`, [buildSteamExternalGameQuery]) — fiable à 100%, saute les
- *    étapes suivantes si trouvé.
- * 2. Nom normalisé + année de sortie ([findBestMatch]) — utilisé seulement si l'étape 1 n'a rien
- *    donné (pas de fiche Steam RAWG, ou pas de correspondance côté IGDB).
- * 3. Aucun match fiable → "non disponible".
- *
- * Une fois l'id IGDB résolu (quelle que soit la branche), il sert à la fois à retrouver le temps de
- * jeu estimé (`game_time_to_beats`) et, depuis l'ajout de [formatIgdbPlatforms], à fiabiliser
- * `Game.platform` (utile notamment pour distinguer Switch/Switch 2, que RAWG ne différencie pas) —
- * RAWG reste la seule source pour la recherche, l'ajout au backlog et les jaquettes.
+ * Un jeu qui connaît son `igdbId` (ajouté depuis la recherche) se relit directement par id
+ * ([buildGameByIdQuery]). Pour un jeu sans id, la correspondance se fait par nom normalisé et année
+ * de sortie ([buildSearchQuery], [findBestMatch]) ; sans correspondance fiable, rien n'est modifié.
+ * Les règles de filtrage et de fusion des résultats de recherche sont dans `IgdbGameMerge`.
  */
 
+/** Champs demandés pour chaque jeu du catalogue (voir `IgdbGameDto`). */
+private const val GAME_FIELDS =
+    "name,first_release_date,platforms.name,cover.image_id,genres.name,game_type.type," +
+        "version_parent.name,parent_game.name,total_rating_count"
+
 /**
- * Requête de recherche par titre, jusqu'à 30 candidats. `first_release_date` est demandé en plus
- * de l'id/nom : c'est le signal utilisé par [findBestMatch] pour départager des candidats au nom
- * proche (ex. plusieurs éditions/remakes d'un même jeu). `platforms.name` est demandé dans ce même
- * appel plutôt que dans un second : une fois le meilleur candidat retenu par [findBestMatch], sa
- * liste de plateformes IGDB est déjà disponible sans requête supplémentaire (voir
- * `IgdbPlaytimeRepositoryImpl`, branche nom+année de la cascade).
+ * Champs de la correspondance par titre : le type et les parents permettent de remonter d'une
+ * édition ou d'un portage au jeu de base (voir `IgdbGameMerge.mergeParentId`).
+ */
+private const val MATCH_FIELDS = "id,name,first_release_date,game_type.type,version_parent.name,parent_game.name"
+
+/** Candidats demandés à IGDB pour une recherche : on en garde 20 au plus après fusion. */
+const val SEARCH_CANDIDATE_LIMIT = 40
+
+/**
+ * Plafond de lignes pour la lecture des éditions et portages : le maximum accepté par IGDB (500).
+ * Les DLC et packs sont aussi liés par `parent_game` et occupent des lignes sans être gardés : un
+ * plafond plus bas pouvait faire tronquer des éditions et des portages, donc des plateformes, pour un
+ * jeu très chargé en contenus additionnels.
+ */
+private const val CHILDREN_LIMIT = 500
+
+/**
+ * Recherche du catalogue par texte libre. Le filtre `where` est appliqué **côté serveur** (avant
+ * `limit`) : filtrer après coup noierait les jeux de base sous les DLC au nom proche. Il garde les
+ * jeux de base (0), extensions autonomes (4), remakes (8), remasters (9), jeux étendus (10) et
+ * portages (11), **et** ceux dont `game_type` est absent : un filtre ne doit jamais écarter un jeu
+ * dont le champ n'est pas renseigné (piège déjà vécu avec l'ancien champ `category`, qui était vide
+ * pour des jeux de base). Écartés : DLC, extensions, bundles, mods, épisodes, saisons, forks,
+ * packs et mises à jour.
  *
- * Pas de filtre sur le champ `category` d'IGDB (DLC/bundle/mod...) : essayé, mais rejeté — de
- * nombreux jeux de base n'ont tout simplement pas ce champ renseigné côté IGDB (ex. *Persona 3
- * Reload* lui-même), et une comparaison IGDB sur un champ absent ne matche jamais, filtre par
- * inclusion ou par exclusion. La limite est donc simplement plus généreuse (30 plutôt que 10) pour
- * que le jeu de base ne soit pas noyé hors de la fenêtre par du contenu additionnel au nom proche
- * (ex. les nombreux packs de costumes/musique de *Persona 3 Reload*, qui partagent le même
- * préfixe) : [findBestMatch] élimine ensuite ces candidats sur la seule similarité de nom, sans
- * avoir besoin de connaître leur catégorie.
+ * `search` n'accepte pas `sort` (HTTP 406) : le tri est fait côté client (`rankByRelevance`).
+ */
+fun buildCatalogSearchQuery(text: String): String =
+    "search \"${escapeQueryText(text)}\"; fields $GAME_FIELDS; " +
+        "where game_type = (${KEPT_GAME_TYPE_IDS.joinToString(",")}) | game_type = null; " +
+        "limit $SEARCH_CANDIDATE_LIMIT;"
+
+/**
+ * Lecture d'un ou plusieurs jeux par id. Les ids sont des entiers validés (voir [igdbIdOrNull]),
+ * jamais du texte : rien à échapper, et rien d'autre qu'un entier ne peut entrer dans la requête.
+ */
+fun buildGamesByIdsQuery(ids: Collection<Long>): String {
+    val valid = ids.mapNotNull(::igdbIdOrNull).distinct()
+    require(valid.isNotEmpty()) { "aucun identifiant IGDB valide" }
+    return "fields $GAME_FIELDS; where id = (${valid.joinToString(",")}); limit ${valid.size};"
+}
+
+/** Lecture d'un jeu par id (voir [buildGamesByIdsQuery]). */
+fun buildGameByIdQuery(igdbGameId: Long): String = buildGamesByIdsQuery(listOf(igdbGameId))
+
+/**
+ * Éditions et portages rattachés à des jeux déjà connus (un niveau). Aucun filtre de type côté
+ * serveur : la règle de rattachement (`IgdbGameMerge.mergeParentId`) est appliquée côté client,
+ * ce qui évite d'écrire un `where` combiné qu'on n'a pas éprouvé sur des données réelles.
+ */
+fun buildChildrenQuery(parentIds: Collection<Long>): String {
+    val valid = parentIds.mapNotNull(::igdbIdOrNull).distinct()
+    require(valid.isNotEmpty()) { "aucun identifiant IGDB valide" }
+    val list = valid.joinToString(",")
+    return "fields $GAME_FIELDS; where version_parent = ($list) | parent_game = ($list); limit $CHILDREN_LIMIT;"
+}
+
+/**
+ * Requête de correspondance par titre, pour un jeu qui ne connaît pas encore son id IGDB : jusqu'à
+ * 30 candidats, départagés ensuite par [findBestMatch]. Pas de filtre sur `game_type` ici : la
+ * similarité de nom suffit à écarter les contenus additionnels (packs de costumes de *Persona 3
+ * Reload*, par exemple), et un jeu au `game_type` absent doit rester candidat.
  *
  * [title] passe par [stripDisambiguatingSuffixes] avant de devenir le texte de la clause `search` :
- * confirmé via l'API IGDB elle-même (cas concret *God of War (2018)*, RAWG désambiguïsant ce titre
- * du *God of War* de 2005 en ajoutant l'année entre parenthèses) que `search "God of War (2018)"`
- * renvoie **0 résultat**, alors que `search "God of War"` retrouve bien le jeu — le moteur de
- * recherche IGDB n'ignore pas ce genre de texte parasite comme le ferait une recherche floue
- * classique, il ne matche simplement plus rien. Jusqu'ici seuls les candidats *renvoyés* par IGDB
- * passaient par un nettoyage équivalent ([normalizeForMatching], ajouté pour le cas inverse —
- * *Persona 3 Reload* vs IGDB "Persona 3 Reload (2024)") ; le texte de la requête elle-même restait
- * le titre RAWG brut, jamais nettoyé avant cet ajout.
+ * `search "God of War (2018)"` renvoie **0 résultat** (confirmé sur l'API), alors que
+ * `search "God of War"` retrouve le jeu.
  */
 fun buildSearchQuery(title: String): String =
-    "search \"${escapeQueryText(stripDisambiguatingSuffixes(title))}\"; fields id,name,first_release_date,platforms.name; limit 30;"
+    "search \"${escapeQueryText(stripDisambiguatingSuffixes(title))}\"; fields $MATCH_FIELDS; limit 30;"
 
 /** Requête de durée de vie pour un jeu IGDB déjà identifié. */
 fun buildTimeToBeatQuery(igdbGameId: Long): String =
     "fields hastily,normally,completely; where game_id = $igdbGameId; limit 1;"
 
-/**
- * Requête `external_games` retrouvant le jeu IGDB associé à un App ID Steam. `category = 1` est
- * le code IGDB pour la boutique Steam (constante documentée par l'API, pas de nom symbolique côté
- * IGDB v4).
- */
-fun buildSteamExternalGameQuery(steamAppId: Long): String =
-    "fields game; where uid = \"$steamAppId\" & category = 1; limit 1;"
-
-/**
- * Requête de suivi minimale pour récupérer les plateformes d'un jeu IGDB déjà identifié par App ID
- * Steam (`external_games` ne renvoie que l'id, voir [buildSteamExternalGameQuery]) — contrairement
- * à la branche nom+année, dont [buildSearchQuery] ramène déjà `platforms.name` dans le même appel.
- */
-fun buildPlatformsQuery(igdbGameId: Long): String =
-    "fields platforms.name; where id = $igdbGameId; limit 1;"
-
 private fun escapeQueryText(text: String): String = text.replace("\\", "\\\\").replace("\"", "\\\"")
 
 /**
- * Étape 2 de la cascade de correspondance (voir en tête de fichier) : à défaut d'App ID Steam
+ * Correspondance par titre (voir en tête de fichier) : à défaut d'id IGDB connu
  * exploitable, on retrouve le jeu par similarité de titre parmi les candidats renvoyés par la
- * recherche IGDB, en utilisant l'année de sortie RAWG pour départager les candidats dont le nom
+ * recherche IGDB, en utilisant l'année de sortie enregistrée pour départager les candidats dont le nom
  * est proche. Renvoie `null` si aucun candidat n'est jugé assez proche plutôt que de forcer une
  * correspondance hasardeuse (le temps de jeu resterait alors "non disponible").
  */
@@ -90,13 +113,13 @@ fun findBestMatch(title: String, releaseYear: Int?, candidates: List<IgdbGameDto
     val normalizedTitle = normalizeForMatching(title)
 
     val closeCandidates = candidates
-        .map { it to titleSimilarity(normalizedTitle, normalizeForMatching(it.name)) }
+        .map { it to titleSimilarity(normalizedTitle, normalizeForMatching(it.name.orEmpty())) }
         .filter { (_, similarity) -> similarity >= MATCH_SIMILARITY_THRESHOLD }
     if (closeCandidates.isEmpty()) return null
 
     // Plusieurs candidats au nom proche (éditions différentes d'un même jeu, par ex.) : on
-    // privilégie celui dont l'année de sortie IGDB correspond à l'année RAWG, quand elle est
-    // connue. Sans correspondance d'année (ou année RAWG inconnue), on retombe sur la meilleure
+    // privilégie celui dont l'année de sortie IGDB correspond à l'année enregistrée, quand elle est
+    // connue. Sans correspondance d'année (ou année inconnue), on retombe sur la meilleure
     // similarité de nom, comme avant l'introduction de ce signal.
     if (releaseYear != null) {
         closeCandidates
@@ -108,6 +131,23 @@ fun findBestMatch(title: String, releaseYear: Int?, candidates: List<IgdbGameDto
     return closeCandidates.maxByOrNull { (_, similarity) -> similarity }?.first
 }
 
+/**
+ * Le rapprochement par nom est-il **certain** ? Seul un rapprochement certain autorise à poser un
+ * `igdb_id` définitif et à remplacer la jaquette : il faut que le titre normalisé du **jeu de base**
+ * (voir `IgdbGateway.resolveBase`) soit identique à celui du jeu enregistré **et** que les années de
+ * sortie soient égales. Un titre voisin ("Hades" ~ "Hades II" est déjà écarté par le seuil de
+ * [findBestMatch], mais "Persona 3 Reload" ~ "Persona 3 Reload Expansion Pass" ne l'est pas) ou une
+ * année différente ne suffit pas, et une année enregistrée inconnue non plus : on ne fixe pas à vie
+ * un jeu sur un mauvais id, que la remise à niveau du site ne reproposerait plus.
+ */
+fun isCertainMatch(title: String, releaseYear: Int?, base: IgdbGameDto): Boolean {
+    val normalizedTitle = normalizeForMatching(title)
+    return releaseYear != null &&
+        igdbReleaseYear(base) == releaseYear &&
+        normalizedTitle.isNotEmpty() &&
+        normalizedTitle == normalizeForMatching(base.name.orEmpty())
+}
+
 /** Année de sortie IGDB, convertie depuis le timestamp Unix `first_release_date` (UTC). */
 fun igdbReleaseYear(game: IgdbGameDto): Int? =
     game.firstReleaseDate?.let { Instant.ofEpochSecond(it).atZone(ZoneOffset.UTC).year }
@@ -117,7 +157,7 @@ private const val MATCH_SIMILARITY_THRESHOLD = 0.75
 
 /**
  * Retire les suffixes entre parenthèses (années, mentions diverses — ex. IGDB "Persona 3 Reload
- * (2024)" vs RAWG "Persona 3 Reload") et les mentions d'édition courantes ("Deluxe Edition",
+ * (2024)" vs "Persona 3 Reload" enregistré) et les mentions d'édition courantes ("Deluxe Edition",
  * "Definitive Edition"...), sans toucher à la casse ni au reste de la ponctuation : utilisé à la
  * fois par [normalizeForMatching] (comparaison de candidats déjà renvoyés par IGDB) et par
  * [buildSearchQuery] (texte de la requête envoyée à IGDB) — voir ce dernier pour le cas concret qui
@@ -134,7 +174,7 @@ private fun stripDisambiguatingSuffixes(value: String): String =
  * titres qui ne diffèrent que par ces mentions soient reconnus comme identiques lors de la
  * comparaison de similarité.
  */
-private fun normalizeForMatching(value: String): String =
+internal fun normalizeForMatching(value: String): String =
     stripDisambiguatingSuffixes(value)
         .lowercase(Locale.ROOT)
         .filter { it.isLetterOrDigit() || it == ' ' }
@@ -182,20 +222,21 @@ fun toEstimatedHours(seconds: Int?): Int? = hoursOrNull(seconds?.takeIf { it > 0
 
 /**
  * Reformate les plateformes IGDB d'un jeu identifié au même format d'affichage que `Game.platform`
- * (jointes par "/", voir `RawgMappers.formatPlatforms`), mais triées : contrairement à RAWG, l'ordre
+ * (jointes par "/"), mais triées : l'ordre
  * dans lequel IGDB renvoie ses plateformes n'est pas significatif, autant avoir un résultat
  * déterministe. Renvoie `null` (jamais une chaîne vide) si IGDB n'a aucune plateforme pour ce jeu —
  * `IgdbPlaytimeRepositoryImpl` s'en sert comme signal pour ne jamais écraser `Game.platform` avec
  * une liste vide.
  *
  * Chaque nom passe par [normalizeIgdbPlatformName] avant tri/dédoublonnage : IGDB distingue les OS
- * PC ("PC (Microsoft Windows)", "Mac", "Linux") là où RAWG et l'app ne veulent qu'un seul "PC",
+ * PC ("PC (Microsoft Windows)", "Mac", "Linux") là où l'app ne veut qu'un seul "PC",
  * peu importe l'OS — sans ce regroupement, un jeu multi-OS afficherait plusieurs cases "PC" à
  * cocher séparément côté `playedPlatforms`, ce qui n'a pas de sens pour l'utilisateur.
  */
 fun formatIgdbPlatforms(platforms: List<IgdbPlatformDto>?): String? =
     platforms.orEmpty()
-        .map { normalizeIgdbPlatformName(it.name) }
+        .mapNotNull { it.name }
+        .map { normalizeIgdbPlatformName(it) }
         .filter { it.isNotEmpty() }
         .distinct()
         .sorted()

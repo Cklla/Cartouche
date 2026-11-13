@@ -10,8 +10,8 @@ plugins {
     alias(libs.plugins.androidx.room)
 }
 
-// La clé API RAWG vit uniquement dans local.properties,
-// jamais dans le code source. On l'expose au code Kotlin via un champ
+// Les identifiants IGDB et Supabase vivent uniquement dans local.properties,
+// jamais dans le code source. On les expose au code Kotlin via un champ
 // BuildConfig généré à la compilation.
 val localProperties = Properties().apply {
     val localPropertiesFile = rootProject.file("local.properties")
@@ -44,11 +44,6 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
-        buildConfigField(
-            "String",
-            "RAWG_API_KEY",
-            "\"${localProperties.getProperty("RAWG_API_KEY", "")}\"",
-        )
         // Identifiants de l'app Twitch (console.twitch.tv/console/apps), utilisés pour le flow
         // OAuth2 client credentials qui authentifie les appels à l'API IGDB (voir
         // `data/remote/igdb/TwitchAuthApi.kt`).
@@ -62,7 +57,7 @@ android {
             "IGDB_CLIENT_SECRET",
             "\"${localProperties.getProperty("IGDB_CLIENT_SECRET", "")}\"",
         )
-        // Configuration Supabase, injectée comme la clé RAWG : jamais dans le code source. La clé
+        // Configuration Supabase, injectée comme les identifiants IGDB : jamais dans le code source. La clé
         // publishable est publique par conception (la sécurité repose sur le RLS), mais reste
         // propre à ce projet Supabase ; l'identifiant client Web est celui déclaré côté Supabase
         // pour la connexion par jeton Google.
@@ -133,7 +128,6 @@ android {
 // présent, `test` ou `check` exigent donc aussi ces valeurs.
 if (keystoreProperties.isNotEmpty()) {
     val missing = listOf(
-        "RAWG_API_KEY",
         "IGDB_CLIENT_ID",
         "IGDB_CLIENT_SECRET",
         "SUPABASE_URL",
@@ -190,14 +184,14 @@ dependencies {
     implementation(libs.androidx.hilt.work)
     ksp(libs.androidx.hilt.compiler)
 
-    // Réseau : recherche de jeux via l'API RAWG (seul usage de Retrofit/Moshi,
+    // Réseau : recherche de jeux via l'API IGDB et authentification Twitch (seuls usages de Retrofit/Moshi,
     // le backlog lui-même est stocké via Room et synchronisé avec Supabase).
     implementation(libs.retrofit.core)
     implementation(libs.retrofit.converter.moshi)
     implementation(libs.moshi.kotlin)
     implementation(libs.okhttp.logging.interceptor)
 
-    // Chargement des jaquettes réelles renvoyées par RAWG
+    // Chargement des jaquettes réelles renvoyées par IGDB
     implementation(libs.coil.compose)
 
     // Stockage chiffré de la session Supabase : les jetons d'accès et de renouvellement donnent
