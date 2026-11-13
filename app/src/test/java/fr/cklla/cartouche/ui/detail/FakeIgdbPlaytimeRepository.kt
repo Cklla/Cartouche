@@ -9,8 +9,13 @@ class FakeIgdbPlaytimeRepository(private val result: IgdbGameMatch? = null) : Ig
     var callCount = 0
         private set
 
-    override suspend fun findEstimatedPlaytime(title: String, releaseYear: Int?, rawgId: Long?): IgdbGameMatch? {
+    /** Id IGDB reçu au dernier appel, pour vérifier qu'un id connu est bien transmis. */
+    var lastIgdbId: Long? = null
+        private set
+
+    override suspend fun findEstimatedPlaytime(title: String, releaseYear: Int?, igdbId: Long?): IgdbGameMatch? {
         callCount++
+        lastIgdbId = igdbId
         return result
     }
 }

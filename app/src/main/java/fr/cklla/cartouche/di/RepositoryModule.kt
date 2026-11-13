@@ -11,6 +11,7 @@ import fr.cklla.cartouche.data.repository.GameRepositoryImpl
 import fr.cklla.cartouche.data.repository.GameSearchRepositoryImpl
 import fr.cklla.cartouche.data.repository.IgdbPlaytimeRepositoryImpl
 import fr.cklla.cartouche.data.sync.InitialUploadPrefs
+import fr.cklla.cartouche.data.sync.IgdbUpgradePrefs
 import fr.cklla.cartouche.data.sync.InitialUploadStore
 import fr.cklla.cartouche.data.sync.OutboxScheduler
 import fr.cklla.cartouche.data.sync.WorkManagerOutboxScheduler
@@ -18,6 +19,7 @@ import fr.cklla.cartouche.domain.repository.AuthRepository
 import fr.cklla.cartouche.domain.repository.GameRepository
 import fr.cklla.cartouche.domain.repository.GameSearchRepository
 import fr.cklla.cartouche.domain.repository.IgdbPlaytimeRepository
+import fr.cklla.cartouche.domain.repository.IgdbUpgradeStore
 import javax.inject.Singleton
 
 /** Lie les interfaces de repository à leur implémentation concrète, pour que les
@@ -51,4 +53,7 @@ abstract class RepositoryModule {
 
     @Binds
     abstract fun bindInitialUploadStore(impl: InitialUploadPrefs): InitialUploadStore
+
+    @Binds
+    abstract fun bindIgdbUpgradeStore(impl: IgdbUpgradePrefs): IgdbUpgradeStore
 }

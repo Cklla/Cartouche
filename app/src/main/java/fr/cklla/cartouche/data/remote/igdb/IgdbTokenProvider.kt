@@ -9,6 +9,12 @@ import javax.inject.Singleton
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
+/** Source du jeton d'accès IGDB : une interface pour pouvoir la remplacer dans les tests. */
+interface IgdbTokenSource {
+    /** Un jeton valide, ou `null` s'il est impossible d'en obtenir un. */
+    suspend fun getValidToken(): String?
+}
+
 /**
  * Fournit un token d'accès Twitch valide pour appeler l'API IGDB, en le rafraîchissant
  * automatiquement à l'expiration seulement — jamais à chaque appel (le token
@@ -22,7 +28,7 @@ import kotlinx.coroutines.sync.withLock
 class IgdbTokenProvider @Inject constructor(
     @ApplicationContext context: Context,
     private val twitchAuthApi: TwitchAuthApi,
-) {
+) : IgdbTokenSource {
 
     private val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
 
@@ -35,7 +41,7 @@ class IgdbTokenProvider @Inject constructor(
      * invalides, pas de réseau, quota Twitch...). L'appelant traite alors le temps de jeu IGDB
      * comme "non disponible", jamais comme une erreur bloquante.
      */
-    suspend fun getValidToken(): String? = mutex.withLock {
+    override suspend fun getValidToken(): String? = mutex.withLock {
         val cachedToken = prefs.getString(KEY_ACCESS_TOKEN, null)
         val expiresAtMillis = prefs.getLong(KEY_EXPIRES_AT_MILLIS, 0L)
         if (cachedToken != null && System.currentTimeMillis() < expiresAtMillis - REFRESH_MARGIN_MILLIS) {

@@ -70,6 +70,7 @@ class DetailViewModelStatusYearTest {
         savedStateHandle = SavedStateHandle(mapOf(CartoucheDestinations.DETAIL_ARG_GAME_ID to gameId)),
         gameRepository = repository,
         igdbPlaytimeRepository = FakeIgdbPlaytimeRepository(),
+        igdbUpgradeStore = FakeIgdbUpgradeStore(),
     )
 
     private suspend fun GameRepository.stored(id: String = "hades"): Game = observeGame(id).first()!!
@@ -137,7 +138,7 @@ class DetailViewModelStatusYearTest {
         val viewModel = DetailViewModel(
             savedStateHandle = SavedStateHandle(
                 mapOf(
-                    CartoucheDestinations.DETAIL_APERCU_ARG_RAWG_ID to 42L,
+                    CartoucheDestinations.DETAIL_APERCU_ARG_IGDB_ID to 42L,
                     CartoucheDestinations.DETAIL_APERCU_ARG_TITLE to "Hollow Knight",
                     CartoucheDestinations.DETAIL_APERCU_ARG_PLATFORM to "PC",
                     CartoucheDestinations.DETAIL_APERCU_ARG_GENRE to "Metroidvania",
@@ -147,6 +148,7 @@ class DetailViewModelStatusYearTest {
             ),
             gameRepository = repository,
             igdbPlaytimeRepository = FakeIgdbPlaytimeRepository(),
+        igdbUpgradeStore = FakeIgdbUpgradeStore(),
         )
         val collectorJob = launch { viewModel.uiState.collect {} }
         dispatcher.scheduler.advanceUntilIdle()

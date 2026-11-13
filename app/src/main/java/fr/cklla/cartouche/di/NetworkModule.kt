@@ -7,14 +7,11 @@ import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
 import fr.cklla.cartouche.BuildConfig
-import fr.cklla.cartouche.data.remote.RawgApi
 import javax.inject.Singleton
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
-import retrofit2.Retrofit
-import retrofit2.converter.moshi.MoshiConverterFactory
 
-/** Fournit le client Retrofit/Moshi utilisé pour interroger l'API RAWG (recherche de jeux). */
+/** Fournit le client HTTP (OkHttp) et Moshi partagés par les clients Retrofit d'IGDB et de Twitch. */
 @Module
 @InstallIn(SingletonComponent::class)
 object NetworkModule {
@@ -27,24 +24,16 @@ object NetworkModule {
     @Singleton
     fun provideOkHttpClient(): OkHttpClient {
         // Les logs de requêtes ne sont utiles qu'en développement : BuildConfig.DEBUG évite de
-        // bavarder inutilement en release. Niveau BODY (et non BASIC) pour pouvoir diagnostiquer
-        // les correspondances IGDB (voir `IgdbPlaytimeRepositoryImpl`) : les clés/tokens passent
-        // en en-têtes, jamais dans le corps des requêtes, donc pas de fuite malgré ce niveau.
+        // bavarder inutilement en release. Niveau BODY pour pouvoir diagnostiquer les requêtes
+        // IGDB. Ce niveau journalise aussi les **en-têtes** (jeton d'accès `Authorization`,
+        // identifiant d'application `Client-ID`) et l'URL, où l'authentification Twitch passe
+        // `client_id` et `client_secret` en paramètres : tout cela est masqué.
         val logging = HttpLoggingInterceptor().apply {
             level = if (BuildConfig.DEBUG) HttpLoggingInterceptor.Level.BODY else HttpLoggingInterceptor.Level.NONE
+            redactHeader("Authorization")
+            redactHeader("Client-ID")
+            redactQueryParams("client_id", "client_secret")
         }
         return OkHttpClient.Builder().addInterceptor(logging).build()
     }
-
-    @Provides
-    @Singleton
-    fun provideRetrofit(okHttpClient: OkHttpClient, moshi: Moshi): Retrofit = Retrofit.Builder()
-        .baseUrl(RawgApi.BASE_URL)
-        .client(okHttpClient)
-        .addConverterFactory(MoshiConverterFactory.create(moshi))
-        .build()
-
-    @Provides
-    @Singleton
-    fun provideRawgApi(retrofit: Retrofit): RawgApi = retrofit.create(RawgApi::class.java)
 }

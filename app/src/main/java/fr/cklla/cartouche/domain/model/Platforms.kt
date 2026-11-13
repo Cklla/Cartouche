@@ -1,15 +1,15 @@
 package fr.cklla.cartouche.domain.model
 
 /**
- * `Game.platform` est une seule chaîne listant toutes les plateformes RAWG où le jeu est
- * disponible (ex. "PC/PS5/Switch", voir `RawgMappers.formatPlatforms`) — jamais un vrai
+ * `Game.platform` est une seule chaîne listant toutes les plateformes IGDB où le jeu est
+ * disponible (ex. "PC/PS5/Switch", voir `IgdbMappers.formatIgdbPlatforms`) — jamais un vrai
  * `List<String>` de bout en bout, pour ne pas complexifier Room et le serveur rien que pour ce champ
  * en lecture seule. Ces fonctions la découpent au seul endroit où le détail par plateforme compte
  * réellement : les cases à cocher "joué sur" de la fiche Détail et les statistiques par plateforme.
  */
 private const val PLATFORM_SEPARATOR = "/"
 
-/** Plateformes disponibles pour un jeu, dans l'ordre RAWG d'origine, sans doublons ni chaîne vide. */
+/** Plateformes disponibles pour un jeu, dans l'ordre d'origine, sans doublons ni chaîne vide. */
 fun parsePlatforms(platform: String): List<String> =
     platform.split(PLATFORM_SEPARATOR).map(String::trim).filter(String::isNotBlank).distinct()
 
@@ -37,11 +37,11 @@ fun effectivePlayedPlatforms(game: Game): Set<String> {
  *
  * La correspondance entre l'ancien et le nouveau nom de plateforme n'est acceptée que si elle est
  * exacte à la casse près (`"ps5"` ~ `"PS5"`), jamais approximative (ex. sous-chaîne) : le cas motivant
- * cette fonction est justement Switch/Switch 2, où une différence de libellé entre RAWG et IGDB peut
+ * cette fonction est justement Switch/Switch 2, où une différence de libellé entre l'ancienne donnée et IGDB peut
  * refléter une vraie différence de plateforme et pas seulement une reformulation (ex. "Nintendo
  * Switch" contient "Switch" comme sous-chaîne, mais "Nintendo Switch 2" aussi — une correspondance
  * approximative ferait glisser une case "joué sur Switch" vers "Switch 2" à tort). Sans
- * correspondance exacte fiable pour une plateforme cochée, mieux vaut garder la donnée RAWG intacte
+ * correspondance exacte fiable pour une plateforme cochée, mieux vaut garder la donnée actuelle intacte
  * que de la remplacer par une valeur qui casse ou fausse silencieusement ce choix.
  */
 fun realignPlayedPlatformsOrNull(playedPlatforms: Set<String>, newPlatform: String): Set<String>? {

@@ -1,0 +1,205 @@
+package fr.cklla.cartouche.domain.model
+
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
+import org.junit.Test
+
+/**
+ * Cas de la règle d'enrichissement IGDB. Les mêmes cas sont portés côté web : toute modification
+ * ici doit l'être là-bas.
+ */
+class IgdbEnrichmentTest {
+
+    private val igdbCover = "https://images.igdb.com/igdb/image/upload/t_cover_big_2x/coc8ap.jpg"
+    private val rawgCover = "https://media.rawg.io/media/games/abc/abc.jpg"
+
+    private val game = Game(
+        id = "g1",
+        title = "Xenoblade Chronicles",
+        platform = "Nintendo Switch",
+        genre = "JRPG",
+        status = GameStatus.EN_COURS,
+        rating = 4,
+        notes = "Super",
+        userPlaytimeHours = 12,
+        completedAt = 1_700_000_000_000L,
+        abandonedAt = 1_600_000_000_000L,
+        coverUrl = rawgCover,
+    )
+
+    private val fullMatch = IgdbGameMatch(
+        igdbId = 2364L,
+        platform = "Nintendo Switch/Nintendo Switch 2/Wii",
+        coverUrl = igdbCover,
+        releaseYear = 2010,
+        playtimeEstimate = IgdbPlaytimeEstimate(hastilyHours = 40, normallyHours = 70, completelyHours = 110),
+    )
+
+    // --- igdb_id ---
+
+    @Test
+    fun `l'id IGDB est renseigne quand il est vide`() {
+        assertEquals(2364L, applyIgdbEnrichment(game, fullMatch).igdbId)
+    }
+
+    @Test
+    fun `un id IGDB deja connu n'est jamais change`() {
+        assertEquals(111L, applyIgdbEnrichment(game.copy(igdbId = 111L), fullMatch).igdbId)
+    }
+
+    @Test
+    fun `un id IGDB hors borne n'est pas enregistre`() {
+        assertNull(applyIgdbEnrichment(game, fullMatch.copy(igdbId = 0L)).igdbId)
+        assertNull(applyIgdbEnrichment(game, fullMatch.copy(igdbId = 10_000_000_000L)).igdbId)
+    }
+
+    // --- cover_url ---
+
+    @Test
+    fun `une jaquette RAWG est remplacee par celle d'IGDB`() {
+        assertEquals(igdbCover, applyIgdbEnrichment(game, fullMatch).coverUrl)
+    }
+
+    @Test
+    fun `une jaquette vide ou absente est remplacee par celle d'IGDB`() {
+        assertEquals(igdbCover, applyIgdbEnrichment(game.copy(coverUrl = null), fullMatch).coverUrl)
+        assertEquals(igdbCover, applyIgdbEnrichment(game.copy(coverUrl = ""), fullMatch).coverUrl)
+    }
+
+    @Test
+    fun `une jaquette d'un autre hote est gardee`() {
+        val other = "https://exemple.fr/cover.jpg"
+        assertEquals(other, applyIgdbEnrichment(game.copy(coverUrl = other), fullMatch).coverUrl)
+    }
+
+    @Test
+    fun `seul l'hote exact media rawg io compte comme jaquette RAWG`() {
+        listOf(
+            "https://media.rawg.io.evil.example/x.jpg",
+            "https://evil.example/media.rawg.io/x.jpg",
+            "https://sub.media.rawg.io/x.jpg",
+            "https://media.rawg.io@evil.example/x.jpg",
+        ).forEach { url ->
+            assertEquals("url $url", url, applyIgdbEnrichment(game.copy(coverUrl = url), fullMatch).coverUrl)
+        }
+    }
+
+    @Test
+    fun `sans jaquette IGDB, la jaquette actuelle n'est pas ecrasee`() {
+        assertEquals(rawgCover, applyIgdbEnrichment(game, fullMatch.copy(coverUrl = null)).coverUrl)
+        assertNull(applyIgdbEnrichment(game.copy(coverUrl = null), fullMatch.copy(coverUrl = null)).coverUrl)
+    }
+
+    // --- platform ---
+
+    @Test
+    fun `la plateforme IGDB remplace celle du jeu quand aucune case n'est cochee`() {
+        assertEquals("Nintendo Switch/Nintendo Switch 2/Wii", applyIgdbEnrichment(game, fullMatch).platform)
+    }
+
+    @Test
+    fun `une case cochee est realignee sur la casse IGDB`() {
+        val played = game.copy(platform = "switch", playedPlatforms = setOf("switch"))
+        val result = applyIgdbEnrichment(played, fullMatch.copy(platform = "Switch/Wii"))
+
+        assertEquals("Switch/Wii", result.platform)
+        assertEquals(setOf("Switch"), result.playedPlatforms)
+    }
+
+    @Test
+    fun `la plateforme n'est pas remplacee si une case cochee perdrait sa plateforme (Switch vers Switch 2)`() {
+        val played = game.copy(platform = "Nintendo Switch", playedPlatforms = setOf("Nintendo Switch"))
+        val result = applyIgdbEnrichment(played, fullMatch.copy(platform = "Nintendo Switch 2"))
+
+        assertEquals("Nintendo Switch", result.platform)
+        assertEquals(setOf("Nintendo Switch"), result.playedPlatforms)
+        // Le reste de la remise à niveau, lui, s'applique.
+        assertEquals(2364L, result.igdbId)
+    }
+
+    @Test
+    fun `sans plateforme IGDB, la plateforme du jeu est gardee`() {
+        assertEquals("Nintendo Switch", applyIgdbEnrichment(game, fullMatch.copy(platform = null)).platform)
+        assertEquals("Nintendo Switch", applyIgdbEnrichment(game, fullMatch.copy(platform = "")).platform)
+    }
+
+    @Test
+    fun `la nouvelle liste de plateformes est bornee avant remplacement`() {
+        val long = (1..60).joinToString("/") { "Plateforme numero $it" }
+        val result = applyIgdbEnrichment(game, fullMatch.copy(platform = long))
+
+        assertTrue(result.platform.length <= MAX_PLATFORM_LENGTH)
+        assertTrue(result.platform.startsWith("Plateforme numero 1/"))
+    }
+
+    // --- estimated_playtime_* ---
+
+    @Test
+    fun `seules les durees fournies par IGDB sont ecrites, les autres sont gardees`() {
+        val existing = game.copy(
+            estimatedPlaytimeHastilyHours = 5,
+            estimatedPlaytimeNormallyHours = 6,
+            estimatedPlaytimeCompletelyHours = 7,
+        )
+        val partial = fullMatch.copy(playtimeEstimate = IgdbPlaytimeEstimate(null, 70, null))
+
+        val result = applyIgdbEnrichment(existing, partial)
+
+        assertEquals(5, result.estimatedPlaytimeHastilyHours)
+        assertEquals(70, result.estimatedPlaytimeNormallyHours)
+        assertEquals(7, result.estimatedPlaytimeCompletelyHours)
+    }
+
+    @Test
+    fun `sans estimation IGDB, les durees du jeu sont gardees`() {
+        val existing = game.copy(estimatedPlaytimeNormallyHours = 6)
+
+        assertEquals(6, applyIgdbEnrichment(existing, fullMatch.copy(playtimeEstimate = null)).estimatedPlaytimeNormallyHours)
+    }
+
+    // --- release_year ---
+
+    @Test
+    fun `l'annee est renseignee quand elle est vide et jamais changee ensuite`() {
+        assertEquals(2010, applyIgdbEnrichment(game, fullMatch).releaseYear)
+        assertEquals(1999, applyIgdbEnrichment(game.copy(releaseYear = 1999), fullMatch).releaseYear)
+        assertNull(applyIgdbEnrichment(game, fullMatch.copy(releaseYear = null)).releaseYear)
+        assertNull(applyIgdbEnrichment(game, fullMatch.copy(releaseYear = 1800)).releaseYear)
+    }
+
+    // --- igdb_lookup_attempted et champs intouchables ---
+
+    @Test
+    fun `la tentative est enregistree meme sans correspondance, sans rien changer d'autre`() {
+        val result = applyIgdbEnrichment(game, null)
+
+        assertTrue(result.igdbLookupAttempted)
+        assertEquals(game.copy(igdbLookupAttempted = true), result)
+    }
+
+    @Test
+    fun `titre, genre, statut, note, heures, notes, dates et plateformes jouees ne sont jamais modifies`() {
+        val played = game.copy(playedPlatforms = setOf("Nintendo Switch"))
+        val result = applyIgdbEnrichment(played, fullMatch)
+
+        assertEquals(played.title, result.title)
+        assertEquals(played.genre, result.genre)
+        assertEquals(played.status, result.status)
+        assertEquals(played.rating, result.rating)
+        assertEquals(played.userPlaytimeHours, result.userPlaytimeHours)
+        assertEquals(played.notes, result.notes)
+        assertEquals(played.completedAt, result.completedAt)
+        assertEquals(played.abandonedAt, result.abandonedAt)
+        assertEquals(played.playedPlatforms, result.playedPlatforms)
+        assertEquals(played.id, result.id)
+        assertEquals(played.rawgId, result.rawgId)
+    }
+
+    @Test
+    fun `appliquer deux fois la meme correspondance donne le meme jeu`() {
+        val once = applyIgdbEnrichment(game, fullMatch)
+
+        assertEquals(once, applyIgdbEnrichment(once, fullMatch))
+    }
+}

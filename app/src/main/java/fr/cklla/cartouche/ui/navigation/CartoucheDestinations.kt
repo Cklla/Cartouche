@@ -42,11 +42,11 @@ object CartoucheDestinations {
     fun detailRoute(gameId: String) = "detail/$gameId"
 
     // Fiche d'un jeu pas encore ajouté au backlog, ouverte directement depuis un résultat de
-    // Recherche : il n'y a pas encore d'id de backlog à relire en base, donc la fiche RAWG
+    // Recherche : il n'y a pas encore d'id de backlog à relire en base, donc la fiche IGDB
     // complète transite par les paramètres de la route plutôt que par un id. Route distincte de
     // DETAIL ci-dessus (préfixe différent) pour qu'il n'y ait jamais d'ambiguïté de correspondance
     // entre les deux patterns dans le graphe de navigation.
-    const val DETAIL_APERCU_ARG_RAWG_ID = "rawgId"
+    const val DETAIL_APERCU_ARG_IGDB_ID = "igdbId"
     const val DETAIL_APERCU_ARG_TITLE = "title"
     const val DETAIL_APERCU_ARG_PLATFORM = "platform"
     const val DETAIL_APERCU_ARG_GENRE = "genre"
@@ -55,7 +55,7 @@ object CartoucheDestinations {
 
     private const val DETAIL_APERCU_BASE = "apercu-jeu"
     const val DETAIL_APERCU = "$DETAIL_APERCU_BASE?" +
-        "$DETAIL_APERCU_ARG_RAWG_ID={$DETAIL_APERCU_ARG_RAWG_ID}" +
+        "$DETAIL_APERCU_ARG_IGDB_ID={$DETAIL_APERCU_ARG_IGDB_ID}" +
         "&$DETAIL_APERCU_ARG_TITLE={$DETAIL_APERCU_ARG_TITLE}" +
         "&$DETAIL_APERCU_ARG_PLATFORM={$DETAIL_APERCU_ARG_PLATFORM}" +
         "&$DETAIL_APERCU_ARG_GENRE={$DETAIL_APERCU_ARG_GENRE}" +
@@ -65,7 +65,7 @@ object CartoucheDestinations {
     fun detailApercuRoute(result: GameSearchResult): String {
         fun enc(value: String) = Uri.encode(value)
         return "$DETAIL_APERCU_BASE?" +
-            "$DETAIL_APERCU_ARG_RAWG_ID=${result.rawgId}" +
+            "$DETAIL_APERCU_ARG_IGDB_ID=${result.igdbId}" +
             "&$DETAIL_APERCU_ARG_TITLE=${enc(result.title)}" +
             "&$DETAIL_APERCU_ARG_PLATFORM=${enc(result.platform)}" +
             "&$DETAIL_APERCU_ARG_GENRE=${enc(result.genre)}" +

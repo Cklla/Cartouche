@@ -33,7 +33,7 @@ class RechercheViewModelTest {
     }
 
     private fun sampleResult(title: String = "Hades") =
-        GameSearchResult(rawgId = 1, title = title, platform = "PC", genre = "Roguelike", year = "2020", coverUrl = null)
+        GameSearchResult(igdbId = 1, title = title, platform = "PC", genre = "Roguelike", year = "2020", coverUrl = null)
 
     @Test
     fun `changer la recherche declenche un appel apres le debounce et expose les resultats`() = runTest {
@@ -93,7 +93,7 @@ class RechercheViewModelTest {
     fun `une erreur reseau remonte comme message d'erreur sans resultat`() = runTest {
         val gameRepository = fakeGameRepository(FakeGameDao())
         val searchRepository = FakeGameSearchRepository().apply {
-            response = Resource.Error("Impossible de contacter RAWG.")
+            response = Resource.Error("Recherche IGDB impossible")
         }
         val viewModel = RechercheViewModel(gameRepository, searchRepository)
         val collectorJob = launch { viewModel.uiState.collect {} }
@@ -103,7 +103,7 @@ class RechercheViewModelTest {
         dispatcher.scheduler.advanceUntilIdle()
 
         val state = viewModel.uiState.value
-        assertEquals("Impossible de contacter RAWG.", state.errorMessage)
+        assertEquals("Recherche IGDB impossible", state.errorMessage)
         assertTrue(state.results.isEmpty())
         collectorJob.cancel()
     }

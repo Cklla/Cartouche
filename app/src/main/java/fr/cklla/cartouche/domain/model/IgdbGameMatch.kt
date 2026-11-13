@@ -1,24 +1,27 @@
 package fr.cklla.cartouche.domain.model
 
 /**
- * Résultat d'une correspondance IGDB réussie pour un jeu (id IGDB retrouvé, voir
- * `IgdbPlaytimeRepository`) : regroupe le temps de jeu estimé et la liste de plateformes IGDB,
- * toutes deux résolues à partir du même id — un seul appel de correspondance (cascade ID Steam →
- * nom+année) sert aux deux usages plutôt que de la refaire séparément pour chacun.
+ * Ce qu'IGDB sait d'un jeu, une fois son id résolu (connu d'avance ou retrouvé par nom et année,
+ * voir `IgdbPlaytimeRepository`). Sert d'entrée à la règle d'enrichissement unique
+ * (`applyIgdbEnrichment`), qui décide quelles données du jeu sont mises à jour.
  *
- * Les deux champs sont indépendamment nullables : l'id IGDB peut être résolu sans que
- * `game_time_to_beats` ait de donnée pour ce jeu ([playtimeEstimate] alors `null`), et
- * inversement IGDB peut n'avoir aucune plateforme renseignée ([platform] alors `null` — jamais une
- * chaîne vide, voir `IgdbMappers.formatIgdbPlatforms`). Ce type lui-même est `null` dans son
- * ensemble uniquement quand la correspondance a échoué (aucun id IGDB trouvé) ou qu'elle n'a rien
- * donné d'exploitable du tout.
+ * Tous les champs hors [igdbId] sont indépendamment nullables : IGDB peut ne renseigner qu'une
+ * partie des informations (jaquette, date, plateformes, durées). Ce type est `null` dans son
+ * ensemble uniquement quand le jeu n'a pas pu être identifié ou lu.
  *
- * @param platform liste de plateformes IGDB déjà formatée comme `Game.platform` (jointe par "/",
- *   triée) — voir `IgdbMappers.formatIgdbPlatforms`. C'est au ViewModel appelant (voir
- *   `DetailViewModel`) de décider si ce remplacement est sûr vis-à-vis de `Game.playedPlatforms`
- *   déjà coché (voir `realignPlayedPlatformsOrNull`).
+ * @param igdbId identifiant IGDB du jeu, dans la borne acceptée par le serveur.
+ * @param platform plateformes IGDB déjà formatées comme `Game.platform` (jointes par "/", triées,
+ *   éditions et portages fusionnés) ; `null` si IGDB n'en a aucune — jamais une chaîne vide. C'est
+ *   la règle d'enrichissement qui décide si ce remplacement est sûr vis-à-vis de
+ *   `Game.playedPlatforms` (voir `realignPlayedPlatformsOrNull`).
+ * @param coverUrl jaquette HTTPS sur `images.igdb.com`, construite par notre code (voir
+ *   `IgdbGameMerge.buildCoverUrl`) ; `null` si IGDB n'en a pas.
+ * @param releaseYear année de sortie IGDB, `null` si IGDB n'a pas de date.
  */
 data class IgdbGameMatch(
-    val playtimeEstimate: IgdbPlaytimeEstimate?,
-    val platform: String?,
+    val igdbId: Long,
+    val platform: String? = null,
+    val coverUrl: String? = null,
+    val releaseYear: Int? = null,
+    val playtimeEstimate: IgdbPlaytimeEstimate? = null,
 )
