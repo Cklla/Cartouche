@@ -18,12 +18,14 @@ import fr.cklla.cartouche.domain.model.igdbIdOrNull
  */
 
 /**
- * Types de jeu (`game_types`) gardés dans les résultats : 0 jeu de base, 4 extension autonome,
- * 8 remake, 9 remaster, 10 jeu étendu, 11 portage. Les autres (1 DLC, 2 extension, 3 bundle, 5 mod,
- * 6 épisode, 7 saison, 12 fork, 13 pack, 14 mise à jour) sont écartés. Un jeu **sans** `game_type`
- * est gardé (voir [isKeptGameType]).
+ * Types de jeu (`game_types`) gardés dans les résultats : 0 jeu de base, 1 DLC, 2 extension,
+ * 4 extension autonome, 8 remake, 9 remaster, 10 jeu étendu, 11 portage. Les DLC et extensions
+ * sont des fiches à part : on peut les ajouter seuls au backlog, par exemple quand ils sortent
+ * longtemps après le jeu. Les autres types (3 bundle, 5 mod, 6 épisode, 7 saison, 12 fork,
+ * 13 pack, 14 mise à jour) sont écartés. Un jeu **sans** `game_type` est gardé (voir
+ * [isKeptGameType]).
  */
-val KEPT_GAME_TYPE_IDS = listOf(0, 4, 8, 9, 10, 11)
+val KEPT_GAME_TYPE_IDS = listOf(0, 1, 2, 4, 8, 9, 10, 11)
 
 private val KEPT_GAME_TYPE_SET = KEPT_GAME_TYPE_IDS.map { it.toLong() }.toSet()
 
@@ -54,7 +56,8 @@ fun IgdbGameDto.isKeptGameType(): Boolean =
  *
  * - une **édition** (`version_parent`, type « jeu de base » ou absent) se rattache à son parent ;
  * - un **portage** (type 11) se rattache à son `parent_game` (à défaut, à son `version_parent`) ;
- * - les **jeux étendus** (10), **remakes** (8), **remasters** (9), **extensions autonomes** (4) et
+ * - les **DLC** (1), **extensions** (2), **jeux étendus** (10), **remakes** (8), **remasters** (9),
+ *   **extensions autonomes** (4) et
  *   **bundles-éditions** (3, avec `version_parent`) restent des fiches à part, même quand IGDB leur donne un parent : *Ocarina of Time* (1029), son
  *   remake 3DS et son remake Switch 2 sont trois jeux distincts ; *Divinity: Original Sin* et son
  *   *Enhanced Edition* (type 10, `parent_game` = jeu de base) aussi (choix du développeur,

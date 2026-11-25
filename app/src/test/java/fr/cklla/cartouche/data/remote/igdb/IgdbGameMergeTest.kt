@@ -16,10 +16,10 @@ class IgdbGameMergeTest {
 
     @Test
     fun `les types exclus sont ecartes et les types gardes conserves`() {
-        listOf(1L, 2L, 5L, 6L, 7L, 12L, 13L, 14L).forEach { excluded ->
+        listOf(5L, 6L, 7L, 12L, 13L, 14L).forEach { excluded ->
             assertFalse("type $excluded", igdbGame(1, "x", type = excluded).isKeptGameType())
         }
-        listOf(0L, 4L, 8L, 9L, 10L, 11L).forEach { kept ->
+        listOf(0L, 1L, 2L, 4L, 8L, 9L, 10L, 11L).forEach { kept ->
             assertTrue("type $kept", igdbGame(1, "x", type = kept).isKeptGameType())
         }
     }
@@ -56,7 +56,8 @@ class IgdbGameMergeTest {
     fun `un jeu etendu, un remake, un remaster et une extension autonome restent des fiches a part`() {
         // Ex. *Divinity: Original Sin - Enhanced Edition* (type 10, parent_game = jeu de base).
         // Idem pour un bundle-édition (type 3 avec version_parent).
-        listOf(10L, 8L, 9L, 4L, 3L).forEach { type ->
+        // Et pour un DLC ou une extension (1, 2), liés à leur jeu par parent_game.
+        listOf(10L, 8L, 9L, 4L, 3L, 1L, 2L).forEach { type ->
             assertNull("type $type", igdbGame(1, "x", type = type, parentGame = 1029, versionParent = 1029).mergeParentId())
         }
     }
@@ -76,6 +77,22 @@ class IgdbGameMergeTest {
         // La fiche de base absorbe l'édition Collector, pas l'Ultimate.
         assertEquals(listOf("PlayStation 4", "PC (Microsoft Windows)", "Xbox One"), merged.last().platforms.map { it.name })
         assertEquals(listOf("PlayStation 5", "Nintendo Switch 2"), merged.first().platforms.map { it.name })
+    }
+
+    @Test
+    fun `une extension et un DLC s'affichent a part sans alterer les plateformes du jeu de base`() {
+        // *The Witcher 3* et ses extensions : chacune est ajoutable seule au backlog.
+        val base = igdbGame(1942, "The Witcher 3: Wild Hunt", platforms = listOf("PlayStation 4"))
+        val expansion = igdbGame(
+            2, "The Witcher 3: Wild Hunt - Blood and Wine", type = 2, parentGame = 1942,
+            platforms = listOf("PC (Microsoft Windows)"),
+        )
+        val dlc = igdbGame(3, "The Witcher 3: Wild Hunt - New Quest", type = 1, parentGame = 1942, platforms = listOf("Xbox One"))
+
+        val merged = buildMergedGames(listOf(base, expansion, dlc))
+
+        assertEquals(listOf(1942L, 2L, 3L), merged.map { it.game.id })
+        assertEquals(listOf("PlayStation 4"), merged.first().platforms.map { it.name })
     }
 
     @Test
