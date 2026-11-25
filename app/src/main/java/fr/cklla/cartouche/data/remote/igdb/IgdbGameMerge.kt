@@ -28,6 +28,7 @@ val KEPT_GAME_TYPE_IDS = listOf(0, 4, 8, 9, 10, 11)
 private val KEPT_GAME_TYPE_SET = KEPT_GAME_TYPE_IDS.map { it.toLong() }.toSet()
 
 private const val TYPE_MAIN_GAME = 0L
+private const val TYPE_BUNDLE = 3L
 private const val TYPE_PORT = 11L
 
 /** Nombre maximal de résultats renvoyés à l'écran après fusion. */
@@ -36,16 +37,25 @@ const val MAX_SEARCH_RESULTS = 20
 /** Une édition peut elle-même avoir une édition (ex. une « Nintendo Switch 2 Edition ») : deux niveaux. */
 const val MAX_MERGE_DEPTH = 2
 
-/** Garde ce jeu ? Faux seulement pour un type explicitement exclu ; un type absent est gardé. */
-fun IgdbGameDto.isKeptGameType(): Boolean = gameType == null || gameType.id in KEPT_GAME_TYPE_SET
+/**
+ * Garde ce jeu ? Faux seulement pour un type explicitement exclu ; un type absent est gardé.
+ *
+ * Exception : un **bundle rattaché à un jeu de base** (`version_parent`) est une édition que IGDB
+ * type en bundle (*Cyberpunk 2077: Ultimate Edition*, *The Witcher 3: Complete Edition*, *Assassin's
+ * Creed Origins: Gold Edition*). Il est gardé, comme fiche à part (voir [mergeParentId]). Un bundle
+ * sans parent (« Collection », compilation) reste écarté.
+ */
+fun IgdbGameDto.isKeptGameType(): Boolean =
+    gameType == null || gameType.id in KEPT_GAME_TYPE_SET ||
+        (gameType.id == TYPE_BUNDLE && versionParent != null)
 
 /**
  * Id du jeu de base auquel ce jeu est rattaché, ou `null` s'il est lui-même un jeu à part entière.
  *
  * - une **édition** (`version_parent`, type « jeu de base » ou absent) se rattache à son parent ;
  * - un **portage** (type 11) se rattache à son `parent_game` (à défaut, à son `version_parent`) ;
- * - les **jeux étendus** (10), **remakes** (8), **remasters** (9) et **extensions autonomes** (4)
- *   restent des fiches à part, même quand IGDB leur donne un parent : *Ocarina of Time* (1029), son
+ * - les **jeux étendus** (10), **remakes** (8), **remasters** (9), **extensions autonomes** (4) et
+ *   **bundles-éditions** (3, avec `version_parent`) restent des fiches à part, même quand IGDB leur donne un parent : *Ocarina of Time* (1029), son
  *   remake 3DS et son remake Switch 2 sont trois jeux distincts ; *Divinity: Original Sin* et son
  *   *Enhanced Edition* (type 10, `parent_game` = jeu de base) aussi (choix du développeur,
  *   2026-11-13). Un jeu étendu garde ses propres éditions et portages (ex. l'édition Switch 2 de
