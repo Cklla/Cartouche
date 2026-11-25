@@ -16,12 +16,22 @@ class IgdbGameMergeTest {
 
     @Test
     fun `les types exclus sont ecartes et les types gardes conserves`() {
-        listOf(1L, 2L, 3L, 5L, 6L, 7L, 12L, 13L, 14L).forEach { excluded ->
+        listOf(1L, 2L, 5L, 6L, 7L, 12L, 13L, 14L).forEach { excluded ->
             assertFalse("type $excluded", igdbGame(1, "x", type = excluded).isKeptGameType())
         }
         listOf(0L, 4L, 8L, 9L, 10L, 11L).forEach { kept ->
             assertTrue("type $kept", igdbGame(1, "x", type = kept).isKeptGameType())
         }
+    }
+
+    @Test
+    fun `un bundle n'est garde que s'il est rattache a un jeu de base`() {
+        // *Cyberpunk 2077: Ultimate Edition* : bundle IGDB dont le version_parent est le jeu de base.
+        assertTrue(igdbGame(277807, "Cyberpunk 2077: Ultimate Edition", type = 3, versionParent = 1877).isKeptGameType())
+        // Une « collection » sans parent reste écartée.
+        assertFalse(igdbGame(2, "Une Collection", type = 3).isKeptGameType())
+        // Un DLC ou un pack rattaché reste écarté : l'exception ne vaut que pour les bundles.
+        assertFalse(igdbGame(3, "Pack de costumes", type = 13, versionParent = 1877).isKeptGameType())
     }
 
     @Test
@@ -45,9 +55,27 @@ class IgdbGameMergeTest {
     @Test
     fun `un jeu etendu, un remake, un remaster et une extension autonome restent des fiches a part`() {
         // Ex. *Divinity: Original Sin - Enhanced Edition* (type 10, parent_game = jeu de base).
-        listOf(10L, 8L, 9L, 4L).forEach { type ->
+        // Idem pour un bundle-édition (type 3 avec version_parent).
+        listOf(10L, 8L, 9L, 4L, 3L).forEach { type ->
             assertNull("type $type", igdbGame(1, "x", type = type, parentGame = 1029, versionParent = 1029).mergeParentId())
         }
+    }
+
+    @Test
+    fun `l'Ultimate Edition d'un bundle s'affiche a part, les autres editions restent fusionnees`() {
+        val base = igdbGame(1877, "Cyberpunk 2077", platforms = listOf("PlayStation 4", "PC (Microsoft Windows)"))
+        val ultimate = igdbGame(
+            277807, "Cyberpunk 2077: Ultimate Edition", type = 3, versionParent = 1877,
+            platforms = listOf("PlayStation 5", "Nintendo Switch 2"),
+        )
+        val collector = igdbGame(119328, "Cyberpunk 2077: Collector's Edition", versionParent = 1877, platforms = listOf("Xbox One"))
+
+        val merged = buildMergedGames(listOf(ultimate, base, collector))
+
+        assertEquals(listOf(277807L, 1877L), merged.map { it.game.id })
+        // La fiche de base absorbe l'édition Collector, pas l'Ultimate.
+        assertEquals(listOf("PlayStation 4", "PC (Microsoft Windows)", "Xbox One"), merged.last().platforms.map { it.name })
+        assertEquals(listOf("PlayStation 5", "Nintendo Switch 2"), merged.first().platforms.map { it.name })
     }
 
     @Test
