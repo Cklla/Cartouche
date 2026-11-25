@@ -45,11 +45,10 @@ private const val CHILDREN_LIMIT = 500
 /**
  * Recherche du catalogue par texte libre. Le filtre `where` est appliqué **côté serveur** (avant
  * `limit`) : filtrer après coup noierait les jeux de base sous les DLC au nom proche. Il garde les
- * jeux de base (0), extensions autonomes (4), remakes (8), remasters (9), jeux étendus (10) et
- * portages (11), **et** ceux dont `game_type` est absent : un filtre ne doit jamais écarter un jeu
+ * jeux de base (0), DLC (1), extensions (2), extensions autonomes (4), remakes (8), remasters (9),
+ * jeux étendus (10) et portages (11), **et** ceux dont `game_type` est absent : un filtre ne doit jamais écarter un jeu
  * dont le champ n'est pas renseigné (piège déjà vécu avec l'ancien champ `category`, qui était vide
- * pour des jeux de base). Écartés : DLC, extensions, bundles, mods, épisodes, saisons, forks,
- * packs et mises à jour. Exception : un bundle qui a un `version_parent` est une édition typée en
+ * pour des jeux de base). Écartés : bundles, mods, épisodes, saisons, forks, packs et mises à jour. Exception : un bundle qui a un `version_parent` est une édition typée en
  * bundle par IGDB (*Cyberpunk 2077: Ultimate Edition*) : il est gardé, les « collections » sans
  * parent restent écartées.
  *
