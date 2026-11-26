@@ -21,8 +21,32 @@ interface DescriptionSource {
 }
 
 /**
- * Règle de la fiche, identique à celle du site (au plus une demande à la fonction par appel, jamais de
- * boucle) :
+ * Lecture seule, faite à l'ouverture de la fiche : ne demande **jamais** rien à la fonction, donc ne coûte
+ * rien. Elle dit seulement ce qu'on sait déjà :
+ *  - jeu sans id IGDB valide, ou ligne à jour sans texte (IGDB n'en a pas) : [DescriptionView.None], pas de section ;
+ *  - ligne à jour avec texte : [DescriptionView.Ready], prêt à être montré au déroulement ;
+ *  - ligne absente, périmée, illisible ou lecture en erreur : [DescriptionView.Collapsed], section repliée
+ *    (une demande ne partira qu'au déroulement, par [resolveDescription]).
+ */
+suspend fun peekDescription(gameId: String, igdbId: Long?, source: DescriptionSource): DescriptionView {
+    val id = igdbIdOrNull(igdbId) ?: return DescriptionView.None
+    val stored = try {
+        source.read(gameId)
+    } catch (e: CancellationException) {
+        throw e
+    } catch (e: Exception) {
+        return DescriptionView.Collapsed
+    }
+    return if (stored is StoredDescription.Present && stored.description.isCurrent(id)) {
+        stored.description.content.toView(saved = true)
+    } else {
+        DescriptionView.Collapsed
+    }
+}
+
+/**
+ * Règle de la demande, lancée au déroulement de la section, identique à celle du site (au plus une demande à
+ * la fonction par appel, jamais de boucle) :
  *  1. jeu sans id IGDB valide : rien ;
  *  2. lecture de la ligne ; en cas d'erreur de lecture, rien n'est demandé (la ligne existe peut-être) ;
  *  3. ligne à jour : affichée, la fonction n'est pas appelée ;

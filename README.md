@@ -13,8 +13,9 @@ synchronisé automatiquement entre tous vos appareils grâce à Supabase.
 - **Fiche détail** : statut, note personnelle, temps de jeu personnel, notes libres, temps de jeu
   estimé (IGDB), et plateformes « Joué sur » pour un jeu
   multi-plateforme.
-- **Description traduite** : sur la fiche d'un jeu relié à IGDB, la description du jeu est traduite en
-  français (texte original à un tap, mention « Traduit automatiquement », attribution à IGDB.com).
+- **Description traduite** : sur la fiche d'un jeu relié à IGDB, une section repliée se déroule pour
+  afficher la description du jeu traduite en français (texte original à un tap, mention « Traduit
+  automatiquement », attribution à IGDB.com). La traduction n'est demandée qu'au premier déroulement.
 - **Plateforme fiabilisée via IGDB** : distingue Switch et Switch 2, regroupe Windows/Mac/Linux sous
   « PC ».
 - **Année de fin ou d'abandon** : depuis la fiche d'un jeu Terminé ou Abandonné, on choisit l'année,
@@ -151,8 +152,8 @@ app/src/main/java/fr/cklla/cartouche/
 - **Traduction côté serveur, sans texte venu du client** : l'application n'envoie que l'identifiant
   IGDB ; la fonction lit elle-même le texte et le traduit, elle ne peut donc pas servir de relais
   vers l'API Claude. Le résultat est enregistré une fois dans une table à part (`game_description`),
-  lue seulement à l'ouverture d'une fiche pour ne pas alourdir la synchro du backlog, et une panne ne
-  consomme pas l'essai.
+  lue à l'ouverture d'une fiche (sans rien dépenser) pour ne pas alourdir la synchro du backlog ;
+  la traduction n'est demandée qu'au déroulement de la section, et une panne ne consomme pas l'essai.
 - **UUID pour `Game.id`** : le même identifiant côté Room et Supabase, sans table de correspondance.
 - **Schéma Postgres dédié `cartouche`** : migrations, droits et sauvegarde séparables d'une autre
   application hébergée dans le même projet.

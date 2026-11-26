@@ -73,6 +73,9 @@ class DetailViewModel @Inject constructor(
     private val isLoading = MutableStateFlow(gameId != null)
     private val description = MutableStateFlow<DescriptionView>(DescriptionView.None)
 
+    // Vit dans le ViewModel (et non dans un `remember`) : la rotation ne referme pas la section.
+    private val descriptionExpanded = MutableStateFlow(false)
+
     init {
         observeDescription()
         val id = gameId
@@ -88,29 +91,46 @@ class DetailViewModel @Inject constructor(
         }
     }
 
-    // Description du jeu (texte IGDB et traduction), demandée à l'ouverture de la fiche seulement, et
-    // seulement pour un jeu déjà dans le backlog qui a un id IGDB : jamais pour un aperçu, jamais depuis la
-    // Bibliothèque ni la Recherche. La clé (id du jeu, id IGDB) ne change que si le jeu change de fiche IGDB
-    // (ou passe de l'aperçu au backlog) : `distinctUntilChanged` garantit au plus une demande par id et par
-    // ouverture, sans boucle, quelles que soient les éditions qui modifient la copie de travail. Une panne ne
-    // consomme pas l'essai : l'ouverture suivante redemandera (voir `resolveDescription`). `collectLatest`
-    // annule la demande en cours si la clé change, si bien que la réponse d'un ancien id ne peut jamais
-    // remplacer celle du nouveau (une description périmée n'est jamais affichée).
+    // Description du jeu (texte IGDB et traduction). À l'ouverture de la fiche, une simple **lecture** de ce
+    // qu'on sait déjà (`peek`, gratuite) ; la **demande de traduction**, elle, ne part qu'au premier
+    // déroulement de la section, et jamais pour un aperçu ni depuis la Bibliothèque ou la Recherche. La clé
+    // (id du jeu, id IGDB) ne change que si le jeu change de fiche IGDB (ou passe de l'aperçu au backlog) :
+    // `distinctUntilChanged` garantit au plus une lecture et une demande par id et par ouverture, sans boucle,
+    // quelles que soient les éditions qui modifient la copie de travail. Une panne ne consomme pas l'essai
+    // (voir `resolveDescription`). `collectLatest` annule l'attente ou la demande en cours si la clé change,
+    // si bien que la réponse d'un ancien id ne peut jamais remplacer celle du nouveau (une description
+    // périmée n'est jamais affichée) ; une nouvelle clé remet aussi la section à l'état replié. Refermer la
+    // section n'annule rien : seule l'ouverture compte, et la traduction payée est enregistrée.
     private fun observeDescription() {
         viewModelScope.launch {
             workingGame
                 .map { game -> game?.takeIf { it.id.isNotEmpty() }?.let { it.id to igdbIdOrNull(it.igdbId) } }
                 .distinctUntilChanged()
                 .collectLatest { key ->
+                    descriptionExpanded.value = false
                     val (id, igdbId) = key ?: Pair(null, null)
                     if (id == null || igdbId == null) {
                         description.value = DescriptionView.None
                         return@collectLatest
                     }
+                    // En-tête replié tout de suite (pas d'apparition tardive) ; la lecture le retire si IGDB
+                    // n'a pas de description, ou le garde avec le texte déjà connu.
+                    description.value = DescriptionView.Collapsed
+                    val known = descriptionRepository.peek(id, igdbId)
+                    description.value = known
+                    if (known != DescriptionView.Collapsed) return@collectLatest
+                    // Rien de connu : on attend le premier déroulement, puis une seule demande.
+                    descriptionExpanded.first { it }
                     description.value = DescriptionView.Loading
                     description.value = descriptionRepository.resolve(id, igdbId)
                 }
         }
+    }
+
+    /** Déroule ou replie la section « Description ». Sans effet quand il n'y en a pas à montrer. */
+    fun onDescriptionToggled() {
+        if (description.value is DescriptionView.None) return
+        descriptionExpanded.update { !it }
     }
 
     // Lecture IGDB (règle d'enrichissement, voir `applyIgdbEnrichment`) déclenchée à l'ouverture de
@@ -149,11 +169,12 @@ class DetailViewModel @Inject constructor(
         }
     }
 
-    val uiState: StateFlow<DetailUiState> = combine(isLoading, workingGame, description) { loading, game, descriptionView ->
+    val uiState: StateFlow<DetailUiState> = combine(isLoading, workingGame, description, descriptionExpanded) { loading, game, descriptionView, expanded ->
         DetailUiState(
             isLoading = loading,
             game = game,
             description = descriptionView,
+            descriptionExpanded = expanded,
             // L'instant présent et le fuseau sont lus ici, au point d'usage : la fonction de calcul
             // reste pure (voir `selectablePlayedYears`).
             statusYearChoices = game

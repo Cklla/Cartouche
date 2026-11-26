@@ -143,8 +143,12 @@
     <string name="detail_played_platforms_label">Joué sur</string>
     <string name="description_label">Description</string>
     <string name="description_loading">Chargement de la description…</string>
-    <string name="description_failed">Description indisponible pour le moment. Elle sera redemandée à la prochaine ouverture de la fiche.</string>
-    <string name="description_unsaved">Description non enregistrée : elle sera redemandée à la prochaine ouverture de la fiche.</string>
+    <string name="description_failed">Description indisponible pour le moment. Elle sera redemandée quand vous rouvrirez la fiche et déroulerez cette section.</string>
+    <string name="description_unsaved">Description non enregistrée : elle sera redemandée quand vous rouvrirez la fiche et déroulerez cette section.</string>
+    <string name="description_expand">Dérouler la description</string>
+    <string name="description_collapse">Replier la description</string>
+    <string name="description_state_expanded">Développée</string>
+    <string name="description_state_collapsed">Réduite</string>
     <string name="description_more">Afficher plus</string>
     <string name="description_less">Afficher moins</string>
     <string name="description_show_original">Voir l\'original</string>

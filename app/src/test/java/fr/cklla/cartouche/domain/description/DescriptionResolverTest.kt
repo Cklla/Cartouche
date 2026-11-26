@@ -243,4 +243,60 @@ class DescriptionResolverTest {
         assertEquals(1, s.log.count { it == "request" })
         assertEquals(2, s.log.count { it == "insert" })
     }
+
+    // --- Lecture seule de l'ouverture de la fiche : jamais de demande, jamais d'écriture ---
+
+    private fun assertReadOnly(source: FakeSource) {
+        assertFalse("request" in source.log)
+        assertFalse("insert" in source.log || "replace" in source.log)
+    }
+
+    @Test
+    fun `lecture seule, jeu sans id IGDB ou id hors borne, rien n est lu`() = runTest {
+        val source = FakeSource()
+        assertEquals(DescriptionView.None, peekDescription(gameId, null, source))
+        assertEquals(DescriptionView.None, peekDescription(gameId, 0L, source))
+        assertEquals(emptyList<String>(), source.log)
+    }
+
+    @Test
+    fun `lecture seule, ligne a jour avec texte, prete a etre montree sans demande`() = runTest {
+        val source = FakeSource().apply { readsReturn(stored()) }
+        assertEquals(DescriptionView.Ready("Original", "Traduction", saved = true), peekDescription(gameId, igdbId, source))
+        assertEquals(listOf("read"), source.log)
+    }
+
+    @Test
+    fun `lecture seule, ligne a jour sans texte, pas de section`() = runTest {
+        val source = FakeSource().apply { readsReturn(stored(content(summary = null, fr = null))) }
+        assertEquals(DescriptionView.None, peekDescription(gameId, igdbId, source))
+        assertReadOnly(source)
+    }
+
+    @Test
+    fun `lecture seule, ligne absente, perimee ou illisible, section repliee sans demande ni ecriture`() = runTest {
+        for (result in listOf(StoredDescription.Missing, StoredDescription.Unreadable, stored(content(id = 7L)))) {
+            val source = FakeSource().apply { readsReturn(result) }
+            assertEquals(DescriptionView.Collapsed, peekDescription(gameId, igdbId, source))
+            assertReadOnly(source)
+        }
+    }
+
+    @Test
+    fun `lecture seule, lecture en erreur, section repliee sans demande`() = runTest {
+        val source = FakeSource(reads = mutableListOf({ throw IllegalStateException("réseau") }))
+        assertEquals(DescriptionView.Collapsed, peekDescription(gameId, igdbId, source))
+        assertReadOnly(source)
+    }
+
+    @Test
+    fun `lecture seule, l annulation n est jamais avalee`() = runTest {
+        val source = FakeSource(reads = mutableListOf({ throw CancellationException("annulé") }))
+        try {
+            peekDescription(gameId, igdbId, source)
+            org.junit.Assert.fail("l'annulation aurait dû remonter")
+        } catch (e: CancellationException) {
+            // attendu
+        }
+    }
 }
