@@ -33,9 +33,9 @@ import kotlinx.coroutines.async
  * sans conséquence.
  *
  * La résolution tourne dans la portée de l'application et non dans celle de l'appelant : une traduction
- * est payée dès que la fonction répond, et quitter la fiche (ou replier la section) en cours de route ne doit pas la jeter avant
- * son enregistrement (elle serait refaite, donc repayée, à la prochaine ouverture de la fiche). L'appelant qui s'en va
- * n'annule que son attente.
+ * est payée dès que la fonction répond, et quitter la fiche (ou replier la section) en cours de route ne
+ * doit pas la jeter avant son enregistrement (elle serait refaite, donc repayée, au déroulement lors d'une
+ * prochaine ouverture de la fiche). L'appelant qui s'en va n'annule que son attente.
  */
 class DescriptionRepositoryImpl @Inject constructor(
     private val remote: RemoteDescriptionDataSource,
@@ -45,8 +45,8 @@ class DescriptionRepositoryImpl @Inject constructor(
 
     override suspend fun peek(gameId: String, igdbId: Long?): DescriptionView =
         try {
-            // Nettoyage des descriptions de jeux retirés du backlog, à chaque ouverture de fiche comme avant
-            // le déroulant : une requête, sur une table de quelques dizaines de lignes.
+            // Nettoyage des descriptions de jeux retirés du backlog, à chaque ouverture de fiche : une requête,
+            // sur une table de quelques dizaines de lignes.
             cacheOperation { dao.deleteOrphans() }
             peekDescription(gameId, igdbId, CachedSource(igdbId))
         } catch (e: CancellationException) {
@@ -120,7 +120,7 @@ class DescriptionRepositoryImpl @Inject constructor(
             remote.replace(gameId, content).also { cacheIfWritten(it, gameId, content) }
 
         // Seul ce qui est réellement sur le serveur entre dans le cache : un texte « non enregistré »
-        // doit être redemandé à une prochaine ouverture de la fiche, pas servi comme s'il était acquis.
+        // doit être redemandé au déroulement, lors d'une prochaine ouverture de la fiche, pas servi comme s'il était acquis.
         private suspend fun cacheIfWritten(outcome: WriteOutcome, gameId: String, content: DescriptionContent) {
             if (outcome == WriteOutcome.WRITTEN) cacheOperation { dao.put(GameDescription(gameId, content).toEntity()) }
         }
