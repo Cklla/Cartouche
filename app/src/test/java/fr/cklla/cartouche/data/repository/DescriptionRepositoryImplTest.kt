@@ -8,6 +8,11 @@ import fr.cklla.cartouche.domain.description.DescriptionView
 import fr.cklla.cartouche.domain.description.GameDescription
 import fr.cklla.cartouche.domain.description.StoredDescription
 import fr.cklla.cartouche.domain.description.WriteOutcome
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -50,7 +55,8 @@ class DescriptionRepositoryImplTest {
 
     private val remote = FakeRemote()
     private val dao = FakeDescriptionDao()
-    private val repository = DescriptionRepositoryImpl(remote, dao)
+    // Les faux ne suspendent que sur les portes des tests : `Unconfined` rend l'exécution déterministe.
+    private val repository = DescriptionRepositoryImpl(remote, dao, CoroutineScope(Dispatchers.Unconfined))
 
     private fun entity(c: DescriptionContent = content) = GameDescription("g1", c).let {
         DescriptionEntity("g1", c.igdbId, c.summary, c.summaryFr, c.translationModel)
@@ -90,8 +96,12 @@ class DescriptionRepositoryImplTest {
     fun `hors ligne, un cache perime (autre id IGDB) n est jamais servi`() = runTest {
         dao.put(entity(content.copy(igdbId = 999)))
         remote.stored = { error("hors ligne") }
+        // Si la copie périmée était servie, la fiche croirait la ligne lue et demanderait une traduction.
+        remote.request = DescriptionRequestResult.Found(content)
 
         assertEquals(DescriptionView.Failed, repository.resolve("g1", igdbId))
+        assertEquals(listOf("read"), remote.log)
+        assertEquals(999L, dao.rows["g1"]?.igdbId)
     }
 
     @Test
@@ -162,5 +172,44 @@ class DescriptionRepositoryImplTest {
     fun `un jeu sans id IGDB n appelle rien`() = runTest {
         assertEquals(DescriptionView.None, repository.resolve("g1", null))
         assertTrue(remote.log.isEmpty())
+    }
+
+    @Test
+    fun `une ligne illisible sur le serveur vide la copie locale, elle n est pas servie`() = runTest {
+        dao.put(entity())
+        remote.stored = { StoredDescription.Unreadable }
+        remote.request = DescriptionRequestResult.Failed
+
+        assertEquals(DescriptionView.Failed, repository.resolve("g1", igdbId))
+        assertNull(dao.rows["g1"])
+    }
+
+    @Test
+    fun `une erreur Room ne fait pas passer pour une panne une description que le serveur a`() = runTest {
+        dao.failOnPut = true
+        remote.stored = { StoredDescription.Present(GameDescription("g1", content)) }
+
+        assertEquals(DescriptionView.Ready("Original", "Traduction", saved = true), repository.resolve("g1", igdbId))
+    }
+
+    @Test
+    fun `quitter la fiche pendant la demande n annule pas la traduction, elle est enregistree`() = runTest {
+        val gate = CompletableDeferred<DescriptionRequestResult>()
+        val gated = object : RemoteDescriptionDataSource by remote {
+            override suspend fun request(igdbId: Long): DescriptionRequestResult {
+                remote.log += "request"
+                return gate.await()
+            }
+        }
+        val gatedRepository = DescriptionRepositoryImpl(gated, dao, CoroutineScope(Dispatchers.Unconfined))
+
+        val caller = launch(Dispatchers.Unconfined) { gatedRepository.resolve("g1", igdbId) }
+        assertEquals(listOf("read", "request"), remote.log)
+        // L'utilisateur quitte la fiche : l'attente de l'appelant est annulée, pas la demande.
+        caller.cancelAndJoin()
+        gate.complete(DescriptionRequestResult.Found(content))
+
+        assertEquals(listOf("read", "request", "insert"), remote.log)
+        assertEquals(entity(), dao.rows["g1"])
     }
 }

@@ -24,7 +24,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Before
 import org.junit.Test
 
-/** Déclenchement de la description à l'ouverture de la fiche (règle D6 côté écran). */
+/** Déclenchement de la description à l'ouverture de la fiche (une demande par ouverture). */
 @OptIn(ExperimentalCoroutinesApi::class)
 class DetailViewModelDescriptionTest {
 

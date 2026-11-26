@@ -11,10 +11,12 @@ class FakeDescriptionDao(var knownGameIds: Set<String>? = null) : DescriptionDao
 
     val rows = linkedMapOf<String, DescriptionEntity>()
     var failOnDeleteOrphans = false
+    var failOnPut = false
 
     override suspend fun getByGameId(gameId: String): DescriptionEntity? = rows[gameId]
 
     override suspend fun put(description: DescriptionEntity) {
+        check(!failOnPut) { "écriture Room en échec" }
         rows[description.gameId] = description
     }
 

@@ -5,6 +5,7 @@ import fr.cklla.cartouche.domain.description.DescriptionContent
 import fr.cklla.cartouche.domain.description.DescriptionRequestResult
 import fr.cklla.cartouche.domain.description.GameDescription
 import fr.cklla.cartouche.domain.description.StoredDescription
+import fr.cklla.cartouche.domain.description.WriteOutcome
 import fr.cklla.cartouche.domain.description.emptyContent
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonNull
@@ -159,5 +160,27 @@ class DescriptionRowsTest {
             StoredDescription.Unreadable,
             DescriptionEntity("g1", 1, "  ", "b", "m").toStored(),
         )
+    }
+
+    // --- Codes d'erreur d'écriture ---
+
+    @Test
+    fun `le tri des codes distingue conflit, refus de la table et panne`() {
+        assertEquals(WriteOutcome.CONFLICT, writeOutcomeOfCode("23505"))
+        assertEquals(WriteOutcome.REJECTED, writeOutcomeOfCode("23514"))
+        // Autre violation de contrainte, refus RLS, erreur serveur, code absent : des pannes.
+        listOf("23503", "42501", "PGRST301", "22P05", "", null).forEach {
+            assertEquals(it, WriteOutcome.FAILED, writeOutcomeOfCode(it))
+        }
+    }
+
+    @Test
+    fun `un remplacement n est un succes que s il a touche exactement une ligne`() {
+        assertEquals(WriteOutcome.WRITTEN, replaceOutcome(WriteOutcome.WRITTEN, 1))
+        assertEquals(WriteOutcome.FAILED, replaceOutcome(WriteOutcome.WRITTEN, 0))
+        assertEquals(WriteOutcome.FAILED, replaceOutcome(WriteOutcome.WRITTEN, 2))
+        // Un refus ou une panne ne sont jamais promus en succès, ni masqués, quel que soit le compte.
+        assertEquals(WriteOutcome.REJECTED, replaceOutcome(WriteOutcome.REJECTED, 0))
+        assertEquals(WriteOutcome.FAILED, replaceOutcome(WriteOutcome.FAILED, 1))
     }
 }

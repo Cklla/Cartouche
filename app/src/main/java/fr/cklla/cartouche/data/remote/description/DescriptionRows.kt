@@ -5,6 +5,7 @@ import fr.cklla.cartouche.domain.description.DescriptionContent
 import fr.cklla.cartouche.domain.description.DescriptionRequestResult
 import fr.cklla.cartouche.domain.description.GameDescription
 import fr.cklla.cartouche.domain.description.StoredDescription
+import fr.cklla.cartouche.domain.description.WriteOutcome
 import fr.cklla.cartouche.domain.description.emptyContent
 import fr.cklla.cartouche.domain.description.isWithinLimits
 import kotlinx.serialization.SerialName
@@ -95,3 +96,18 @@ internal fun GameDescription.toEntity() = DescriptionEntity(
     summaryFr = content.summaryFr,
     translationModel = content.translationModel,
 )
+
+/**
+ * Tri du code d'erreur Postgres d'une écriture refusée : 23505 (clé primaire déjà prise : un autre
+ * appareil a écrit la ligne avant nous) est un conflit, 23514 (un `check` de la table) un refus définitif
+ * du texte, tout le reste une panne. Les messages de l'API ne sont jamais relayés.
+ */
+internal fun writeOutcomeOfCode(code: String?): WriteOutcome = when (code) {
+    "23505" -> WriteOutcome.CONFLICT
+    "23514" -> WriteOutcome.REJECTED
+    else -> WriteOutcome.FAILED
+}
+
+/** Un `update` n'est un succès que s'il a touché exactement une ligne (jeu ou ligne disparus, ou RLS : zéro). */
+internal fun replaceOutcome(written: WriteOutcome, touchedRows: Int): WriteOutcome =
+    if (written == WriteOutcome.WRITTEN && touchedRows != 1) WriteOutcome.FAILED else written

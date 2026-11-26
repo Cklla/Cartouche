@@ -83,12 +83,10 @@ class SupabaseDescriptionDataSource @Inject constructor(
                 select(Columns.list("game_id"))
             }.decodeList<TouchedRow>().size
         }
-        return if (outcome == WriteOutcome.WRITTEN && touched != 1) WriteOutcome.FAILED else outcome
+        return replaceOutcome(outcome, touched)
     }
 
-    // 23505 (clé primaire déjà prise : un autre appareil a écrit la ligne avant nous) est un conflit,
-    // 23514 (un `check` de la table) un refus définitif du texte, tout le reste une panne. Les messages
-    // de l'API ne sont jamais relayés.
+    // Tri des codes d'erreur : voir `writeOutcomeOfCode`.
     private suspend fun writeOutcome(block: suspend () -> Unit): WriteOutcome = try {
         requireSession()
         block()
@@ -96,11 +94,7 @@ class SupabaseDescriptionDataSource @Inject constructor(
     } catch (e: CancellationException) {
         throw e
     } catch (e: PostgrestRestException) {
-        when (e.code) {
-            CODE_UNIQUE_VIOLATION -> WriteOutcome.CONFLICT
-            CODE_CHECK_VIOLATION -> WriteOutcome.REJECTED
-            else -> WriteOutcome.FAILED
-        }
+        writeOutcomeOfCode(e.code)
     } catch (e: Exception) {
         WriteOutcome.FAILED
     }
@@ -119,8 +113,6 @@ class SupabaseDescriptionDataSource @Inject constructor(
         const val TABLE = "game_description"
         const val FUNCTION_NAME = "cartouche-igdb-description"
         const val REQUEST_TIMEOUT_MILLIS = 60_000L
-        const val CODE_UNIQUE_VIOLATION = "23505"
-        const val CODE_CHECK_VIOLATION = "23514"
         val COLUMNS = arrayOf("game_id", "igdb_id", "summary", "summary_fr", "translation_model")
         val responseJson = Json { ignoreUnknownKeys = true }
     }
