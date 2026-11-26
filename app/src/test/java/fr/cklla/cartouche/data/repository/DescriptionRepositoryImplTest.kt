@@ -212,4 +212,43 @@ class DescriptionRepositoryImplTest {
         assertEquals(listOf("read", "request", "insert"), remote.log)
         assertEquals(entity(), dao.rows["g1"])
     }
+
+    @Test
+    fun `lecture seule, une ligne a jour est lue et mise en cache, la fonction n est jamais appelee`() = runTest {
+        remote.stored = { StoredDescription.Present(GameDescription("g1", content)) }
+
+        val view = repository.peek("g1", igdbId)
+
+        assertEquals(DescriptionView.Ready("Original", "Traduction", saved = true), view)
+        assertEquals(entity(), dao.rows["g1"])
+        assertEquals(listOf("read"), remote.log)
+    }
+
+    @Test
+    fun `lecture seule, aucune ligne, section repliee sans demande ni ecriture`() = runTest {
+        remote.stored = { StoredDescription.Missing }
+        remote.request = DescriptionRequestResult.Found(content)
+
+        val view = repository.peek("g1", igdbId)
+
+        assertEquals(DescriptionView.Collapsed, view)
+        assertEquals(listOf("read"), remote.log)
+        assertNull(dao.rows["g1"])
+    }
+
+    @Test
+    fun `lecture seule, hors ligne, le cache a jour est servi, sinon la section reste repliee`() = runTest {
+        remote.stored = { error("hors ligne") }
+        assertEquals(DescriptionView.Collapsed, repository.peek("g1", igdbId))
+
+        dao.put(entity())
+        assertEquals(DescriptionView.Ready("Original", "Traduction", saved = true), repository.peek("g1", igdbId))
+        assertTrue("request" !in remote.log)
+    }
+
+    @Test
+    fun `lecture seule, un jeu sans id IGDB n appelle rien`() = runTest {
+        assertEquals(DescriptionView.None, repository.peek("g1", null))
+        assertEquals(emptyList<String>(), remote.log)
+    }
 }

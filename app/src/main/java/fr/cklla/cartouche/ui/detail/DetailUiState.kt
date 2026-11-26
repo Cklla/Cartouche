@@ -13,6 +13,8 @@ data class DetailUiState(
     val statusYearChoices: List<Int> = emptyList(),
     /** Section « Description » : texte d'IGDB et sa traduction, absente tant que le jeu n'a pas d'id IGDB. */
     val description: DescriptionView = DescriptionView.None,
+    /** Section « Description » déroulée ; repart à faux à chaque ouverture de fiche. */
+    val descriptionExpanded: Boolean = false,
 ) {
     /**
      * Vrai une fois le jeu réellement présent dans le backlog (id non vide). Faux quand la fiche

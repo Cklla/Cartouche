@@ -37,7 +37,7 @@ publicitaire.
 - **IGDB** (service de Twitch) reçoit les requêtes nécessaires à la recherche de jeux et à l'enrichissement
   de leur fiche (titre recherché, identifiant du jeu) — aucune donnée de compte n'est transmise. Les
   jaquettes sont chargées depuis `images.igdb.com`. Données : IGDB.com.
-- **Anthropic** (API Claude) traduit en français la description d'un jeu à l'ouverture de sa fiche. La
+- **Anthropic** (API Claude) traduit en français la description d'un jeu quand on déroule la description sur sa fiche. La
   demande passe par une fonction Supabase qui lit elle-même le texte public dans IGDB : seul ce texte
   part vers Anthropic, depuis les serveurs de Supabase. Ni le compte, ni l'adresse e-mail, ni l'adresse
   IP, ni le backlog, ni aucun identifiant de compte ou de jeu ne lui sont envoyés. Selon la

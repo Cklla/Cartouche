@@ -66,12 +66,18 @@ sealed interface DescriptionView {
     /** Pas de section : jeu sans id IGDB, ou IGDB n'a pas de texte. */
     data object None : DescriptionView
 
+    /**
+     * Rien n'est encore connu de la description (ou la lecture a échoué) : la section est montrée repliée,
+     * et c'est son déroulement qui lance la demande de traduction, jamais l'ouverture de la fiche.
+     */
+    data object Collapsed : DescriptionView
+
     data object Loading : DescriptionView
 
-    /** Panne de lecture ou de traduction : rien n'est écrit, la fiche réessaiera à la prochaine ouverture. */
+    /** Panne de lecture ou de traduction : rien n'est écrit, la description sera redemandée au prochain déroulement. */
     data object Failed : DescriptionView
 
-    /** [saved] faux : le texte est affiché mais son enregistrement a échoué (redemandé à la prochaine ouverture). */
+    /** [saved] faux : le texte est affiché mais son enregistrement a échoué (redemandé au prochain déroulement). */
     data class Ready(val summary: String, val summaryFr: String?, val saved: Boolean) : DescriptionView
 }
 

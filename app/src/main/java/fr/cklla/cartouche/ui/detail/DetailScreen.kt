@@ -3,6 +3,8 @@ package fr.cklla.cartouche.ui.detail
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
@@ -38,6 +40,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.outlined.Star
@@ -56,6 +59,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
@@ -66,6 +70,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.input.ImeAction
@@ -125,6 +130,8 @@ fun DetailScreen(
         statusYear = uiState.statusYear,
         statusYearChoices = uiState.statusYearChoices,
         description = uiState.description,
+        descriptionExpanded = uiState.descriptionExpanded,
+        onDescriptionToggled = viewModel::onDescriptionToggled,
         onBackClick = onBackClick,
         onStatusSelected = viewModel::onStatusSelected,
         onStatusYearSelected = viewModel::onStatusYearSelected,
@@ -148,6 +155,8 @@ private fun DetailContent(
     statusYear: Int?,
     statusYearChoices: List<Int>,
     description: DescriptionView,
+    descriptionExpanded: Boolean,
+    onDescriptionToggled: () -> Unit,
     onBackClick: () -> Unit,
     onStatusSelected: (GameStatus) -> Unit,
     onStatusYearSelected: (Int) -> Unit,
@@ -219,7 +228,11 @@ private fun DetailContent(
                     playedPlatforms = game.playedPlatforms,
                     onPlatformToggled = onPlayedPlatformToggled,
                 )
-                DescriptionSection(description = description)
+                DescriptionSection(
+                    description = description,
+                    expanded = descriptionExpanded,
+                    onToggle = onDescriptionToggled,
+                )
                 NotesSection(notes = game.notes, onNotesChanged = onNotesChanged)
                 RemoveLink(onClick = { showRemoveConfirm = true })
             } else {
@@ -696,23 +709,59 @@ private fun PlatformCheckboxPill(platform: String, checked: Boolean, onCheckedCh
 private const val DESCRIPTION_FOLDED_LINES = 5
 
 /**
- * Description du jeu : texte d'IGDB en anglais et sa traduction française, avec la mention de la source.
+ * Description du jeu : texte d'IGDB en anglais et sa traduction française, avec la mention de la source,
+ * dans une section **repliée par défaut** : la traduction (payante) n'est demandée qu'au déroulement.
  * Affichée comme du **texte** (aucune interprétation de balises ni de Markdown). Rien n'est affiché
  * tant qu'il n'y a pas de description à montrer ([DescriptionView.None]) : le jeu n'a pas d'id IGDB, ou
  * IGDB n'a pas de texte pour lui.
  */
 @Composable
-private fun DescriptionSection(description: DescriptionView) {
+private fun DescriptionSection(description: DescriptionView, expanded: Boolean, onToggle: () -> Unit) {
     if (description is DescriptionView.None) return
     Column {
-        SectionLabel(stringResource(R.string.description_label))
-        Spacer(modifier = Modifier.height(10.dp))
-        when (description) {
-            DescriptionView.Loading -> DescriptionNote(stringResource(R.string.description_loading))
-            DescriptionView.Failed -> DescriptionNote(stringResource(R.string.description_failed))
-            is DescriptionView.Ready -> DescriptionText(description)
-            DescriptionView.None -> Unit
+        DescriptionHeader(expanded = expanded, onToggle = onToggle)
+        AnimatedVisibility(visible = expanded) {
+            Column {
+                Spacer(modifier = Modifier.height(10.dp))
+                when (description) {
+                    // `Collapsed` déroulé : la lecture ou la demande est en cours.
+                    DescriptionView.Collapsed, DescriptionView.Loading ->
+                        DescriptionNote(stringResource(R.string.description_loading))
+                    DescriptionView.Failed -> DescriptionNote(stringResource(R.string.description_failed))
+                    is DescriptionView.Ready -> DescriptionText(description)
+                    DescriptionView.None -> Unit
+                }
+            }
         }
+    }
+}
+
+/**
+ * Ligne d'en-tête entière cliquable (bouton, zone d'au moins 48 dp), avec l'état annoncé aux lecteurs
+ * d'écran. La flèche est décorative ; son pivot suit l'échelle d'animation du système (rien ne bouge si
+ * l'utilisateur a coupé les animations).
+ */
+@Composable
+private fun DescriptionHeader(expanded: Boolean, onToggle: () -> Unit) {
+    val state = stringResource(if (expanded) R.string.description_state_expanded else R.string.description_state_collapsed)
+    val action = stringResource(if (expanded) R.string.description_collapse else R.string.description_expand)
+    val arrowAngle by animateFloatAsState(targetValue = if (expanded) 180f else 0f, label = "descriptionArrow")
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = 48.dp)
+            .clickable(onClickLabel = action, role = Role.Button, onClick = onToggle)
+            .semantics { stateDescription = state },
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        SectionLabel(stringResource(R.string.description_label))
+        Icon(
+            imageVector = Icons.Filled.KeyboardArrowDown,
+            contentDescription = null,
+            tint = TextMuted,
+            modifier = Modifier.rotate(arrowAngle),
+        )
     }
 }
 
@@ -969,6 +1018,8 @@ private fun DetailContentPreview() {
                 summaryFr = "Un rogue-like d'exploration de donjons des créateurs de Bastion.",
                 saved = true,
             ),
+            descriptionExpanded = true,
+            onDescriptionToggled = {},
             statusYearChoices = emptyList(),
             onBackClick = {},
             onStatusSelected = {},
@@ -1002,6 +1053,8 @@ private fun DetailContentApercuPreview() {
             canEditStatusYear = false,
             statusYear = null,
             description = DescriptionView.None,
+            descriptionExpanded = false,
+            onDescriptionToggled = {},
             statusYearChoices = emptyList(),
             onBackClick = {},
             onStatusSelected = {},
