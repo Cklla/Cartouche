@@ -279,6 +279,242 @@ do $$ begin
         'anon ou PUBLIC a un droit sur cartouche.game';
 end $$;
 
+-- Descriptions (`cartouche.game_description`) : isolation entre comptes, jeu appartenant au même
+-- compte, contraintes CHECK, cascade, droits.
+-- Jeux de départ : deux pour A (`...a1`, `...a2`), un pour B (`...b1`).
+begin;
+select pg_temp.connecte_comme('aaaaaaaa-0000-0000-0000-000000000001');
+insert into cartouche.game (id, title, platform, genre, status) values
+    ('a1a1a1a1-0000-4000-8000-0000000000a1', 'Jeu A1', 'PC', 'RPG', 'A_FAIRE'),
+    ('a2a2a2a2-0000-4000-8000-0000000000a2', 'Jeu A2', 'PC', 'RPG', 'A_FAIRE');
+commit;
+begin;
+select pg_temp.connecte_comme('bbbbbbbb-0000-0000-0000-000000000002');
+insert into cartouche.game (id, title, platform, genre, status) values
+    ('b1b1b1b1-0000-4000-8000-0000000000b1', 'Jeu B1', 'PC', 'RPG', 'A_FAIRE');
+commit;
+
+-- A décrit son jeu : user_id et created_at prennent leur valeur par défaut, les textes restent
+-- tels quels (accents, retours à la ligne).
+begin;
+select pg_temp.connecte_comme('aaaaaaaa-0000-0000-0000-000000000001');
+insert into cartouche.game_description (game_id, igdb_id, summary, summary_fr, translation_model)
+    values ('a1a1a1a1-0000-4000-8000-0000000000a1', 1029, E'An epic quest.\nSecond line.',
+            E'Une quête épique.\nDeuxième ligne.', 'modele-test');
+do $$ begin
+    assert (select user_id from cartouche.game_description) = 'aaaaaaaa-0000-0000-0000-000000000001',
+        'description : user_id par défaut';
+    assert (select created_at from cartouche.game_description) is not null, 'description : created_at par défaut';
+    assert (select summary_fr from cartouche.game_description) = E'Une quête épique.\nDeuxième ligne.',
+        'description : texte altéré';
+end $$;
+-- Une description par jeu : une seconde insertion pour le même jeu est un doublon.
+select pg_temp.refuse(
+    $q$insert into cartouche.game_description (game_id, igdb_id, summary)
+       values ('a1a1a1a1-0000-4000-8000-0000000000a1', 1029, 'doublon')$q$,
+    'deux descriptions pour le même jeu', '23505');
+-- A ne peut pas décrire un jeu qui n'existe pas, ni au nom d'un autre compte.
+select pg_temp.refuse(
+    $q$insert into cartouche.game_description (game_id, igdb_id, summary)
+       values (gen_random_uuid(), 1029, 'jeu inconnu')$q$,
+    'description d''un jeu inexistant', '42501');
+select pg_temp.refuse(
+    $q$insert into cartouche.game_description (game_id, user_id, igdb_id, summary)
+       values ('a2a2a2a2-0000-4000-8000-0000000000a2', 'bbbbbbbb-0000-0000-0000-000000000002', 1029, 'x')$q$,
+    'insertion au nom de B', '42501');
+-- A ne peut pas décrire le jeu de B.
+select pg_temp.refuse(
+    $q$insert into cartouche.game_description (game_id, igdb_id, summary)
+       values ('b1b1b1b1-0000-4000-8000-0000000000b1', 1029, 'sur le jeu de B')$q$,
+    'description du jeu d''un autre compte', '42501');
+select pg_temp.refuse(
+    $q$insert into cartouche.game_description (game_id, user_id, igdb_id, summary)
+       values ('b1b1b1b1-0000-4000-8000-0000000000b1', 'aaaaaaaa-0000-0000-0000-000000000001', 1029, 'x')$q$,
+    'description du jeu de B en son nom', '42501');
+commit;
+
+-- B décrit son jeu, ne voit rien de A, ne modifie rien, ne supprime rien.
+begin;
+select pg_temp.connecte_comme('bbbbbbbb-0000-0000-0000-000000000002');
+insert into cartouche.game_description (game_id, igdb_id, summary)
+    values ('b1b1b1b1-0000-4000-8000-0000000000b1', 2048, 'Texte de B');
+do $$ begin
+    assert (select count(*) from cartouche.game_description) = 1, 'B voit la description de A';
+    assert (select summary from cartouche.game_description) = 'Texte de B', 'B ne voit pas sa description';
+end $$;
+update cartouche.game_description set summary = 'piraté' where game_id = 'a1a1a1a1-0000-4000-8000-0000000000a1';
+delete from cartouche.game_description where game_id = 'a1a1a1a1-0000-4000-8000-0000000000a1';
+-- Une modification sans filtre ne touche que la ligne de B : sous une politique de modification
+-- trop large, elle atteindrait celle de A (et serait refusée sur elle). Recomptée par A plus bas.
+update cartouche.game_description set translation_model = 'modele-b';
+do $$ begin
+    assert (select translation_model from cartouche.game_description) = 'modele-b',
+        'B ne peut pas modifier sa propre description';
+end $$;
+-- B ne peut pas céder sa ligne à A, ni la déplacer sur le jeu de A.
+select pg_temp.refuse(
+    $q$update cartouche.game_description set user_id = 'aaaaaaaa-0000-0000-0000-000000000001'$q$,
+    'changement de propriétaire de la description', '42501');
+select pg_temp.refuse(
+    $q$update cartouche.game_description set game_id = 'a2a2a2a2-0000-4000-8000-0000000000a2'$q$,
+    'déplacement de la description vers un jeu de A sans description', '42501');
+select pg_temp.refuse(
+    $q$insert into cartouche.game_description (game_id, igdb_id, summary)
+       values ('a1a1a1a1-0000-4000-8000-0000000000a1', 1029, 'upsert')
+       on conflict (game_id) do update set summary = excluded.summary$q$,
+    'upsert sur la description de A', '42501');
+commit;
+
+-- Rien n'a bougé pour A ; A remplace une description périmée (une ligne touchée) et peut en
+-- enregistrer une sans texte (IGDB n'en a pas).
+begin;
+select pg_temp.connecte_comme('aaaaaaaa-0000-0000-0000-000000000001');
+do $$ begin
+    assert (select count(*) from cartouche.game_description) = 1, 'les descriptions de A ont changé';
+    assert (select summary from cartouche.game_description) = E'An epic quest.\nSecond line.',
+        'la description de A a été modifiée par B';
+    assert (select translation_model from cartouche.game_description) = 'modele-test',
+        'la modification sans filtre de B a atteint la description de A';
+end $$;
+update cartouche.game_description set igdb_id = 405460, summary = 'New text', summary_fr = 'Nouveau texte',
+    translation_model = 'modele-test-2' where game_id = 'a1a1a1a1-0000-4000-8000-0000000000a1';
+do $$ begin
+    assert (select igdb_id from cartouche.game_description) = 405460, 'description : mise à jour non faite';
+end $$;
+insert into cartouche.game_description (game_id, igdb_id, summary, summary_fr)
+    values ('a2a2a2a2-0000-4000-8000-0000000000a2', 77, null, null);
+do $$ begin
+    assert (select count(*) from cartouche.game_description where summary is null) = 1, 'description sans texte non enregistrée';
+end $$;
+commit;
+
+-- Contraintes CHECK : bornes de longueur, identifiant IGDB, cohérence original / traduction.
+begin;
+select pg_temp.connecte_comme('aaaaaaaa-0000-0000-0000-000000000001');
+insert into cartouche.game (id, title, platform, genre, status)
+    values ('a3a3a3a3-0000-4000-8000-0000000000a3', 'Jeu A3', 'PC', 'RPG', 'A_FAIRE');
+create function pg_temp.requete_description(colonne text, valeur text) returns text
+language sql as $$
+    select format(
+        'insert into cartouche.game_description (game_id, igdb_id, summary, %I) '
+        'values (''a3a3a3a3-0000-4000-8000-0000000000a3'', 1, ''x'', %s)', colonne, valeur)
+$$;
+-- Une insertion acceptée est annulée aussitôt (sous-transaction) pour rester sur le même jeu.
+create function pg_temp.accepte_description(colonne text, valeur text) returns void
+language plpgsql as $$
+begin
+    begin
+        execute pg_temp.requete_description(colonne, valeur);
+        raise exception 'annule';
+    exception when raise_exception then
+        if sqlerrm <> 'annule' then raise; end if;
+    end;
+end;
+$$;
+create function pg_temp.refuse_description(colonne text, valeur text) returns void
+language plpgsql as $$
+begin
+    perform pg_temp.refuse(pg_temp.requete_description(colonne, valeur), colonne || ' = ' || valeur, '23514');
+end;
+$$;
+select pg_temp.accepte_description('summary_fr', 'repeat(''é'', 10000)');
+select pg_temp.refuse_description('summary_fr', 'repeat(''é'', 10001)');
+select pg_temp.accepte_description('translation_model', 'repeat(''x'', 100)');
+select pg_temp.refuse_description('translation_model', 'repeat(''x'', 101)');
+select pg_temp.accepte_description('translation_model', 'null');
+select pg_temp.refuse('insert into cartouche.game_description (game_id, igdb_id, summary) values (''a3a3a3a3-0000-4000-8000-0000000000a3'', 1, repeat(''x'', 5001))',
+    'original de 5001 caractères', '23514');
+select pg_temp.refuse('insert into cartouche.game_description (game_id, igdb_id, summary) values (''a3a3a3a3-0000-4000-8000-0000000000a3'', 1, repeat(''x'', 5000)), (''a3a3a3a3-0000-4000-8000-0000000000a3'', 1, ''x'')',
+    'doublon dans une même requête', '23505');
+-- Identifiant IGDB : de 1 à 9999999999, obligatoire.
+select pg_temp.refuse($q$insert into cartouche.game_description (game_id, igdb_id) values ('a3a3a3a3-0000-4000-8000-0000000000a3', 0)$q$, 'igdb_id = 0', '23514');
+select pg_temp.refuse($q$insert into cartouche.game_description (game_id, igdb_id) values ('a3a3a3a3-0000-4000-8000-0000000000a3', -1)$q$, 'igdb_id = -1', '23514');
+select pg_temp.refuse($q$insert into cartouche.game_description (game_id, igdb_id) values ('a3a3a3a3-0000-4000-8000-0000000000a3', 10000000000)$q$, 'igdb_id = 10000000000', '23514');
+select pg_temp.refuse($q$insert into cartouche.game_description (game_id, igdb_id) values ('a3a3a3a3-0000-4000-8000-0000000000a3', null)$q$, 'igdb_id nul', '23502');
+select pg_temp.refuse($q$insert into cartouche.game_description (game_id) values ('a3a3a3a3-0000-4000-8000-0000000000a3')$q$, 'igdb_id absent', '23502');
+-- Une traduction sans original n'a pas de sens.
+select pg_temp.refuse($q$insert into cartouche.game_description (game_id, igdb_id, summary, summary_fr) values ('a3a3a3a3-0000-4000-8000-0000000000a3', 1, null, 'seule')$q$, 'traduction sans original', '23514');
+select pg_temp.refuse($q$update cartouche.game_description set summary = null where game_id = 'a1a1a1a1-0000-4000-8000-0000000000a1'$q$, 'original retiré en gardant la traduction', '23514');
+select pg_temp.refuse($q$update cartouche.game_description set igdb_id = 0 where game_id = 'a1a1a1a1-0000-4000-8000-0000000000a1'$q$, 'igdb_id hors bornes en modification', '23514');
+rollback;
+
+-- La description suit son jeu : supprimer le jeu supprime la description (la cascade ignore le
+-- RLS, mais seul le propriétaire peut supprimer son jeu). Les autres descriptions restent.
+begin;
+select pg_temp.connecte_comme('aaaaaaaa-0000-0000-0000-000000000001');
+delete from cartouche.game where id = 'a1a1a1a1-0000-4000-8000-0000000000a1';
+do $$ begin
+    assert (select count(*) from cartouche.game_description) = 1, 'cascade : la description du jeu supprimé reste';
+    assert (select game_id from cartouche.game_description) = 'a2a2a2a2-0000-4000-8000-0000000000a2',
+        'cascade : mauvaise description supprimée';
+end $$;
+commit;
+-- La suppression d'un jeu par A n'a pas touché la description de B.
+begin;
+select pg_temp.connecte_comme('bbbbbbbb-0000-0000-0000-000000000002');
+do $$ begin
+    assert (select count(*) from cartouche.game_description) = 1, 'cascade : description de B touchée';
+end $$;
+-- B supprime lui-même sa description (le jeu reste).
+delete from cartouche.game_description;
+do $$ begin
+    assert (select count(*) from cartouche.game_description) = 0, 'suppression de sa description refusée';
+    assert (select count(*) from cartouche.game) = 1, 'le jeu de B a disparu avec sa description';
+end $$;
+commit;
+-- La suppression sans filtre de B n'a emporté aucune description de A (sous une politique de
+-- suppression trop large, elle aurait vidé la table).
+begin;
+select pg_temp.connecte_comme('aaaaaaaa-0000-0000-0000-000000000001');
+do $$ begin
+    assert (select count(*) from cartouche.game_description
+            where game_id = 'a2a2a2a2-0000-4000-8000-0000000000a2') = 1,
+        'la suppression sans filtre de B a supprimé la description de A';
+end $$;
+commit;
+
+-- Sans compte connecté, rien n'est lisible ni écrivable, même schéma ouvert à `anon`.
+begin;
+set local role anon;
+select pg_temp.refuse('select * from cartouche.game_description', 'lecture anonyme des descriptions', '42501');
+select pg_temp.refuse($q$insert into cartouche.game_description (game_id, user_id, igdb_id) values (gen_random_uuid(), 'aaaaaaaa-0000-0000-0000-000000000001', 1)$q$, 'insertion anonyme d''une description', '42501');
+commit;
+begin;
+grant usage on schema cartouche to anon;
+set local role anon;
+select pg_temp.refuse('select * from cartouche.game_description', 'lecture anonyme des descriptions, schéma ouvert', '42501');
+rollback;
+
+-- Un compte connecté ne peut pas vider la table (`truncate` ignore le RLS).
+begin;
+select pg_temp.connecte_comme('aaaaaaaa-0000-0000-0000-000000000001');
+select pg_temp.refuse('truncate cartouche.game_description', 'truncate des descriptions par un compte', '42501');
+commit;
+
+-- Droits exacts : les quatre opérations de l'API pour `authenticated`, rien pour `anon` ni
+-- pour tout le monde.
+do $$ begin
+    assert (select string_agg(privilege_type, ',' order by privilege_type)
+            from information_schema.table_privileges
+            where table_schema = 'cartouche' and table_name = 'game_description' and grantee = 'authenticated')
+        = 'DELETE,INSERT,SELECT,UPDATE', 'droits de authenticated sur cartouche.game_description non minimaux';
+    assert not exists (select 1 from information_schema.table_privileges
+                       where table_schema = 'cartouche' and table_name = 'game_description'
+                         and grantee in ('anon', 'PUBLIC')),
+        'anon ou PUBLIC a un droit sur cartouche.game_description';
+    -- Les droits de `cartouche.game` n'ont pas bougé.
+    assert (select string_agg(privilege_type, ',' order by privilege_type)
+            from information_schema.table_privileges
+            where table_schema = 'cartouche' and table_name = 'game' and grantee = 'authenticated')
+        = 'DELETE,INSERT,SELECT,UPDATE', 'droits de authenticated sur cartouche.game modifiés';
+    -- RLS active, et quatre politiques exactement (une par opération).
+    assert (select relrowsecurity from pg_class where oid = 'cartouche.game_description'::regclass),
+        'RLS inactive sur cartouche.game_description';
+    assert (select count(*) from pg_policies
+            where schemaname = 'cartouche' and tablename = 'game_description') = 4,
+        'nombre de politiques inattendu sur cartouche.game_description';
+end $$;
+
 -- Realtime : seule `cartouche.game` rejoint la publication.
 do $$ begin
     assert (select count(*) from pg_publication_tables where pubname = 'supabase_realtime') = 1,
