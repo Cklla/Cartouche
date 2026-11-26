@@ -71,6 +71,7 @@ class DetailViewModelStatusYearTest {
         gameRepository = repository,
         igdbPlaytimeRepository = FakeIgdbPlaytimeRepository(),
         igdbUpgradeStore = FakeIgdbUpgradeStore(),
+        descriptionRepository = FakeDescriptionRepository(),
     )
 
     private suspend fun GameRepository.stored(id: String = "hades"): Game = observeGame(id).first()!!
@@ -149,6 +150,7 @@ class DetailViewModelStatusYearTest {
             gameRepository = repository,
             igdbPlaytimeRepository = FakeIgdbPlaytimeRepository(),
         igdbUpgradeStore = FakeIgdbUpgradeStore(),
+        descriptionRepository = FakeDescriptionRepository(),
         )
         val collectorJob = launch { viewModel.uiState.collect {} }
         dispatcher.scheduler.advanceUntilIdle()

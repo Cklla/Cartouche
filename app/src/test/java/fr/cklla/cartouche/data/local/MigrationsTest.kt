@@ -129,4 +129,35 @@ class MigrationsTest {
         // L'autre table n'a pas bougé.
         assertEquals(createSql(exportedSchema(10), "pending_operation"), createSql(exportedSchema(11), "pending_operation"))
     }
+
+    // --- 11 -> 12 : cache des descriptions ---
+
+    @Test
+    fun `la migration 11 vers 12 va de la version 11 a la version 12`() {
+        assertEquals(11, MIGRATION_11_12.startVersion)
+        assertEquals(12, MIGRATION_11_12.endVersion)
+    }
+
+    @Test
+    fun `la migration 11 vers 12 cree la table des descriptions telle que Room l'attend`() {
+        val executed = mutableListOf<String>()
+
+        MIGRATION_11_12.migrate(recordingConnection(executed))
+
+        // Mot pour mot le SQL du schéma exporté : sinon Room refuse d'ouvrir la base au lancement.
+        assertEquals(listOf(createSql(exportedSchema(12), "game_description")), executed)
+    }
+
+    @Test
+    fun `le schema 12 est le schema 11 plus la seule table des descriptions`() {
+        fun tables(version: Int): Set<String> =
+            entities(exportedSchema(version)).map { it.jsonObject.getValue("tableName").jsonPrimitive.content }.toSet()
+
+        assertEquals(setOf("game_description"), tables(12) - tables(11))
+        assertEquals(emptySet<String>(), tables(11) - tables(12))
+        // Les tables des jeux et de la file n'ont pas bougé : aucun format existant n'est touché.
+        listOf("games", "pending_operation").forEach {
+            assertEquals(createSql(exportedSchema(11), it), createSql(exportedSchema(12), it))
+        }
+    }
 }

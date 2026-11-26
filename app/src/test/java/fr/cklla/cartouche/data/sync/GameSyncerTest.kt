@@ -7,6 +7,8 @@ import fr.cklla.cartouche.data.repository.FakeAuthRepository
 import fr.cklla.cartouche.data.repository.FakeGameDao
 import fr.cklla.cartouche.data.repository.FakeInitialUploadStore
 import fr.cklla.cartouche.data.repository.FakeOutboxDao
+import fr.cklla.cartouche.data.local.entity.DescriptionEntity
+import fr.cklla.cartouche.data.repository.FakeDescriptionDao
 import fr.cklla.cartouche.data.repository.fakeSyncer
 import fr.cklla.cartouche.data.repository.toEntity
 import fr.cklla.cartouche.domain.model.AuthUser
@@ -30,7 +32,8 @@ class GameSyncerTest {
     private val outbox = FakeOutboxDao()
     private val auth = FakeAuthRepository()
     private val initialUpload = FakeInitialUploadStore()
-    private val syncer = fakeSyncer(remote, outbox, gameDao, auth, initialUpload = initialUpload)
+    private val descriptionDao = FakeDescriptionDao()
+    private val syncer = fakeSyncer(remote, outbox, gameDao, auth, initialUpload = initialUpload, descriptionDao = descriptionDao)
 
     private val hades = Game(id = "hades", title = "Hades", platform = "Switch", genre = "Roguelike", status = GameStatus.EN_COURS)
     private val celeste = Game(id = "celeste", title = "Celeste", platform = "PC", genre = "Plateforme", status = GameStatus.A_FAIRE)
@@ -478,5 +481,14 @@ class GameSyncerTest {
         syncer.clearLocalData()
 
         assertFalse(initialUpload.isDone("fake-uid"))
+    }
+
+    @Test
+    fun `clearLocalData vide aussi le cache des descriptions du compte qui se deconnecte`() = runTest {
+        descriptionDao.put(DescriptionEntity("celeste", 7, "Original", "Traduction", "m"))
+
+        syncer.clearLocalData()
+
+        assertTrue(descriptionDao.rows.isEmpty())
     }
 }

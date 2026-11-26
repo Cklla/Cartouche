@@ -8,6 +8,7 @@ import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import fr.cklla.cartouche.data.local.AppDatabase
+import fr.cklla.cartouche.data.local.DescriptionDao
 import fr.cklla.cartouche.data.local.GameDao
 import fr.cklla.cartouche.data.local.MIGRATION_1_2
 import fr.cklla.cartouche.data.local.MIGRATION_2_3
@@ -18,6 +19,7 @@ import fr.cklla.cartouche.data.local.MIGRATION_6_7
 import fr.cklla.cartouche.data.local.MIGRATION_7_8
 import fr.cklla.cartouche.data.local.MIGRATION_8_9
 import fr.cklla.cartouche.data.local.MIGRATION_10_11
+import fr.cklla.cartouche.data.local.MIGRATION_11_12
 import fr.cklla.cartouche.data.local.MIGRATION_9_10
 import fr.cklla.cartouche.data.local.OutboxDao
 import fr.cklla.cartouche.data.local.RoomTransactionRunner
@@ -36,6 +38,7 @@ object DatabaseModule {
             .addMigrations(
                 MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5,
                 MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11,
+                MIGRATION_11_12,
             )
             .build()
 
@@ -44,6 +47,9 @@ object DatabaseModule {
 
     @Provides
     fun provideOutboxDao(database: AppDatabase): OutboxDao = database.outboxDao()
+
+    @Provides
+    fun provideDescriptionDao(database: AppDatabase): DescriptionDao = database.descriptionDao()
 
     @Provides
     fun provideGameDao(database: AppDatabase): GameDao = database.gameDao()

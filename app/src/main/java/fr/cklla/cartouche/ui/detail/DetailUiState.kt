@@ -1,5 +1,6 @@
 package fr.cklla.cartouche.ui.detail
 
+import fr.cklla.cartouche.domain.description.DescriptionView
 import fr.cklla.cartouche.domain.model.Game
 import fr.cklla.cartouche.domain.model.GameStatus
 import fr.cklla.cartouche.ui.abandonedYear
@@ -10,6 +11,8 @@ data class DetailUiState(
     val game: Game? = null,
     /** Années proposées par le choix d'année de fin ou d'abandon (récente d'abord) ; vide hors [canEditStatusYear]. */
     val statusYearChoices: List<Int> = emptyList(),
+    /** Section « Description » : texte d'IGDB et sa traduction, absente tant que le jeu n'a pas d'id IGDB. */
+    val description: DescriptionView = DescriptionView.None,
 ) {
     /**
      * Vrai une fois le jeu réellement présent dans le backlog (id non vide). Faux quand la fiche

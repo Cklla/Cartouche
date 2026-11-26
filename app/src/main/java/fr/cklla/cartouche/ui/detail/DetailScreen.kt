@@ -67,6 +67,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.TextFieldValue
@@ -76,6 +77,8 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import fr.cklla.cartouche.R
+import fr.cklla.cartouche.domain.description.DescriptionView
+import fr.cklla.cartouche.domain.description.needsFold
 import fr.cklla.cartouche.domain.model.Game
 import fr.cklla.cartouche.domain.model.GameStatus
 import fr.cklla.cartouche.domain.model.parsePlatforms
@@ -121,6 +124,7 @@ fun DetailScreen(
         canEditStatusYear = uiState.canEditStatusYear,
         statusYear = uiState.statusYear,
         statusYearChoices = uiState.statusYearChoices,
+        description = uiState.description,
         onBackClick = onBackClick,
         onStatusSelected = viewModel::onStatusSelected,
         onStatusYearSelected = viewModel::onStatusYearSelected,
@@ -143,6 +147,7 @@ private fun DetailContent(
     canEditStatusYear: Boolean,
     statusYear: Int?,
     statusYearChoices: List<Int>,
+    description: DescriptionView,
     onBackClick: () -> Unit,
     onStatusSelected: (GameStatus) -> Unit,
     onStatusYearSelected: (Int) -> Unit,
@@ -214,6 +219,7 @@ private fun DetailContent(
                     playedPlatforms = game.playedPlatforms,
                     onPlatformToggled = onPlayedPlatformToggled,
                 )
+                DescriptionSection(description = description)
                 NotesSection(notes = game.notes, onNotesChanged = onNotesChanged)
                 RemoveLink(onClick = { showRemoveConfirm = true })
             } else {
@@ -686,6 +692,90 @@ private fun PlatformCheckboxPill(platform: String, checked: Boolean, onCheckedCh
     }
 }
 
+// Lignes visibles d'un texte replié : à garder en phase avec `needsFold` (seuils du repli).
+private const val DESCRIPTION_FOLDED_LINES = 5
+
+/**
+ * Description du jeu : texte d'IGDB en anglais et sa traduction française, avec la mention de la source.
+ * Affichée comme du **texte** (aucune interprétation de balises ni de Markdown). Rien n'est affiché
+ * tant qu'il n'y a pas de description à montrer ([DescriptionView.None]) : le jeu n'a pas d'id IGDB, ou
+ * IGDB n'a pas de texte pour lui.
+ */
+@Composable
+private fun DescriptionSection(description: DescriptionView) {
+    if (description is DescriptionView.None) return
+    Column {
+        SectionLabel(stringResource(R.string.description_label))
+        Spacer(modifier = Modifier.height(10.dp))
+        when (description) {
+            DescriptionView.Loading -> DescriptionNote(stringResource(R.string.description_loading))
+            DescriptionView.Failed -> DescriptionNote(stringResource(R.string.description_failed))
+            is DescriptionView.Ready -> DescriptionText(description)
+            DescriptionView.None -> Unit
+        }
+    }
+}
+
+@Composable
+private fun DescriptionNote(text: String) {
+    Text(text = text, style = CartoucheTextStyles.cardSubtitle, color = TextMuted)
+}
+
+@Composable
+private fun DescriptionText(description: DescriptionView.Ready) {
+    // Les bascules sont liées au texte : une description remplacée repart repliée, en français.
+    var showOriginal by rememberSaveable(description.summary) { mutableStateOf(false) }
+    var expanded by rememberSaveable(description.summary) { mutableStateOf(false) }
+    val translation = description.summaryFr
+    val showsTranslation = translation != null && !showOriginal
+    val shown = if (showsTranslation && translation != null) translation else description.summary
+    val folds = remember(shown) { needsFold(shown) }
+
+    Column {
+        Text(
+            text = shown,
+            style = CartoucheTextStyles.notesText,
+            color = TextSecondary,
+            maxLines = if (folds && !expanded) DESCRIPTION_FOLDED_LINES else Int.MAX_VALUE,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        // TextButton garantit une zone tactile d'au moins 48 dp.
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            if (folds) {
+                TextButton(onClick = { expanded = !expanded }) {
+                    Text(
+                        text = stringResource(if (expanded) R.string.description_less else R.string.description_more),
+                        color = AccentPurpleLight,
+                    )
+                }
+            }
+            if (translation != null) {
+                TextButton(onClick = { showOriginal = !showOriginal }) {
+                    Text(
+                        text = stringResource(
+                            if (showOriginal) R.string.description_show_translation else R.string.description_show_original,
+                        ),
+                        color = AccentPurpleLight,
+                    )
+                }
+            }
+        }
+        Text(
+            text = stringResource(
+                if (showsTranslation) R.string.description_credit_translated else R.string.description_credit_original,
+            ),
+            style = CartoucheTextStyles.cardSubtitle,
+            color = TextTertiary,
+        )
+        // Texte obtenu mais non enregistré (écriture refusée ou en panne) : il sera redemandé, on le dit.
+        if (!description.saved) {
+            Spacer(modifier = Modifier.height(4.dp))
+            DescriptionNote(stringResource(R.string.description_unsaved))
+        }
+    }
+}
+
 @Composable
 private fun NotesSection(notes: String, onNotesChanged: (String) -> Unit) {
     val interactionSource = remember { MutableInteractionSource() }
@@ -874,6 +964,11 @@ private fun DetailContentPreview() {
             isInBacklog = true,
             canEditStatusYear = false,
             statusYear = null,
+            description = DescriptionView.Ready(
+                summary = "A rogue-like dungeon crawler from the creators of Bastion.",
+                summaryFr = "Un rogue-like d'exploration de donjons des créateurs de Bastion.",
+                saved = true,
+            ),
             statusYearChoices = emptyList(),
             onBackClick = {},
             onStatusSelected = {},
@@ -906,6 +1001,7 @@ private fun DetailContentApercuPreview() {
             isInBacklog = false,
             canEditStatusYear = false,
             statusYear = null,
+            description = DescriptionView.None,
             statusYearChoices = emptyList(),
             onBackClick = {},
             onStatusSelected = {},

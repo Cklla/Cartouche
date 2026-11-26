@@ -56,11 +56,13 @@ class DetailViewModelTest {
         gameId: String,
         igdbPlaytimeRepository: FakeIgdbPlaytimeRepository = FakeIgdbPlaytimeRepository(),
         igdbUpgradeStore: FakeIgdbUpgradeStore = FakeIgdbUpgradeStore(),
+        descriptionRepository: FakeDescriptionRepository = FakeDescriptionRepository(),
     ) = DetailViewModel(
         savedStateHandle = SavedStateHandle(mapOf(CartoucheDestinations.DETAIL_ARG_GAME_ID to gameId)),
         gameRepository = repository,
         igdbPlaytimeRepository = igdbPlaytimeRepository,
         igdbUpgradeStore = igdbUpgradeStore,
+        descriptionRepository = descriptionRepository,
     )
 
     private fun previewViewModel(
@@ -69,6 +71,7 @@ class DetailViewModelTest {
         igdbId: Long = 42,
         igdbPlaytimeRepository: FakeIgdbPlaytimeRepository = FakeIgdbPlaytimeRepository(),
         igdbUpgradeStore: FakeIgdbUpgradeStore = FakeIgdbUpgradeStore(),
+        descriptionRepository: FakeDescriptionRepository = FakeDescriptionRepository(),
     ) = DetailViewModel(
         savedStateHandle = SavedStateHandle(
             mapOf(
@@ -83,6 +86,7 @@ class DetailViewModelTest {
         gameRepository = repository,
         igdbPlaytimeRepository = igdbPlaytimeRepository,
         igdbUpgradeStore = igdbUpgradeStore,
+        descriptionRepository = descriptionRepository,
     )
 
     @Test
