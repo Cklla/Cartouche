@@ -155,7 +155,7 @@ class DescriptionRepositoryImplTest {
         dao.put(entity().copy(gameId = "disparu"))
         remote.stored = { StoredDescription.Present(GameDescription("g1", content)) }
 
-        repository.resolve("g1", igdbId)
+        repository.peek("g1", igdbId)
 
         assertEquals(setOf("g1"), dao.rows.keys)
     }
@@ -165,7 +165,7 @@ class DescriptionRepositoryImplTest {
         dao.failOnDeleteOrphans = true
         remote.stored = { StoredDescription.Present(GameDescription("g1", content)) }
 
-        assertEquals(DescriptionView.Ready("Original", "Traduction", saved = true), repository.resolve("g1", igdbId))
+        assertEquals(DescriptionView.Ready("Original", "Traduction", saved = true), repository.peek("g1", igdbId))
     }
 
     @Test

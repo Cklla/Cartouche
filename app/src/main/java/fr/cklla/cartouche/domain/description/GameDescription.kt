@@ -74,10 +74,10 @@ sealed interface DescriptionView {
 
     data object Loading : DescriptionView
 
-    /** Panne de lecture ou de traduction : rien n'est écrit, la description sera redemandée au prochain déroulement. */
+    /** Panne de lecture ou de traduction : rien n'est écrit, la description sera redemandée à la prochaine ouverture de la fiche, au déroulement. */
     data object Failed : DescriptionView
 
-    /** [saved] faux : le texte est affiché mais son enregistrement a échoué (redemandé au prochain déroulement). */
+    /** [saved] faux : le texte est affiché mais son enregistrement a échoué (redemandé à la prochaine ouverture de la fiche, au déroulement). */
     data class Ready(val summary: String, val summaryFr: String?, val saved: Boolean) : DescriptionView
 }
 

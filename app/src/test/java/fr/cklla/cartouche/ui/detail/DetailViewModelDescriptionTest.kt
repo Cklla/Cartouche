@@ -182,10 +182,14 @@ class DetailViewModelDescriptionTest {
         vm.onRatingSelected(4)
         vm.onNotesChanged("une note")
         vm.onStatusSelected(GameStatus.EN_COURS)
-        vm.onDescriptionToggled()
-        vm.onDescriptionToggled()
+        advanceUntilIdle()
+        vm.onDescriptionToggled() // referme
+        advanceUntilIdle()
+        assertFalse(vm.uiState.value.descriptionExpanded)
+        vm.onDescriptionToggled() // rouvre
         advanceUntilIdle()
 
+        assertTrue(vm.uiState.value.descriptionExpanded)
         assertEquals(1, descriptions.calls.size)
         assertEquals(DescriptionView.Failed, vm.uiState.value.description)
         job.cancel()
@@ -234,6 +238,84 @@ class DetailViewModelDescriptionTest {
 
         assertEquals(DescriptionView.None, vm.uiState.value.description)
         assertFalse(vm.uiState.value.descriptionExpanded)
+        job.cancel()
+    }
+
+    @Test
+    fun `jeu retire pendant l attente du deroulement, la section disparait sans qu on ait deroule`() = runTest(dispatcher) {
+        val repository = fakeGameRepository(FakeGameDao())
+        val id = addAttempted(repository, 113112)
+        val descriptions = FakeDescriptionRepository { _, _ -> ready }
+        val vm = viewModel(repository, id, descriptions)
+        val job = vm.collect()
+        advanceUntilIdle()
+        assertEquals(DescriptionView.Collapsed, vm.uiState.value.description)
+
+        // La clé change (jeu retiré) alors que l'ancienne attend encore son déroulement : la nouvelle
+        // est traitée quand même, rien n'est demandé.
+        vm.onRemoveGame()
+        advanceUntilIdle()
+
+        assertEquals(DescriptionView.None, vm.uiState.value.description)
+        assertEquals(emptyList<Pair<String, Long?>>(), descriptions.calls)
+        job.cancel()
+    }
+
+    @Test
+    fun `section repliee des l ouverture, pendant que la lecture est en cours`() = runTest(dispatcher) {
+        val repository = fakeGameRepository(FakeGameDao())
+        val id = addAttempted(repository, 113112)
+        val gate = CompletableDeferred<DescriptionView>()
+        val descriptions = FakeDescriptionRepository(peeker = { _, _ -> gate.await() })
+        val vm = viewModel(repository, id, descriptions)
+        val job = vm.collect()
+        advanceUntilIdle()
+
+        assertEquals(DescriptionView.Collapsed, vm.uiState.value.description)
+        gate.complete(ready)
+        advanceUntilIdle()
+        assertEquals(ready, vm.uiState.value.description)
+        assertEquals(emptyList<Pair<String, Long?>>(), descriptions.calls)
+        job.cancel()
+    }
+
+    @Test
+    fun `deroule pendant la lecture, la demande part apres la lecture si rien n est connu`() = runTest(dispatcher) {
+        val repository = fakeGameRepository(FakeGameDao())
+        val id = addAttempted(repository, 113112)
+        val gate = CompletableDeferred<DescriptionView>()
+        val descriptions = FakeDescriptionRepository(peeker = { _, _ -> gate.await() }, responder = { _, _ -> ready })
+        val vm = viewModel(repository, id, descriptions)
+        val job = vm.collect()
+        advanceUntilIdle()
+
+        vm.onDescriptionToggled()
+        advanceUntilIdle()
+        assertEquals(emptyList<Pair<String, Long?>>(), descriptions.calls)
+        gate.complete(DescriptionView.Collapsed)
+        advanceUntilIdle()
+
+        assertEquals(1, descriptions.calls.size)
+        assertEquals(ready, vm.uiState.value.description)
+        job.cancel()
+    }
+
+    @Test
+    fun `jeu retire pendant la lecture, la lecture tardive n est jamais affichee`() = runTest(dispatcher) {
+        val repository = fakeGameRepository(FakeGameDao())
+        val id = addAttempted(repository, 113112)
+        val gate = CompletableDeferred<DescriptionView>()
+        val descriptions = FakeDescriptionRepository(peeker = { _, _ -> gate.await() })
+        val vm = viewModel(repository, id, descriptions)
+        val job = vm.collect()
+        advanceUntilIdle()
+
+        vm.onRemoveGame()
+        advanceUntilIdle()
+        gate.complete(ready)
+        advanceUntilIdle()
+
+        assertEquals(DescriptionView.None, vm.uiState.value.description)
         job.cancel()
     }
 
