@@ -1,8 +1,8 @@
 # Politique de confidentialité
 
-Cartouche est une application personnelle, non distribuée publiquement (pas de présence sur le
-Play Store) : ce document décrit les données traitées pour toute personne qui l'installe malgré
-tout à partir des sources de ce dépôt.
+Cartouche est une application personnelle, jamais publiée sur le Play Store : elle n'est partagée
+qu'avec quelques proches, en test interne. Ce document décrit les données traitées pour toute
+personne qui l'utilise ou l'installe à partir des sources de ce dépôt.
 
 ## Données collectées
 
