@@ -344,13 +344,20 @@ do $$ begin
 end $$;
 update cartouche.game_description set summary = 'piraté' where game_id = 'a1a1a1a1-0000-4000-8000-0000000000a1';
 delete from cartouche.game_description where game_id = 'a1a1a1a1-0000-4000-8000-0000000000a1';
+-- Une modification sans filtre ne touche que la ligne de B : sous une politique de modification
+-- trop large, elle atteindrait celle de A (et serait refusée sur elle). Recomptée par A plus bas.
+update cartouche.game_description set translation_model = 'modele-b';
+do $$ begin
+    assert (select translation_model from cartouche.game_description) = 'modele-b',
+        'B ne peut pas modifier sa propre description';
+end $$;
 -- B ne peut pas céder sa ligne à A, ni la déplacer sur le jeu de A.
 select pg_temp.refuse(
     $q$update cartouche.game_description set user_id = 'aaaaaaaa-0000-0000-0000-000000000001'$q$,
     'changement de propriétaire de la description', '42501');
 select pg_temp.refuse(
-    $q$update cartouche.game_description set game_id = 'a1a1a1a1-0000-4000-8000-0000000000a1'$q$,
-    'déplacement de la description vers le jeu de A', '42501');
+    $q$update cartouche.game_description set game_id = 'a2a2a2a2-0000-4000-8000-0000000000a2'$q$,
+    'déplacement de la description vers un jeu de A sans description', '42501');
 select pg_temp.refuse(
     $q$insert into cartouche.game_description (game_id, igdb_id, summary)
        values ('a1a1a1a1-0000-4000-8000-0000000000a1', 1029, 'upsert')
@@ -366,6 +373,8 @@ do $$ begin
     assert (select count(*) from cartouche.game_description) = 1, 'les descriptions de A ont changé';
     assert (select summary from cartouche.game_description) = E'An epic quest.\nSecond line.',
         'la description de A a été modifiée par B';
+    assert (select translation_model from cartouche.game_description) = 'modele-test',
+        'la modification sans filtre de B a atteint la description de A';
 end $$;
 update cartouche.game_description set igdb_id = 405460, summary = 'New text', summary_fr = 'Nouveau texte',
     translation_model = 'modele-test-2' where game_id = 'a1a1a1a1-0000-4000-8000-0000000000a1';
@@ -451,6 +460,16 @@ delete from cartouche.game_description;
 do $$ begin
     assert (select count(*) from cartouche.game_description) = 0, 'suppression de sa description refusée';
     assert (select count(*) from cartouche.game) = 1, 'le jeu de B a disparu avec sa description';
+end $$;
+commit;
+-- La suppression sans filtre de B n'a emporté aucune description de A (sous une politique de
+-- suppression trop large, elle aurait vidé la table).
+begin;
+select pg_temp.connecte_comme('aaaaaaaa-0000-0000-0000-000000000001');
+do $$ begin
+    assert (select count(*) from cartouche.game_description
+            where game_id = 'a2a2a2a2-0000-4000-8000-0000000000a2') = 1,
+        'la suppression sans filtre de B a supprimé la description de A';
 end $$;
 commit;
 
