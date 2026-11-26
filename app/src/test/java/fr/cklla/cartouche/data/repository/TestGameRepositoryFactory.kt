@@ -1,5 +1,6 @@
 package fr.cklla.cartouche.data.repository
 
+import fr.cklla.cartouche.data.local.DescriptionDao
 import fr.cklla.cartouche.data.local.GameDao
 import fr.cklla.cartouche.data.local.OutboxDao
 import fr.cklla.cartouche.data.local.TransactionRunner
@@ -59,7 +60,8 @@ fun fakeSyncer(
     authRepository: AuthRepository = FakeAuthRepository(),
     transactions: TransactionRunner = ImmediateTransactionRunner,
     initialUpload: InitialUploadStore = FakeInitialUploadStore(),
-) = GameSyncer(remote, outboxDao, gameDao, transactions, authRepository, initialUpload)
+    descriptionDao: DescriptionDao = FakeDescriptionDao(),
+) = GameSyncer(remote, outboxDao, gameDao, descriptionDao, transactions, authRepository, initialUpload)
 
 /**
  * Construit un [GameRepositoryImpl] de test, avec des fakes par défaut pour le serveur/l'auth : la

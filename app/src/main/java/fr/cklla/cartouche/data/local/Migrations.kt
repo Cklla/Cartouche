@@ -265,3 +265,22 @@ val MIGRATION_10_11 = object : Migration(10, 11) {
         connection.execSQL("ALTER TABLE `games` ADD COLUMN `igdbId` INTEGER")
     }
 }
+
+/**
+ * Ajoute `game_description`, le cache local des descriptions de jeux (voir `DescriptionEntity`).
+ * Nouvelle table sans lien avec `games` : migration purement additive, aucune donnée existante n'est
+ * touchée, et le cache démarre vide.
+ */
+val MIGRATION_11_12 = object : Migration(11, 12) {
+    override fun migrate(connection: SQLiteConnection) {
+        connection.execSQL(
+            "CREATE TABLE IF NOT EXISTS `game_description` (" +
+                "`gameId` TEXT NOT NULL, " +
+                "`igdbId` INTEGER NOT NULL, " +
+                "`summary` TEXT, " +
+                "`summaryFr` TEXT, " +
+                "`translationModel` TEXT, " +
+                "PRIMARY KEY(`gameId`))",
+        )
+    }
+}

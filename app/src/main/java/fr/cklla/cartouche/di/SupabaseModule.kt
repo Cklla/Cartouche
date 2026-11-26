@@ -14,6 +14,7 @@ import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.auth.Auth
 import io.github.jan.supabase.auth.SessionManager
 import io.github.jan.supabase.createSupabaseClient
+import io.github.jan.supabase.functions.Functions
 import io.github.jan.supabase.postgrest.Postgrest
 import io.github.jan.supabase.realtime.Realtime
 import javax.inject.Singleton
@@ -52,6 +53,7 @@ object SupabaseModule {
             this.sessionManager = sessionManager
         }
         install(Postgrest)
+        install(Functions)
         install(Realtime)
     }
 }

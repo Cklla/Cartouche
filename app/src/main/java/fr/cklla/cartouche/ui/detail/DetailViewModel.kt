@@ -4,6 +4,7 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import fr.cklla.cartouche.domain.description.DescriptionView
 import fr.cklla.cartouche.domain.model.Game
 import fr.cklla.cartouche.domain.model.GameSearchResult
 import fr.cklla.cartouche.domain.model.GameStatus
@@ -15,6 +16,7 @@ import fr.cklla.cartouche.domain.model.Resource
 import fr.cklla.cartouche.domain.model.applyIgdbEnrichment
 import fr.cklla.cartouche.domain.model.igdbIdOrNull
 import fr.cklla.cartouche.domain.model.toGame
+import fr.cklla.cartouche.domain.repository.DescriptionRepository
 import fr.cklla.cartouche.domain.repository.GameRepository
 import fr.cklla.cartouche.domain.repository.IgdbPlaytimeRepository
 import fr.cklla.cartouche.domain.repository.IgdbUpgradeStore
@@ -25,8 +27,11 @@ import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -57,6 +62,7 @@ class DetailViewModel @Inject constructor(
     private val gameRepository: GameRepository,
     private val igdbPlaytimeRepository: IgdbPlaytimeRepository,
     private val igdbUpgradeStore: IgdbUpgradeStore,
+    private val descriptionRepository: DescriptionRepository,
 ) : ViewModel() {
 
     private val gameId: String? = savedStateHandle[CartoucheDestinations.DETAIL_ARG_GAME_ID]
@@ -65,8 +71,10 @@ class DetailViewModel @Inject constructor(
 
     private val workingGame = MutableStateFlow(previewResult?.toGame())
     private val isLoading = MutableStateFlow(gameId != null)
+    private val description = MutableStateFlow<DescriptionView>(DescriptionView.None)
 
     init {
+        observeDescription()
         val id = gameId
         if (id != null) {
             viewModelScope.launch {
@@ -77,6 +85,31 @@ class DetailViewModel @Inject constructor(
             }
         } else {
             workingGame.value?.let(::fetchEstimatedPlaytimeIfMissing)
+        }
+    }
+
+    // Description du jeu (texte IGDB et traduction), demandée à l'ouverture de la fiche seulement, et
+    // seulement pour un jeu déjà dans le backlog qui a un id IGDB : jamais pour un aperçu, jamais depuis la
+    // Bibliothèque ni la Recherche. La clé (id du jeu, id IGDB) ne change que si le jeu change de fiche IGDB
+    // (ou passe de l'aperçu au backlog) : `distinctUntilChanged` garantit au plus une demande par id et par
+    // ouverture, sans boucle, quelles que soient les éditions qui modifient la copie de travail. Une panne ne
+    // consomme pas l'essai : l'ouverture suivante redemandera (voir `resolveDescription`). `collectLatest`
+    // annule la demande en cours si la clé change, si bien que la réponse d'un ancien id ne peut jamais
+    // remplacer celle du nouveau (une description périmée n'est jamais affichée).
+    private fun observeDescription() {
+        viewModelScope.launch {
+            workingGame
+                .map { game -> game?.takeIf { it.id.isNotEmpty() }?.let { it.id to igdbIdOrNull(it.igdbId) } }
+                .distinctUntilChanged()
+                .collectLatest { key ->
+                    val (id, igdbId) = key ?: Pair(null, null)
+                    if (id == null || igdbId == null) {
+                        description.value = DescriptionView.None
+                        return@collectLatest
+                    }
+                    description.value = DescriptionView.Loading
+                    description.value = descriptionRepository.resolve(id, igdbId)
+                }
         }
     }
 
@@ -116,10 +149,11 @@ class DetailViewModel @Inject constructor(
         }
     }
 
-    val uiState: StateFlow<DetailUiState> = combine(isLoading, workingGame) { loading, game ->
+    val uiState: StateFlow<DetailUiState> = combine(isLoading, workingGame, description) { loading, game, descriptionView ->
         DetailUiState(
             isLoading = loading,
             game = game,
+            description = descriptionView,
             // L'instant présent et le fuseau sont lus ici, au point d'usage : la fonction de calcul
             // reste pure (voir `selectablePlayedYears`).
             statusYearChoices = game

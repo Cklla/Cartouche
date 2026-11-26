@@ -5,8 +5,11 @@ import dagger.Module
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
 import fr.cklla.cartouche.data.remote.RemoteGameDataSource
+import fr.cklla.cartouche.data.remote.description.RemoteDescriptionDataSource
+import fr.cklla.cartouche.data.remote.description.SupabaseDescriptionDataSource
 import fr.cklla.cartouche.data.remote.supabase.SupabaseGameDataSource
 import fr.cklla.cartouche.data.repository.AuthRepositoryImpl
+import fr.cklla.cartouche.data.repository.DescriptionRepositoryImpl
 import fr.cklla.cartouche.data.repository.GameRepositoryImpl
 import fr.cklla.cartouche.data.repository.GameSearchRepositoryImpl
 import fr.cklla.cartouche.data.repository.IgdbPlaytimeRepositoryImpl
@@ -16,6 +19,7 @@ import fr.cklla.cartouche.data.sync.InitialUploadStore
 import fr.cklla.cartouche.data.sync.OutboxScheduler
 import fr.cklla.cartouche.data.sync.WorkManagerOutboxScheduler
 import fr.cklla.cartouche.domain.repository.AuthRepository
+import fr.cklla.cartouche.domain.repository.DescriptionRepository
 import fr.cklla.cartouche.domain.repository.GameRepository
 import fr.cklla.cartouche.domain.repository.GameSearchRepository
 import fr.cklla.cartouche.domain.repository.IgdbPlaytimeRepository
@@ -39,6 +43,14 @@ abstract class RepositoryModule {
     @Binds
     @Singleton
     abstract fun bindIgdbPlaytimeRepository(impl: IgdbPlaytimeRepositoryImpl): IgdbPlaytimeRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindDescriptionRepository(impl: DescriptionRepositoryImpl): DescriptionRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindRemoteDescriptionDataSource(impl: SupabaseDescriptionDataSource): RemoteDescriptionDataSource
 
     @Binds
     @Singleton

@@ -1,5 +1,6 @@
 package fr.cklla.cartouche.data.sync
 
+import fr.cklla.cartouche.data.local.DescriptionDao
 import fr.cklla.cartouche.data.local.GameDao
 import fr.cklla.cartouche.data.local.OutboxDao
 import fr.cklla.cartouche.data.local.TransactionRunner
@@ -45,6 +46,7 @@ class GameSyncer @Inject constructor(
     private val remote: RemoteGameDataSource,
     private val outboxDao: OutboxDao,
     private val gameDao: GameDao,
+    private val descriptionDao: DescriptionDao,
     private val transactions: TransactionRunner,
     private val authRepository: AuthRepository,
     private val initialUpload: InitialUploadStore,
@@ -149,13 +151,14 @@ class GameSyncer @Inject constructor(
         return queued
     }
 
-    /** Efface le backlog local et la file d'envoi : rien du compte qui se déconnecte ne doit rester. */
+    /** Efface le backlog local, la file d'envoi et le cache des descriptions : rien du compte qui se déconnecte ne doit rester. */
     suspend fun clearLocalData() {
         stateLock.withLock {
             generation++
             transactions.run {
                 gameDao.clearAll()
                 outboxDao.clearAll()
+                descriptionDao.clearAll()
             }
             initialUpload.clear()
         }
