@@ -72,6 +72,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.text.intl.LocaleList
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
@@ -779,11 +780,15 @@ private fun DescriptionText(description: DescriptionView.Ready) {
     val showsTranslation = translation != null && !showOriginal
     val shown = if (showsTranslation && translation != null) translation else description.summary
     val folds = remember(shown) { needsFold(shown) }
+    // Texte justifié ; la césure suit la langue affichée (traduction française, original anglais).
+    val textStyle = remember(showsTranslation) {
+        CartoucheTextStyles.descriptionText.copy(localeList = LocaleList(if (showsTranslation) "fr" else "en"))
+    }
 
     Column {
         Text(
             text = shown,
-            style = CartoucheTextStyles.notesText,
+            style = textStyle,
             color = TextSecondary,
             maxLines = if (folds && !expanded) DESCRIPTION_FOLDED_LINES else Int.MAX_VALUE,
             overflow = TextOverflow.Ellipsis,

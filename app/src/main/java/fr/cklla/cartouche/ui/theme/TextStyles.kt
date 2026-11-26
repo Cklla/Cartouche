@@ -4,6 +4,9 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.Hyphens
+import androidx.compose.ui.text.style.LineBreak
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.sp
 
 /**
@@ -152,6 +155,17 @@ object CartoucheTextStyles {
         fontFamily = InterFamily,
         fontSize = 13.5.sp,
         lineHeight = 20.sp,
+    )
+
+    /**
+     * Description d'un jeu : texte justifié, lisible sur une colonne étroite. La justification seule étire
+     * les espaces ; la césure automatique et le découpage « paragraphe » (qualité maximale) les resserrent.
+     * La langue de césure se règle à l'usage (`copy(localeList = …)`) : elle suit celle du texte affiché.
+     */
+    val descriptionText = notesText.copy(
+        textAlign = TextAlign.Justify,
+        hyphens = Hyphens.Auto,
+        lineBreak = LineBreak.Paragraph,
     )
 
     val linkLabel = TextStyle(
