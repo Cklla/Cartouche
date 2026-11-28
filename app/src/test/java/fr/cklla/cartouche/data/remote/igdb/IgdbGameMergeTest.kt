@@ -25,11 +25,17 @@ class IgdbGameMergeTest {
     }
 
     @Test
-    fun `un bundle n'est garde que s'il est rattache a un jeu de base`() {
+    fun `un bundle est garde s'il est rattache a un jeu de base ou s'il est note`() {
         // *Cyberpunk 2077: Ultimate Edition* : bundle IGDB dont le version_parent est le jeu de base.
         assertTrue(igdbGame(277807, "Cyberpunk 2077: Ultimate Edition", type = 3, versionParent = 1877).isKeptGameType())
-        // Une « collection » sans parent reste écartée.
-        assertFalse(igdbGame(2, "Une Collection", type = 3).isKeptGameType())
+        // Un bundle de magasin sans parent ni note reste écarté (*Kingdom Hearts III + Re Mind*, 0 note).
+        assertFalse(igdbGame(2, "Kingdom Hearts III + Re Mind", type = 3, ratings = 0).isKeptGameType())
+        assertFalse(igdbGame(2, "Bundle sans note", type = 3).isKeptGameType())
+        // Une compilation notée est gardée (*KH HD 1.5 + 2.5 Remix*, 71 notes ; *KH Collection [I-III]*, 3).
+        assertTrue(igdbGame(27979, "Kingdom Hearts HD 1.5 + 2.5 Remix", type = 3, ratings = 71).isKeptGameType())
+        assertTrue(igdbGame(405459, "Kingdom Hearts Collection [I-III]", type = 3, ratings = 3).isKeptGameType())
+        // La note ne sauve que les bundles : un pack noté reste écarté.
+        assertFalse(igdbGame(4, "Pack noté", type = 13, ratings = 50).isKeptGameType())
         // Un DLC ou un pack rattaché reste écarté : l'exception ne vaut que pour les bundles.
         assertFalse(igdbGame(3, "Pack de costumes", type = 13, versionParent = 1877).isKeptGameType())
     }
@@ -60,6 +66,23 @@ class IgdbGameMergeTest {
         listOf(10L, 8L, 9L, 4L, 3L, 1L, 2L).forEach { type ->
             assertNull("type $type", igdbGame(1, "x", type = type, parentGame = 1029, versionParent = 1029).mergeParentId())
         }
+    }
+
+    @Test
+    fun `une compilation s'affiche a part et absorbe sa version Cloud`() {
+        // *KH HD 1.5 + 2.5 Remix* (bundle note, sans parent) et sa « Cloud Version » (jeu de base, version_parent = la compilation).
+        val compilation = igdbGame(27979, "Kingdom Hearts HD 1.5 + 2.5 Remix", type = 3, ratings = 71, platforms = listOf("PlayStation 4"))
+        val cloud = igdbGame(
+            176090, "Kingdom Hearts HD 1.5 + 2.5 Remix: Cloud Version", versionParent = 27979,
+            platforms = listOf("Nintendo Switch"),
+        )
+        val premiere = igdbGame(7356, "Kingdom Hearts HD 1.5 Remix", type = 3, ratings = 66, platforms = listOf("PlayStation 3"))
+
+        val merged = buildMergedGames(listOf(compilation, cloud, premiere))
+
+        assertEquals(setOf(7356L, 27979L), merged.map { it.game.id }.toSet())
+        val fusionnee = merged.first { it.game.id == 27979L }
+        assertEquals(setOf("Nintendo Switch", "PlayStation 4"), fusionnee.platforms.map { it.name }.toSet())
     }
 
     @Test

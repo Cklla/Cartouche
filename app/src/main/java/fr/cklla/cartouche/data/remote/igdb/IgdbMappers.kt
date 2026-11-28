@@ -48,16 +48,17 @@ private const val CHILDREN_LIMIT = 500
  * jeux de base (0), DLC (1), extensions (2), extensions autonomes (4), remakes (8), remasters (9),
  * jeux étendus (10) et portages (11), **et** ceux dont `game_type` est absent : un filtre ne doit jamais écarter un jeu
  * dont le champ n'est pas renseigné (piège déjà vécu avec l'ancien champ `category`, qui était vide
- * pour des jeux de base). Écartés : bundles, mods, épisodes, saisons, forks, packs et mises à jour. Exception : un bundle qui a un `version_parent` est une édition typée en
- * bundle par IGDB (*Cyberpunk 2077: Ultimate Edition*) : il est gardé, les « collections » sans
- * parent restent écartées.
+ * pour des jeux de base). Écartés : bundles, mods, épisodes, saisons, forks, packs et mises à jour. Exceptions : un bundle qui a un `version_parent` est une édition typée en
+ * bundle par IGDB (*Cyberpunk 2077: Ultimate Edition*), et un bundle qui a au moins une note est une
+ * compilation (*Kingdom Hearts HD 1.5 + 2.5 Remix*) : ils sont gardés. Les bundles de magasin, sans
+ * aucune note, restent écartés.
  *
  * `search` n'accepte pas `sort` (HTTP 406) : le tri est fait côté client (`rankByRelevance`).
  */
 fun buildCatalogSearchQuery(text: String): String =
     "search \"${escapeQueryText(text)}\"; fields $GAME_FIELDS; " +
         "where (game_type = (${KEPT_GAME_TYPE_IDS.joinToString(",")}) | game_type = null) | " +
-            "(game_type = 3 & version_parent != null); " +
+            "(game_type = 3 & (version_parent != null | total_rating_count > 0)); " +
         "limit $SEARCH_CANDIDATE_LIMIT;"
 
 /**

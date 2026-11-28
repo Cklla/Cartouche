@@ -64,7 +64,7 @@ class IgdbMappersTest {
         assertTrue(
             query.contains(
                 "where (game_type = (0,1,2,4,8,9,10,11) | game_type = null) | " +
-                    "(game_type = 3 & version_parent != null); limit 40;",
+                    "(game_type = 3 & (version_parent != null | total_rating_count > 0)); limit 40;",
             ),
         )
     }
