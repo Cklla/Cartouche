@@ -44,12 +44,17 @@ const val MAX_MERGE_DEPTH = 2
  *
  * Exception : un **bundle rattaché à un jeu de base** (`version_parent`) est une édition que IGDB
  * type en bundle (*Cyberpunk 2077: Ultimate Edition*, *The Witcher 3: Complete Edition*, *Assassin's
- * Creed Origins: Gold Edition*). Il est gardé, comme fiche à part (voir [mergeParentId]). Un bundle
- * sans parent (« Collection », compilation) reste écarté.
+ * Creed Origins: Gold Edition*). Il est gardé, comme fiche à part (voir [mergeParentId]).
+ *
+ * Deuxième exception : une **compilation** (*Kingdom Hearts HD 1.5 + 2.5 Remix*, *Mass Effect
+ * Legendary Edition*, *Halo: The Master Chief Collection*) est aussi un bundle IGDB, mais sans
+ * parent. Elle est gardée dès qu'**au moins une note** la concerne (`total_rating_count > 0`) ; les
+ * bundles de magasin (*Kingdom Hearts III + Re Mind*, *Bioshock & Borderlands*) n'en ont aucune et
+ * restent écartés. Sondes réelles du 2026-11-28.
  */
 fun IgdbGameDto.isKeptGameType(): Boolean =
     gameType == null || gameType.id in KEPT_GAME_TYPE_SET ||
-        (gameType.id == TYPE_BUNDLE && versionParent != null)
+        (gameType.id == TYPE_BUNDLE && (versionParent != null || (totalRatingCount ?: 0) > 0))
 
 /**
  * Id du jeu de base auquel ce jeu est rattaché, ou `null` s'il est lui-même un jeu à part entière.
